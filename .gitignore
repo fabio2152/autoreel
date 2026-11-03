@@ -1,0 +1,53 @@
+# --- Documentación local (no se versiona) ---
+/docs/
+/.claude/
+
+# --- Entorno y credenciales ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# --- Java / Maven ---
+target/
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# --- Node / Vite ---
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.local
+
+# --- IDE ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+.factorypath
+.sts4-cache/
+bin/
+out/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
