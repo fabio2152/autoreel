@@ -63,6 +63,11 @@ public abstract class PruebaDeIntegracion {
         RelojAjustable relojAjustable() {
             return new RelojAjustable(ConfiguracionReloj.ZONA_LIMA);
         }
+
+        @Bean
+        AlmacenEnMemoria almacenEnMemoria() {
+            return new AlmacenEnMemoria();
+        }
     }
 
     @AfterEach

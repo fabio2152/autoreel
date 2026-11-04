@@ -15,3 +15,7 @@ autoreel:
   admin:
     correo: admin@autoreel.test
     contrasena: AdminPrueba123
+  almacenamiento:
+    # Las pruebas de integración usan AlmacenEnMemoria; S3Almacen se prueba aparte contra SeaweedFS.
+    tipo: memoria
+    bucket: pruebas
