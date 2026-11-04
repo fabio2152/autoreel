@@ -1,5 +1,7 @@
 package com.autoreel.video.dominio;
 
+import java.time.Instant;
+
 import com.autoreel.catalogo.dominio.TipoFoto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,6 +50,30 @@ public class Plano {
 
     private String ubicacion;
 
+    /** Estado del clip (fase 5); vacío en el storyboard y en el cierre. */
+    @Enumerated(EnumType.STRING)
+    private EstadoPlano estado;
+
+    /** Envíos al proveedor del clip actual: con 2 fallidos, el plano usa el respaldo (RN-30). */
+    @Column(nullable = false)
+    private int intentos;
+
+    @Column(nullable = false)
+    private boolean usoRespaldo;
+
+    @Enumerated(EnumType.STRING)
+    private MotivoRespaldoPlano motivoRespaldo;
+
+    private String idTareaProveedor;
+
+    private Instant enviadoEn;
+
+    private String claveClip;
+
+    /** Una regeneración pedida que todavía no terminó: si termina en respaldo, se devuelve. */
+    @Column(nullable = false)
+    private boolean regeneracionEnCurso;
+
     protected Plano() {
     }
 
@@ -90,6 +116,101 @@ public class Plano {
         this.precio = precio;
     }
 
+    /** Al aprobar el storyboard: el clip queda por enviar. */
+    void pendiente() {
+        this.estado = EstadoPlano.PENDIENTE;
+        this.intentos = 0;
+        this.idTareaProveedor = null;
+        this.enviadoEn = null;
+    }
+
+    /**
+     * Pedir otro clip. El clip anterior se conserva hasta que llegue el nuevo, salvo que la foto haya cambiado
+     * (entonces ya no corresponde).
+     *
+     * @return la clave del clip descartado, para borrarlo; vacía si se conserva o no había.
+     */
+    String regenerar(boolean conservarClipAnterior) {
+        pendiente();
+        this.regeneracionEnCurso = true;
+        if (conservarClipAnterior) {
+            return null;
+        }
+        String descartado = this.claveClip;
+        this.claveClip = null;
+        this.usoRespaldo = false;
+        this.motivoRespaldo = null;
+        return descartado;
+    }
+
+    /** Antes de llamar al proveedor: cuenta el intento, para no reenviar sin límite si algo se corta. */
+    public void prepararEnvio(Instant ahora) {
+        this.intentos++;
+        this.enviadoEn = ahora;
+    }
+
+    public void enviado(String idTarea) {
+        this.idTareaProveedor = idTarea;
+        this.estado = EstadoPlano.GENERANDO;
+    }
+
+    /** El intento no produjo clip: se vuelve a enviar en la siguiente pasada. */
+    public void reintentar() {
+        this.estado = EstadoPlano.PENDIENTE;
+        this.idTareaProveedor = null;
+    }
+
+    /** @return la clave del clip anterior, para borrarlo; vacía si no había. */
+    public String clipListo(String clave) {
+        String anterior = this.claveClip;
+        this.claveClip = clave;
+        this.estado = EstadoPlano.LISTO;
+        this.usoRespaldo = false;
+        this.motivoRespaldo = null;
+        this.idTareaProveedor = null;
+        this.regeneracionEnCurso = false;
+        return anterior;
+    }
+
+    /**
+     * El clip no se pudo generar. Si era una regeneración y había un clip anterior, se conserva ese clip; si no, el
+     * plano usa el acercamiento de FFmpeg.
+     *
+     * @return si había una regeneración en curso (se devuelve: una regeneración que falla no se cobra).
+     */
+    public boolean usarRespaldo(MotivoRespaldoPlano motivo) {
+        boolean eraRegeneracion = regeneracionEnCurso;
+        this.regeneracionEnCurso = false;
+        this.idTareaProveedor = null;
+        if (eraRegeneracion && claveClip != null) {
+            this.estado = EstadoPlano.LISTO;
+            return true;
+        }
+        this.estado = EstadoPlano.RESPALDO;
+        this.usoRespaldo = true;
+        this.motivoRespaldo = motivo;
+        return eraRegeneracion;
+    }
+
+    /**
+     * Sin IA disponible: la foto nueva se anima con el acercamiento del sistema.
+     *
+     * @return la clave del clip descartado, para borrarlo; vacía si no había.
+     */
+    public String usarFotoSinIa(MotivoRespaldoPlano motivo) {
+        String descartado = this.claveClip;
+        this.claveClip = null;
+        this.estado = EstadoPlano.RESPALDO;
+        this.usoRespaldo = true;
+        this.motivoRespaldo = motivo;
+        this.regeneracionEnCurso = false;
+        return descartado;
+    }
+
+    public boolean terminado() {
+        return estado == EstadoPlano.LISTO || estado == EstadoPlano.RESPALDO;
+    }
+
     public Long getId() {
         return id;
     }
@@ -124,5 +245,37 @@ public class Plano {
 
     public String getUbicacion() {
         return ubicacion;
+    }
+
+    public EstadoPlano getEstado() {
+        return estado;
+    }
+
+    public int getIntentos() {
+        return intentos;
+    }
+
+    public boolean isUsoRespaldo() {
+        return usoRespaldo;
+    }
+
+    public MotivoRespaldoPlano getMotivoRespaldo() {
+        return motivoRespaldo;
+    }
+
+    public String getIdTareaProveedor() {
+        return idTareaProveedor;
+    }
+
+    public Instant getEnviadoEn() {
+        return enviadoEn;
+    }
+
+    public String getClaveClip() {
+        return claveClip;
+    }
+
+    public boolean isRegeneracionEnCurso() {
+        return regeneracionEnCurso;
     }
 }

@@ -14,7 +14,7 @@ concurrency:
 jobs:
   backend:
     name: Backend (compilar y probar)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -26,6 +26,10 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+
+      # La composición del video y sus pruebas usan FFmpeg (fase 5).
+      - name: Instalar FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg && ffmpeg -version | head -1
 
       # Las pruebas de integración levantan PostgreSQL con Testcontainers (Docker viene en ubuntu-latest).
       - name: Compilar y probar

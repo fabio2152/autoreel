@@ -22,11 +22,20 @@ autoreel:
   # Sin clave por defecto: el guion usa el respaldo. Las pruebas que la necesitan la ponen con @DynamicPropertySource.
   secretos:
     "[autoreel/gemini]": ""
+  secretos-en-archivo:
+    "[autoreel/veo]": ""
   ia:
     gemini:
       url: http://127.0.0.1:9
       tiempo-conexion: 500ms
       tiempo-lectura: 500ms
+    veo:
+      url: http://127.0.0.1:9
+      url-token: http://127.0.0.1:9/token
+      tiempo-conexion: 500ms
+      tiempo-lectura: 2s
+  ffmpeg:
+    ruta: ${FFMPEG_PATH:ffmpeg}
   # Las pruebas llaman a los procesadores directamente.
   tareas:
     activas: false

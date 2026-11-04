@@ -35,6 +35,15 @@ public interface PaqueteNicho {
     /** Instrucciones base para el modelo de texto, con marcadores {así} que se reemplazan (sección 8.1). */
     String instruccionesGuion();
 
+    /** La tipografía (TTF) de los textos del video para un estilo (sección 7.4, P-05). */
+    byte[] tipografia(String estilo);
+
+    /** Las pistas de música que trae el paquete (sección 7.4, P-02). */
+    List<PistaDelNicho> pistas();
+
+    /** El contenido de una pista del paquete. */
+    byte[] leerPista(PistaDelNicho pista);
+
     default boolean admiteEstilo(String estilo) {
         return estilos().stream().anyMatch(opcion -> opcion.valor().equals(estilo));
     }

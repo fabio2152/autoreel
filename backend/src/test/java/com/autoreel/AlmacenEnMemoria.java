@@ -25,6 +25,11 @@ public class AlmacenEnMemoria implements AlmacenDeArchivos {
     }
 
     @Override
+    public String urlDeDescargaComoAdjunto(String clave, String nombreArchivo, Duration vigencia) {
+        return "http://almacen.test/" + clave + "?descarga=" + nombreArchivo;
+    }
+
+    @Override
     public String urlDeDescarga(String clave, Duration vigencia) {
         return "memoria://leer/" + clave;
     }

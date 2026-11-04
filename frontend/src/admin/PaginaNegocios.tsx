@@ -135,7 +135,7 @@ export function PaginaNegocios() {
                         <EtiquetaEstadoPago estado={negocio.estadoPago} />
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-stone-500" title="Disponible desde la fase 5">
+                    <td className="px-4 py-3 text-stone-500">
                       {negocio.videosDelMes ?? '—'}
                     </td>
                     <td className="px-4 py-3">

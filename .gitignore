@@ -8,6 +8,9 @@
 !.env.example
 *.pem
 *.key
+# Credenciales de Google Cloud (cuenta de servicio de Veo)
+/credenciales/
+*service-account*.json
 *.p12
 *.jks
 

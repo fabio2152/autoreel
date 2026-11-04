@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { Marca } from '../componentes/Marca'
+import { AvisoVideoListo } from '../videos/AvisoVideoListo'
 
 const SECCIONES = [
   { ruta: '/', texto: 'Inicio', icono: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
@@ -39,6 +40,7 @@ export function LayoutNegocio() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">
+        <AvisoVideoListo />
         <Outlet />
       </main>
       {/* Fuera de la cabecera: su desenfoque haría que "fixed" se ubique dentro de ella y no al pie. */}
