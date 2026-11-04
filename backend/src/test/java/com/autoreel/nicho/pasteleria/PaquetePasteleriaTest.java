@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.autoreel.nicho.dominio.GuionChat;
+import com.autoreel.nicho.dominio.GuionChat.PasoChat;
 import com.autoreel.nicho.dominio.Temporada;
 import com.autoreel.nicho.dominio.ValidadorDeRespuestas;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,20 @@ class PaquetePasteleriaTest {
         List<String> proximas = paquete.fechasEspecialesProximas(fecha).stream().map(Temporada::id).toList();
 
         assertThat(proximas).isEqualTo(esperada.isEmpty() ? List.of() : List.of(esperada));
+    }
+
+    @Test
+    void unGuionDelChatMalArmadoFallaAlArrancar() {
+        GuionChat valido = paquete.guionDelChat();
+        PasoChat precio = valido.paso("precio");
+        PasoChat conCondicionRota = new PasoChat(precio.id(), precio.tipo(), precio.texto(), false, List.of(),
+                new GuionChat.Condicion("tipoVideo", "NO_EXISTE"), true, null);
+        List<PasoChat> pasos = valido.pasos().stream().map(p -> p.id().equals("precio") ? conCondicionRota : p).toList();
+        GuionChat roto = new GuionChat(valido.minimoCaracteres(), valido.maximoCaracteres(),
+                valido.respuestasNegativas(), valido.mensajes(), pasos);
+
+        assertThatCode(valido::validar).doesNotThrowAnyException();
+        assertThatThrownBy(roto::validar).hasMessageContaining("usa un valor que no existe");
     }
 
     @Test
