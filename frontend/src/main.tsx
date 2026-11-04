@@ -5,13 +5,19 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { LayoutAdmin } from './admin/LayoutAdmin'
 import { PaginaDetalleNegocio } from './admin/PaginaDetalleNegocio'
 import { PaginaNegocios } from './admin/PaginaNegocios'
+import { PaginaAjustes } from './ajustes/PaginaAjustes'
 import { ErrorApi } from './api/cliente'
 import { PaginaCrearContrasena } from './auth/PaginaCrearContrasena'
+import { PaginaCatalogo } from './catalogo/PaginaCatalogo'
+import { PaginaProducto } from './catalogo/PaginaProducto'
 import { PaginaLogin } from './auth/PaginaLogin'
+import { RutaOnboarding } from './auth/RutaOnboarding'
 import { RutaProtegida } from './auth/RutaProtegida'
 import { reaccionarAErrorDeApi } from './auth/useSesion'
 import './index.css'
+import { LayoutNegocio } from './negocio/LayoutNegocio'
 import { PaginaInicioNegocio } from './negocio/PaginaInicioNegocio'
+import { AsistenteOnboarding } from './onboarding/AsistenteOnboarding'
 
 const clienteConsultas: QueryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (error) => reaccionarAErrorDeApi(clienteConsultas, error) }),
@@ -45,7 +51,23 @@ const enrutador = createBrowserRouter([
   {
     path: '/',
     element: <RutaProtegida rol="NEGOCIO" />,
-    children: [{ index: true, element: <PaginaInicioNegocio /> }],
+    children: [
+      { path: 'bienvenida', element: <AsistenteOnboarding /> },
+      {
+        element: <RutaOnboarding />,
+        children: [
+          {
+            element: <LayoutNegocio />,
+            children: [
+              { index: true, element: <PaginaInicioNegocio /> },
+              { path: 'catalogo', element: <PaginaCatalogo /> },
+              { path: 'catalogo/:id', element: <PaginaProducto /> },
+              { path: 'ajustes', element: <PaginaAjustes /> },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ])

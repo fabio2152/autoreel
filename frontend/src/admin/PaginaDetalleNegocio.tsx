@@ -2,20 +2,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import {
+  listarProductosDeNegocio,
   obtenerNegocio,
   reactivarNegocio,
   reiniciarContrasena,
   suspenderNegocio,
   type ContrasenaTemporal,
+  type NegocioDetalle,
 } from '../api/admin'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Cargando } from '../componentes/Cargando'
 import { EtiquetaEstadoPago } from '../componentes/EtiquetaEstadoPago'
 import { formatearFecha, formatearFechaHora, formatearMonto } from '../componentes/formato'
+import { ImagenRemota } from '../componentes/ImagenRemota'
 import { ModalContrasenaTemporal } from './ModalContrasenaTemporal'
 
-/** RF-05: detalle del negocio. Pagos, catálogo, videos y consumo se completan en sus fases. */
+/** RF-05: detalle del negocio. Pagos, videos y consumo se completan en sus fases. */
 export function PaginaDetalleNegocio() {
   const id = Number(useParams().id)
   const clienteConsultas = useQueryClient()
@@ -116,9 +119,11 @@ export function PaginaDetalleNegocio() {
         </Tarjeta>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <PerfilDelNegocio perfil={data.perfil} />
+      <CatalogoDelNegocio negocioId={id} />
+
+      <div className="grid gap-4 sm:grid-cols-3">
         <Pendiente titulo="Pagos" fase={7} />
-        <Pendiente titulo="Catálogo" fase={2} />
         <Pendiente titulo="Videos" fase={5} />
         <Pendiente titulo="Consumo y costos" fase={7} />
       </div>
@@ -155,6 +160,63 @@ function Pendiente({ titulo, fase }: { titulo: string; fase: number }) {
     <section className="rounded-xl border border-dashed border-stone-300 p-4">
       <h2 className="font-medium text-stone-700">{titulo}</h2>
       <p className="mt-1 text-sm text-stone-500">Disponible en la fase {fase}.</p>
+    </section>
+  )
+}
+
+function PerfilDelNegocio({ perfil: { perfil, respuestas } }: { perfil: NegocioDetalle['perfil'] }) {
+  return (
+    <Tarjeta titulo="Perfil">
+      <div className="flex flex-wrap items-center gap-4 py-2">
+        {perfil.logo ? (
+          <img src={perfil.logo.url} alt="Logo" className="size-16 rounded-lg bg-stone-100 object-contain p-1" />
+        ) : (
+          <span className="text-sm text-stone-500">Sin logo</span>
+        )}
+        {perfil.colorPrimario && (
+          <span className="flex items-center gap-2 text-sm">
+            <span className="size-6 rounded-full ring-1 ring-stone-300" style={{ background: perfil.colorPrimario }} />
+            <span className="size-6 rounded-full ring-1 ring-stone-300" style={{ background: perfil.colorSecundario ?? undefined }} />
+          </span>
+        )}
+        {perfil.estilo && <span className="text-sm text-stone-600">Estilo {perfil.estilo.toLowerCase()}</span>}
+      </div>
+      {respuestas.length === 0 && <p className="py-2 text-sm text-stone-500">Todavía no completó el onboarding.</p>}
+      {respuestas.map((respuesta) => (
+        <Dato key={respuesta.pregunta} nombre={respuesta.pregunta}>
+          {respuesta.respuesta}
+        </Dato>
+      ))}
+    </Tarjeta>
+  )
+}
+
+function CatalogoDelNegocio({ negocioId }: { negocioId: number }) {
+  const clave = ['negocios', 'productos', negocioId]
+  const productos = useQuery({ queryKey: clave, queryFn: () => listarProductosDeNegocio(negocioId) })
+  return (
+    <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
+      <h2 className="mb-3 font-semibold">Catálogo</h2>
+      {productos.isPending && <Cargando />}
+      {productos.error && <Aviso tipo="error">{productos.error.message}</Aviso>}
+      {productos.data?.length === 0 && <p className="text-sm text-stone-500">Todavía no registró productos.</p>}
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {productos.data?.map((producto) => (
+          <li key={producto.id} className="overflow-hidden rounded-lg ring-1 ring-stone-200">
+            <div className="aspect-[4/5] bg-stone-100">
+              {producto.fotos[0] && (
+                <ImagenRemota consulta={clave} src={producto.fotos[0].url} alt="" loading="lazy" className="size-full object-cover" />
+              )}
+            </div>
+            <div className="p-2 text-xs">
+              <p className="font-medium text-stone-800">{producto.nombre}</p>
+              <p className="text-stone-500">
+                {producto.estado === 'ARCHIVADO' ? 'Archivado' : producto.completo ? 'Listo' : 'Faltan fotos'}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

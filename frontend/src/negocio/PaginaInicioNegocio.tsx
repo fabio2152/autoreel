@@ -1,26 +1,31 @@
-import { useCerrarSesion, useSesion } from '../auth/useSesion'
-import { Boton } from '../componentes/Boton'
-import { Marca } from '../componentes/Marca'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
+import { CLAVE_PRODUCTOS, listarProductos } from '../api/catalogo'
+import { useSesion } from '../auth/useSesion'
 
-/** Inicio provisional del negocio: en la fase 2 lo reemplaza el onboarding y en la fase 3 el chat. */
+/** Inicio provisional del negocio: en la fase 3 lo reemplaza el chat del video del día. */
 export function PaginaInicioNegocio() {
   const { data: sesion } = useSesion()
-  const salir = useCerrarSesion()
+  const productos = useQuery({ queryKey: [...CLAVE_PRODUCTOS, 'ACTIVO'], queryFn: () => listarProductos('ACTIVO') })
+  const listos = productos.data?.filter((producto) => producto.completo).length ?? 0
 
   return (
-    <div className="min-h-dvh">
-      <header className="flex h-14 items-center justify-between border-b border-stone-200 bg-white px-4">
-        <Marca />
-        <Boton variante="texto" onClick={() => salir.mutate()} cargando={salir.isPending}>
-          Salir
-        </Boton>
-      </header>
-      <main className="mx-auto max-w-md px-4 py-12 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">¡Hola, {sesion?.nombreNegocio}!</h1>
-        <p className="mt-3 text-stone-600">
-          Tu cuenta está lista. Muy pronto podrás completar el perfil de tu negocio y crear tu primer Reel desde aquí.
-        </p>
-      </main>
+    <div className="mx-auto max-w-md py-6 text-center">
+      <h1 className="text-2xl font-semibold tracking-tight">¡Hola, {sesion?.nombreNegocio}!</h1>
+      <p className="mt-3 text-stone-600">
+        Muy pronto crearás aquí tu Reel del día, respondiendo unas pocas preguntas.
+      </p>
+      {productos.data && (
+        <div className="mt-8 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
+          <p className="text-4xl font-semibold text-marca-700">{listos}</p>
+          <p className="text-sm text-stone-600">
+            {listos === 1 ? 'producto listo para tus videos' : 'productos listos para tus videos'}
+          </p>
+          <Link to="/catalogo" className="mt-4 inline-block text-sm font-semibold text-marca-700">
+            {listos === 0 ? 'Registra tu primer producto' : 'Ver mi catálogo'} →
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
