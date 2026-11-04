@@ -86,6 +86,23 @@ class GestionNegociosIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
+    void reiniciarLaContrasenaDesbloqueaLaCuenta() throws Exception {
+        String correo = correoUnico();
+        sesionNegocioListo(correo, "MiClave2026");
+        long negocioId = usuarios.buscarPorCorreo(correo).orElseThrow().getNegocio().getId();
+        for (int i = 0; i < 5; i++) {
+            iniciarSesion(correo, "Equivocada" + i);
+        }
+        iniciarSesion(correo, "MiClave2026").andExpect(status().isLocked());
+
+        String nueva = json.readTree(mvc.perform(post("/api/admin/negocios/" + negocioId + "/reiniciar-contrasena")
+                        .with(csrf()).cookie(sesionAdmin()))
+                .andReturn().getResponse().getContentAsString()).get("contrasenaTemporal").asString();
+
+        iniciarSesion(correo, nueva).andExpect(status().isOk());
+    }
+
+    @Test
     void v07ElNegocioNoPuedeUsarLaApiDelAdministrador() throws Exception {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
 

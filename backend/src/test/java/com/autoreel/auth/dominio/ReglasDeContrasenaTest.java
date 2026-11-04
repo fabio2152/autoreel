@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.autoreel.compartido.error.ExcepcionDeNegocio;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,6 +28,13 @@ class ReglasDeContrasenaTest {
         assertThatThrownBy(() -> ReglasDeContrasena.validar(nueva, confirmacion))
                 .isInstanceOf(ExcepcionDeNegocio.class)
                 .extracting("codigo").isEqualTo(codigo);
+    }
+
+    @Test
+    void rechazaContrasenasQueSuperanLos72BytesDeBcrypt() {
+        String multibyte = "ñ".repeat(40) + "1";
+        assertThatThrownBy(() -> ReglasDeContrasena.validar(multibyte, multibyte))
+                .extracting("codigo").isEqualTo("CONTRASENA_MUY_LARGA");
     }
 
     @ParameterizedTest

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 interface Props {
   titulo: string
@@ -10,6 +10,7 @@ interface Props {
 /** Ventana modal accesible basada en <dialog>; en el celular ocupa el ancho de la pantalla. */
 export function Modal({ titulo, abierto, onCerrar, children }: Props) {
   const dialogo = useRef<HTMLDialogElement>(null)
+  const idTitulo = useId()
 
   useEffect(() => {
     const elemento = dialogo.current
@@ -21,6 +22,7 @@ export function Modal({ titulo, abierto, onCerrar, children }: Props) {
   return (
     <dialog
       ref={dialogo}
+      aria-labelledby={idTitulo}
       onCancel={(evento) => {
         evento.preventDefault()
         onCerrar()
@@ -30,7 +32,9 @@ export function Modal({ titulo, abierto, onCerrar, children }: Props) {
       {abierto && (
         <div className="p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
-            <h2 className="text-lg font-semibold text-stone-900">{titulo}</h2>
+            <h2 id={idTitulo} className="text-lg font-semibold text-stone-900">
+              {titulo}
+            </h2>
             <button
               type="button"
               onClick={onCerrar}

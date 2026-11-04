@@ -1,7 +1,6 @@
 package com.autoreel.auth.aplicacion;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 
 import com.autoreel.auth.dominio.ReglasDeContrasena;
@@ -16,41 +15,49 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ServicioAutenticacion {
 
-    /** RN-08: después de 5 intentos fallidos, la cuenta se bloquea durante 15 minutos. */
-    public static final int MAXIMO_INTENTOS = 5;
-    public static final Duration DURACION_BLOQUEO = Duration.ofMinutes(15);
-
     private final UsuarioRepositorio usuarios;
+    private final IntentosDeCorreosDesconocidos correosDesconocidos;
     private final PasswordEncoder codificador;
     private final Clock reloj;
-    /** Se compara contra él cuando el correo no existe, para que la respuesta tarde lo mismo y no lo delate. */
+    /**
+     * Se compara contra él cuando no se revisa la contraseña real (correo inexistente o cuenta bloqueada),
+     * para que todas las respuestas tarden lo mismo y no delaten qué correos existen.
+     */
     private final String hashFicticio;
 
-    public ServicioAutenticacion(UsuarioRepositorio usuarios, PasswordEncoder codificador, Clock reloj) {
+    public ServicioAutenticacion(UsuarioRepositorio usuarios, IntentosDeCorreosDesconocidos correosDesconocidos,
+            PasswordEncoder codificador, Clock reloj) {
         this.usuarios = usuarios;
+        this.correosDesconocidos = correosDesconocidos;
         this.codificador = codificador;
         this.reloj = reloj;
         this.hashFicticio = codificador.encode("contrasena-ficticia-para-comparar");
     }
 
     /**
-     * Valida las credenciales. Las excepciones no deshacen la transacción, para que el intento fallido quede
-     * registrado.
+     * Valida las credenciales. La fila del usuario se bloquea durante la verificación, así que los intentos
+     * simultáneos se cuentan uno a uno (RN-08). Las excepciones no deshacen la transacción, para que el intento
+     * fallido quede registrado.
      */
     @Transactional(noRollbackFor = ExcepcionDeNegocio.class)
     public Usuario iniciarSesion(String correo, String contrasena) {
         Instant ahora = reloj.instant();
-        Usuario usuario = usuarios.buscarPorCorreo(Usuario.normalizarCorreo(correo)).orElse(null);
+        String correoNormalizado = Usuario.normalizarCorreo(correo);
+        Usuario usuario = usuarios.bloquearPorCorreo(correoNormalizado).orElse(null);
         if (usuario == null) {
             codificador.matches(contrasena, hashFicticio);
+            if (correosDesconocidos.estaBloqueado(correoNormalizado, ahora)) {
+                throw cuentaBloqueada();
+            }
+            correosDesconocidos.registrarFallo(correoNormalizado, ahora);
             throw credencialesInvalidas();
         }
         if (usuario.estaBloqueado(ahora)) {
-            throw new ExcepcionDeNegocio(HttpStatus.LOCKED, "CUENTA_BLOQUEADA",
-                    "Tu cuenta está bloqueada por varios intentos fallidos. Vuelve a intentarlo en 15 minutos.");
+            codificador.matches(contrasena, hashFicticio);
+            throw cuentaBloqueada();
         }
         if (!codificador.matches(contrasena, usuario.getContrasenaHash())) {
-            usuarios.registrarIntentoFallido(usuario.getId(), MAXIMO_INTENTOS, ahora.plus(DURACION_BLOQUEO));
+            usuario.registrarIntentoFallido(ahora);
             throw credencialesInvalidas();
         }
         if (!usuario.isActivo()) {
@@ -98,6 +105,11 @@ public class ServicioAutenticacion {
     public Usuario buscar(Long idUsuario) {
         return usuarios.buscarConNegocio(idUsuario)
                 .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos tu cuenta."));
+    }
+
+    private static ExcepcionDeNegocio cuentaBloqueada() {
+        return new ExcepcionDeNegocio(HttpStatus.LOCKED, "CUENTA_BLOQUEADA",
+                "Tu cuenta está bloqueada por varios intentos fallidos. Vuelve a intentarlo en 15 minutos.");
     }
 
     private static ExcepcionDeNegocio credencialesInvalidas() {

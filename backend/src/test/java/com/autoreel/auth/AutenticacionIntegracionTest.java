@@ -101,8 +101,31 @@ class AutenticacionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isLocked())
                 .andExpect(jsonPath("$.codigo").value("CUENTA_BLOQUEADA"));
 
-        reloj.avanzar(Duration.ofMinutes(16));
+        reloj.avanzar(Duration.ofMinutes(14));
+        iniciarSesion(correo, "MiClave2026").andExpect(status().isLocked());
+
+        reloj.avanzar(Duration.ofMinutes(2));
         iniciarSesion(correo, "MiClave2026").andExpect(status().isOk());
+    }
+
+    @Test
+    void unCorreoInexistenteSeBloqueaIgualQueUnaCuentaReal() throws Exception {
+        String correo = correoUnico();
+        for (int i = 0; i < 5; i++) {
+            iniciarSesion(correo, "Equivocada" + i)
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.codigo").value("CREDENCIALES_INVALIDAS"));
+        }
+        iniciarSesion(correo, "Cualquiera1")
+                .andExpect(status().isLocked())
+                .andExpect(jsonPath("$.codigo").value("CUENTA_BLOQUEADA"));
+    }
+
+    @Test
+    void unFormatoNoAdmitidoRespondeConSuEstadoYNoConUnErrorInterno() throws Exception {
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.TEXT_PLAIN).content("hola"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.codigo").value("FORMATO_NO_ADMITIDO"));
     }
 
     @Test

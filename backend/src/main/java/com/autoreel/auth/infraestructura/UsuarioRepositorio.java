@@ -1,13 +1,13 @@
 package com.autoreel.auth.infraestructura;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import com.autoreel.auth.dominio.Rol;
 import com.autoreel.auth.dominio.Usuario;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 public interface UsuarioRepositorio extends JpaRepository<Usuario, Long> {
@@ -29,15 +29,10 @@ public interface UsuarioRepositorio extends JpaRepository<Usuario, Long> {
     boolean existsByRol(Rol rol);
 
     /**
-     * RN-08: suma un intento fallido en una sola sentencia (sin carreras entre peticiones simultáneas).
-     * Al llegar al máximo, bloquea la cuenta y reinicia el contador para el siguiente período.
+     * Para el inicio de sesión: bloquea la fila hasta el fin de la transacción, de modo que los intentos
+     * simultáneos con el mismo correo se verifican y se cuentan de a uno (RN-08).
      */
-    @Modifying(flushAutomatically = true)
-    @Query(value = """
-            update usuario
-               set intentos_fallidos = case when intentos_fallidos + 1 >= :maximo then 0 else intentos_fallidos + 1 end,
-                   bloqueado_hasta   = case when intentos_fallidos + 1 >= :maximo then :bloqueadoHasta else bloqueado_hasta end
-             where id = :id
-            """, nativeQuery = true)
-    void registrarIntentoFallido(Long id, int maximo, Instant bloqueadoHasta);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from Usuario u where u.correo = :correo")
+    Optional<Usuario> bloquearPorCorreo(String correo);
 }

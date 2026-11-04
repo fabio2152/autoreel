@@ -16,13 +16,22 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 
+/**
+ * {@code @DynamicUpdate}: cada operación escribe solo las columnas que cambió, para que un inicio de sesión no
+ * pise un reinicio de contraseña o una suspensión hechos al mismo tiempo.
+ */
 @Entity
 @Table(name = "usuario")
+@DynamicUpdate
 public class Usuario {
 
     /** RN-02: la contraseña temporal vence a las 48 horas. */
     public static final Duration VIGENCIA_CONTRASENA_TEMPORAL = Duration.ofHours(48);
+    /** RN-08: después de 5 intentos fallidos, la cuenta se bloquea durante 15 minutos. */
+    public static final int MAXIMO_INTENTOS = 5;
+    public static final Duration DURACION_BLOQUEO = Duration.ofMinutes(15);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -118,6 +127,15 @@ public class Usuario {
         this.intentosFallidos = 0;
         this.bloqueadoHasta = null;
         this.ultimoAcceso = ahora;
+    }
+
+    /** RN-08: al llegar al máximo, bloquea la cuenta y reinicia el contador para el siguiente período. */
+    public void registrarIntentoFallido(Instant ahora) {
+        this.intentosFallidos++;
+        if (intentosFallidos >= MAXIMO_INTENTOS) {
+            this.intentosFallidos = 0;
+            this.bloqueadoHasta = ahora.plus(DURACION_BLOQUEO);
+        }
     }
 
     public boolean estaBloqueado(Instant ahora) {

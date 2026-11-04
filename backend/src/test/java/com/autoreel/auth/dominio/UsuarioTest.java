@@ -27,6 +27,10 @@ class UsuarioTest {
         Usuario usuario = Usuario.deNegocio("ana@pasteleria.pe", new Negocio("Dulce", "PASTELERIA", ahora), "hash",
                 ahora);
         usuario.cambiarContrasena("propia");
+        for (int i = 0; i < Usuario.MAXIMO_INTENTOS; i++) {
+            usuario.registrarIntentoFallido(ahora);
+        }
+        assertThat(usuario.estaBloqueado(ahora)).isTrue();
         int version = usuario.getVersionSesion();
 
         usuario.asignarContrasenaTemporal("otra", ahora);
@@ -34,6 +38,21 @@ class UsuarioTest {
         assertThat(usuario.getVersionSesion()).isGreaterThan(version);
         assertThat(usuario.isDebeCambiarContrasena()).isTrue();
         assertThat(usuario.estaBloqueado(ahora)).isFalse();
+    }
+
+    @Test
+    void cincoIntentosFallidosBloqueanQuinceMinutos() {
+        Usuario usuario = Usuario.administrador("admin@autoreel.pe", "hash", ahora);
+        for (int i = 0; i < Usuario.MAXIMO_INTENTOS - 1; i++) {
+            usuario.registrarIntentoFallido(ahora);
+        }
+        assertThat(usuario.estaBloqueado(ahora)).isFalse();
+
+        usuario.registrarIntentoFallido(ahora);
+
+        assertThat(usuario.estaBloqueado(ahora.plus(Duration.ofMinutes(14)))).isTrue();
+        assertThat(usuario.estaBloqueado(ahora.plus(Duration.ofMinutes(15)))).isFalse();
+        assertThat(usuario.getIntentosFallidos()).isZero();
     }
 
     @Test

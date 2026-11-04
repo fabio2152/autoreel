@@ -21,9 +21,21 @@ function leerTokenCsrf(): string | null {
   return cookie ? decodeURIComponent(cookie.substring('XSRF-TOKEN='.length)) : null
 }
 
+const sinConexion = () =>
+  new ErrorApi(0, 'SIN_CONEXION', 'No pudimos comunicarnos con el servidor. Revisa tu conexión e inténtalo de nuevo.')
+
+/** fetch que convierte un fallo de red en un ErrorApi con mensaje en español. */
+async function buscar(ruta: string, opciones: RequestInit): Promise<Response> {
+  try {
+    return await fetch(ruta, opciones)
+  } catch {
+    throw sinConexion()
+  }
+}
+
 /** Cualquier respuesta del backend renueva la cookie XSRF-TOKEN; esta consulta es la más liviana. */
 async function renovarTokenCsrf(): Promise<void> {
-  await fetch('/api/auth/yo', { credentials: 'include' })
+  await buscar('/api/auth/yo', { credentials: 'include' })
 }
 
 async function enviar(ruta: string, metodo: string, cuerpo: unknown): Promise<Response> {
@@ -40,7 +52,7 @@ async function enviar(ruta: string, metodo: string, cuerpo: unknown): Promise<Re
       cabeceras['X-XSRF-TOKEN'] = token
     }
   }
-  return fetch(ruta, {
+  return buscar(ruta, {
     method: metodo,
     credentials: 'include',
     headers: cabeceras,
@@ -57,7 +69,7 @@ async function aError(respuesta: Response): Promise<ErrorApi> {
       cuerpo.mensaje ?? 'Ocurrió un error inesperado. Inténtalo de nuevo.',
     )
   } catch {
-    return new ErrorApi(respuesta.status, 'ERROR', 'No pudimos comunicarnos con el servidor. Inténtalo de nuevo.')
+    return new ErrorApi(respuesta.status, 'ERROR', 'Ocurrió un error inesperado. Inténtalo de nuevo.')
   }
 }
 

@@ -1,5 +1,7 @@
 package com.autoreel.auth.dominio;
 
+import java.nio.charset.StandardCharsets;
+
 import com.autoreel.compartido.error.ExcepcionDeNegocio;
 
 /**
@@ -10,6 +12,7 @@ public final class ReglasDeContrasena {
 
     public static final int LONGITUD_MINIMA = 8;
     public static final int LONGITUD_MAXIMA = 64;
+    private static final int BYTES_MAXIMOS_BCRYPT = 72;
 
     private ReglasDeContrasena() {
     }
@@ -19,7 +22,8 @@ public final class ReglasDeContrasena {
             throw new ExcepcionDeNegocio("CONTRASENA_MUY_CORTA",
                     "La contraseña debe tener al menos " + LONGITUD_MINIMA + " caracteres.");
         }
-        if (nueva.length() > LONGITUD_MAXIMA) {
+        // Con letras como "ñ" o tildes, 64 caracteres pueden pasar de los 72 bytes que admite BCrypt.
+        if (nueva.length() > LONGITUD_MAXIMA || nueva.getBytes(StandardCharsets.UTF_8).length > BYTES_MAXIMOS_BCRYPT) {
             throw new ExcepcionDeNegocio("CONTRASENA_MUY_LARGA",
                     "La contraseña puede tener como máximo " + LONGITUD_MAXIMA + " caracteres.");
         }

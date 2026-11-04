@@ -7,10 +7,11 @@ import { Boton } from '../componentes/Boton'
 import { Campo } from '../componentes/Campo'
 import { Cargando } from '../componentes/Cargando'
 import { Marca } from '../componentes/Marca'
+import { ErrorDeSesion } from './ErrorDeSesion'
 import { CLAVE_SESION, rutaInicio, useSesion } from './useSesion'
 
 export function PaginaLogin() {
-  const { data: sesion, isPending } = useSesion()
+  const { data: sesion, isPending, error, refetch } = useSesion()
   const clienteConsultas = useQueryClient()
   const navegar = useNavigate()
   const [correo, setCorreo] = useState('')
@@ -25,6 +26,7 @@ export function PaginaLogin() {
   })
 
   if (isPending) return <Cargando />
+  if (error) return <ErrorDeSesion mensaje={error.message} onReintentar={() => refetch()} />
   if (sesion) return <Navigate to={rutaInicio(sesion)} replace />
 
   const enviar = (evento: FormEvent) => {
