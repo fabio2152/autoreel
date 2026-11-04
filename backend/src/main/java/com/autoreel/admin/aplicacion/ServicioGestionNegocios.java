@@ -26,8 +26,9 @@ import com.autoreel.facturacion.infraestructura.PlanRepositorio;
 import com.autoreel.facturacion.infraestructura.SuscripcionRepositorio;
 import com.autoreel.negocio.dominio.Negocio;
 import com.autoreel.negocio.infraestructura.NegocioRepositorio;
-import com.autoreel.nicho.Nicho;
-import com.autoreel.nicho.RegistroDeNichos;
+import com.autoreel.negocio.aplicacion.ServicioPerfil;
+import com.autoreel.nicho.dominio.PaqueteNicho;
+import com.autoreel.nicho.dominio.RegistroDeNichos;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -48,12 +49,13 @@ public class ServicioGestionNegocios {
     private final GeneradorDeContrasenaTemporal generador;
     private final PasswordEncoder codificador;
     private final PropiedadesAplicacion propiedades;
+    private final ServicioPerfil perfiles;
     private final Clock reloj;
 
     public ServicioGestionNegocios(NegocioRepositorio negocios, UsuarioRepositorio usuarios,
             SuscripcionRepositorio suscripciones, PlanRepositorio planes, RegistroDeNichos nichos,
             GeneradorDeContrasenaTemporal generador, PasswordEncoder codificador, PropiedadesAplicacion propiedades,
-            Clock reloj) {
+            ServicioPerfil perfiles, Clock reloj) {
         this.negocios = negocios;
         this.usuarios = usuarios;
         this.suscripciones = suscripciones;
@@ -62,6 +64,7 @@ public class ServicioGestionNegocios {
         this.generador = generador;
         this.codificador = codificador;
         this.propiedades = propiedades;
+        this.perfiles = perfiles;
         this.reloj = reloj;
     }
 
@@ -82,7 +85,7 @@ public class ServicioGestionNegocios {
 
     @Transactional
     public ContrasenaTemporal crear(SolicitudCrearNegocio solicitud) {
-        Nicho nicho = nichos.buscar(solicitud.nicho())
+        PaqueteNicho nicho = nichos.buscar(solicitud.nicho())
                 .orElseThrow(() -> new ExcepcionDeNegocio("NICHO_INVALIDO", "El nicho elegido no existe."));
         Plan plan = planes.findById(solicitud.planId())
                 .filter(Plan::isActivo)
@@ -94,6 +97,7 @@ public class ServicioGestionNegocios {
         }
         Instant ahora = reloj.instant();
         Negocio negocio = negocios.save(new Negocio(solicitud.nombre().trim(), nicho.id(), ahora));
+        perfiles.crearVacio(negocio);
         suscripciones.save(new Suscripcion(negocio, plan, solicitud.montoMensual(), LocalDate.now(reloj),
                 solicitud.fechaPrimerPago()));
         String contrasena = generador.generar();
@@ -107,7 +111,7 @@ public class ServicioGestionNegocios {
         Negocio negocio = suscripcion.getNegocio();
         Usuario usuario = usuarioDe(negocioId);
         Instant ahora = reloj.instant();
-        String nombreNicho = nichos.buscar(negocio.getNicho()).map(Nicho::nombre).orElse(negocio.getNicho());
+        String nombreNicho = nichos.buscar(negocio.getNicho()).map(PaqueteNicho::nombre).orElse(negocio.getNicho());
         return new NegocioDetalle(negocio.getId(), negocio.getNombre(), negocio.getNicho(), nombreNicho,
                 negocio.getEstado(), negocio.isOnboardingCompleto(), negocio.getFechaCreacion(),
                 new NegocioDetalle.Usuario(usuario.getCorreo(), usuario.getUltimoAcceso(),
@@ -116,7 +120,8 @@ public class ServicioGestionNegocios {
                 new NegocioDetalle.Suscripcion(suscripcion.getPlan().getId(), suscripcion.getPlan().getNombre(),
                         suscripcion.getMontoMensual(), suscripcion.getFechaInicio(),
                         suscripcion.getProximaFechaPago(), suscripcion.getDiasAviso(),
-                        suscripcion.estadoPago(LocalDate.now(reloj))));
+                        suscripcion.estadoPago(LocalDate.now(reloj))),
+                perfiles.paraAdmin(negocioId));
     }
 
     /** RF-04 y RN-05: la contraseña anterior deja de funcionar y se cierran las sesiones abiertas. */

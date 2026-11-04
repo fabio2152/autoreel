@@ -59,6 +59,16 @@ public class Negocio {
         return estado == EstadoNegocio.SUSPENDIDO;
     }
 
+    /** El nombre comercial lo escribe el administrador y el negocio puede corregirlo en su perfil. */
+    public void cambiarNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    /** RN-09: hasta completar el onboarding, el negocio no puede crear videos. */
+    public void completarOnboarding() {
+        this.onboardingCompleto = true;
+    }
+
     public Long getId() {
         return id;
     }
