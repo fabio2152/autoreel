@@ -1,0 +1,160 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router'
+import {
+  obtenerNegocio,
+  reactivarNegocio,
+  reiniciarContrasena,
+  suspenderNegocio,
+  type ContrasenaTemporal,
+} from '../api/admin'
+import { Aviso } from '../componentes/Aviso'
+import { Boton } from '../componentes/Boton'
+import { Cargando } from '../componentes/Cargando'
+import { EtiquetaEstadoPago } from '../componentes/EtiquetaEstadoPago'
+import { formatearFecha, formatearFechaHora, formatearMonto } from '../componentes/formato'
+import { ModalContrasenaTemporal } from './ModalContrasenaTemporal'
+
+/** RF-05: detalle del negocio. Pagos, catálogo, videos y consumo se completan en sus fases. */
+export function PaginaDetalleNegocio() {
+  const id = Number(useParams().id)
+  const clienteConsultas = useQueryClient()
+  const [credenciales, setCredenciales] = useState<ContrasenaTemporal | null>(null)
+  const negocio = useQuery({ queryKey: ['negocios', 'detalle', id], queryFn: () => obtenerNegocio(id) })
+
+  const actualizar = () => clienteConsultas.invalidateQueries({ queryKey: ['negocios'] })
+
+  const reiniciar = useMutation({
+    mutationFn: () => reiniciarContrasena(id),
+    onSuccess: (nuevas) => {
+      setCredenciales(nuevas)
+      actualizar()
+    },
+  })
+  const suspender = useMutation({ mutationFn: () => suspenderNegocio(id), onSuccess: actualizar })
+  const reactivar = useMutation({ mutationFn: () => reactivarNegocio(id), onSuccess: actualizar })
+
+  if (negocio.isPending) return <Cargando />
+  if (negocio.error) return <Aviso tipo="error">{negocio.error.message}</Aviso>
+
+  const { data } = negocio
+  const suspendido = data.estado === 'SUSPENDIDO'
+  const errorAccion = reiniciar.error ?? suspender.error ?? reactivar.error
+
+  const confirmarReinicio = () => {
+    if (window.confirm(`Se generará una nueva contraseña temporal para ${data.nombre}. La actual dejará de funcionar y se cerrará su sesión. ¿Continuar?`)) {
+      reiniciar.mutate()
+    }
+  }
+  const confirmarSuspension = () => {
+    if (window.confirm(`${data.nombre} no podrá iniciar sesión hasta que lo reactives. ¿Suspender?`)) {
+      suspender.mutate()
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link to="/admin" className="text-sm font-medium text-marca-700 hover:underline">
+          ← Negocios
+        </Link>
+        <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{data.nombre}</h1>
+            <p className="text-sm text-stone-600">
+              {data.nombreNicho} · {suspendido ? <span className="font-medium text-red-700">Suspendido</span> : 'Activo'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Boton variante="secundario" onClick={confirmarReinicio} cargando={reiniciar.isPending}>
+              Reiniciar contraseña
+            </Boton>
+            {suspendido ? (
+              <Boton variante="secundario" onClick={() => reactivar.mutate()} cargando={reactivar.isPending}>
+                Reactivar
+              </Boton>
+            ) : (
+              <Boton variante="peligro" onClick={confirmarSuspension} cargando={suspender.isPending}>
+                Suspender
+              </Boton>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {errorAccion && <Aviso tipo="error">{errorAccion.message}</Aviso>}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Tarjeta titulo="Datos">
+          <Dato nombre="Correo del usuario">{data.usuario.correo}</Dato>
+          <Dato nombre="Creado">{formatearFechaHora(data.fechaCreacion)}</Dato>
+          <Dato nombre="Último acceso">{formatearFechaHora(data.usuario.ultimoAcceso)}</Dato>
+          <Dato nombre="Onboarding">{data.onboardingCompleto ? 'Completo' : 'Pendiente'}</Dato>
+          <Dato nombre="Contraseña">
+            {data.usuario.debeCambiarContrasena
+              ? `Temporal, vence ${formatearFechaHora(data.usuario.contrasenaTemporalVence)}`
+              : 'Propia'}
+          </Dato>
+          {data.usuario.bloqueado && (
+            <Dato nombre="Acceso">
+              <span className="text-red-700">Bloqueado 15 minutos por intentos fallidos</span>
+            </Dato>
+          )}
+        </Tarjeta>
+
+        <Tarjeta titulo="Suscripción">
+          <Dato nombre="Plan">{data.suscripcion.plan}</Dato>
+          <Dato nombre="Monto mensual">{formatearMonto(data.suscripcion.montoMensual)}</Dato>
+          <Dato nombre="Inicio">{formatearFecha(data.suscripcion.fechaInicio)}</Dato>
+          <Dato nombre="Próximo pago">
+            <span className="flex flex-wrap items-center gap-2">
+              {formatearFecha(data.suscripcion.proximaFechaPago)}
+              <EtiquetaEstadoPago estado={data.suscripcion.estadoPago} />
+            </span>
+          </Dato>
+          <Dato nombre="Aviso de pago">{data.suscripcion.diasAviso} días antes</Dato>
+        </Tarjeta>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Pendiente titulo="Pagos" fase={7} />
+        <Pendiente titulo="Catálogo" fase={2} />
+        <Pendiente titulo="Videos" fase={5} />
+        <Pendiente titulo="Consumo y costos" fase={7} />
+      </div>
+
+      <ModalContrasenaTemporal
+        titulo="Nueva contraseña temporal"
+        credenciales={credenciales}
+        onCerrar={() => setCredenciales(null)}
+      />
+    </div>
+  )
+}
+
+function Tarjeta({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
+      <h2 className="mb-3 font-semibold">{titulo}</h2>
+      <dl className="divide-y divide-stone-100 text-sm">{children}</dl>
+    </section>
+  )
+}
+
+function Dato({ nombre, children }: { nombre: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:justify-between sm:gap-4">
+      <dt className="text-stone-500">{nombre}</dt>
+      <dd className="font-medium break-all sm:text-right">{children}</dd>
+    </div>
+  )
+}
+
+function Pendiente({ titulo, fase }: { titulo: string; fase: number }) {
+  return (
+    <section className="rounded-xl border border-dashed border-stone-300 p-4">
+      <h2 className="font-medium text-stone-700">{titulo}</h2>
+      <p className="mt-1 text-sm text-stone-500">Disponible en la fase {fase}.</p>
+    </section>
+  )
+}
