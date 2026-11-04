@@ -22,5 +22,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # Almacenamiento compatible con S3 para desarrollo (fotos, logos y, más adelante, videos).
+  # En producción se usa Amazon S3 sin cambiar el código. Exige firma SigV4 con las credenciales del .env.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    restart: unless-stopped
+    command: ["server", "-s3", "-dir=/data"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Define AWS_ACCESS_KEY_ID en .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Define AWS_SECRET_ACCESS_KEY en .env}
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    volumes:
+      - seaweedfs-datos:/data
+
 volumes:
   postgres-datos:
+  seaweedfs-datos:
