@@ -2,10 +2,12 @@ package com.autoreel;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -54,6 +56,9 @@ public abstract class PruebaDeIntegracion {
 
     @Autowired
     protected PlanRepositorio planes;
+
+    @Autowired
+    protected AlmacenEnMemoria almacen;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class RelojDePrueba {
@@ -128,5 +133,42 @@ public abstract class PruebaDeIntegracion {
                                 "confirmacion", contrasenaPropia))))
                 .andExpect(status().isOk()).andReturn();
         return resultado.getResponse().getCookie(CookieDeSesion.NOMBRE);
+    }
+
+    protected ResultActions pedirSubida(Cookie cookie, String proposito, String tipo, long tamano) throws Exception {
+        return mvc.perform(post("/api/archivos/url-subida").with(csrf()).cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("proposito", proposito, "tipoContenido", tipo,
+                        "tamano", tamano))));
+    }
+
+    /** Pide la URL firmada y "sube" el archivo, como haría el navegador. Devuelve la clave temporal. */
+    protected String subir(Cookie cookie, String proposito, byte[] contenido, String tipo) throws Exception {
+        String clave = json.readTree(pedirSubida(cookie, proposito, tipo, contenido.length)
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("clave").asString();
+        almacen.guardar(clave, contenido, tipo);
+        return clave;
+    }
+
+    protected Map<String, String> fotosCompletas(Cookie cookie) throws Exception {
+        return Map.of(
+                "ENTERO", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
+                "DETALLE", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
+                "PORCION", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+    }
+
+    /** Negocio con contraseña propia y onboarding completo (RN-09), listo para crear videos. */
+    protected Cookie sesionNegocioConOnboarding(String correo) throws Exception {
+        Cookie cookie = sesionNegocioListo(correo, "MiClave2026");
+        Map<String, Object> perfil = Map.of(
+                "logo", subir(cookie, "LOGO", Imagenes.png(500, 500, true), "image/png"),
+                "colorPrimario", "#be123c", "colorSecundario", "#fde68a", "estilo", "CASERO",
+                "respuestas", Map.of("especialidad", List.of("TORTAS_PERSONALIZADAS"), "publico", List.of("FAMILIAS"),
+                        "ciudad", "Lima", "distrito", "Miraflores", "canales", List.of("TIENDA"),
+                        "horario", "Lunes a sábado de 9 a 8"));
+        mvc.perform(put("/api/perfil").with(csrf()).cookie(cookie).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(perfil))).andExpect(status().isOk());
+        mvc.perform(post("/api/perfil/completar-onboarding").with(csrf()).cookie(cookie)).andExpect(status().isOk());
+        return cookie;
     }
 }

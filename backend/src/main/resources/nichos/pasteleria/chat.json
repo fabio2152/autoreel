@@ -1,0 +1,57 @@
+{
+  "minimoCaracteres": 3,
+  "maximoCaracteres": 500,
+  "respuestasNegativas": ["no", "nop", "ninguno", "ninguna", "nada", "no hay", "sin precio", "no gracias", "-"],
+  "mensajes": {
+    "pregunta": "Soy un asistente para reunir información, no puedo responder preguntas. Cuéntame todo lo que se te ocurra sobre tu producto y yo me encargo del resto.",
+    "muyCorta": "Cuéntame un poco más, con unas palabras basta.",
+    "muyLarga": "Es mucho texto para un video de 15 segundos. ¿Me lo resumes en menos de 500 caracteres?",
+    "precioObligatorio": "Como es una promoción, necesito el precio o la promoción tal como quieres que aparezca. Por ejemplo: \"S/ 65\" o \"2x1 hasta el domingo\".",
+    "productoNoDisponible": "Ese producto ya no está disponible. Elige otro o sube uno nuevo.",
+    "catalogoVacio": "Todavía no tienes productos con sus tres fotos. Súbelo ahora mismo.",
+    "cierre": "¡Listo! Estoy preparando tu propuesta…",
+    "aviso": "Este chat no es una IA para conversar. Responde cada pregunta con todo lo que se te ocurra; nosotros organizamos la información."
+  },
+  "pasos": [
+    {
+      "id": "tipoVideo",
+      "tipo": "BOTONES",
+      "texto": "¡Hola! ¿Qué video quieres crear hoy?",
+      "obligatoria": true,
+      "opciones": [
+        { "valor": "PRODUCTO_ESTRELLA", "texto": "Producto estrella" },
+        { "valor": "PROMOCION", "texto": "Promoción" },
+        { "valor": "TORTAS_POR_ENCARGO", "texto": "Tortas por encargo" },
+        { "valor": "RECIEN_HORNEADO", "texto": "Recién salido del horno" }
+      ]
+    },
+    {
+      "id": "producto",
+      "tipo": "PRODUCTO",
+      "texto": "¿Qué producto mostramos?",
+      "obligatoria": true
+    },
+    {
+      "id": "especial",
+      "tipo": "TEXTO",
+      "texto": "¿Qué lo hace especial hoy?",
+      "obligatoria": true,
+      "sugerencia": "DESCRIPCION_PRODUCTO"
+    },
+    {
+      "id": "precio",
+      "tipo": "TEXTO",
+      "texto": "¿Hay precio o promoción que quieras mencionar?",
+      "obligatoria": false,
+      "omitible": true,
+      "obligatoriaSi": { "paso": "tipoVideo", "valor": "PROMOCION" }
+    },
+    {
+      "id": "extra",
+      "tipo": "TEXTO",
+      "texto": "¿Algo más que quieras que se diga?",
+      "obligatoria": false,
+      "omitible": true
+    }
+  ]
+}

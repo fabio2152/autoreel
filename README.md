@@ -4,7 +4,7 @@ Plataforma web para que negocios pequeños, sin conocimientos de marketing, cree
 
 El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la plataforma crea cada negocio, le asigna un plan y una fecha de pago, y le entrega su acceso.
 
-> **Estado:** fase 2 de 9 (onboarding, perfil, subida de fotos y catálogo de productos). Ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado:** fase 3 de 9 (chat del video del día). Ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tecnologías
 

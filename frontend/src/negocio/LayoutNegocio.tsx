@@ -18,26 +18,35 @@ export function LayoutNegocio() {
       isActive ? 'text-marca-700 md:bg-marca-50' : 'text-stone-500 hover:text-stone-900'
     }`
 
+  const enlaces = SECCIONES.map((seccion) => (
+    <NavLink key={seccion.ruta} to={seccion.ruta} end={seccion.ruta === '/'} className={estilo}>
+      <svg viewBox="0 0 24 24" className="size-6 md:size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+        <path d={seccion.icono} strokeLinejoin="round" />
+      </svg>
+      {seccion.texto}
+    </NavLink>
+  ))
+
   return (
     <div className="min-h-dvh pb-16 md:pb-0">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Marca />
-          <nav className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-stone-200 bg-white md:static md:h-auto md:gap-1 md:border-0 md:bg-transparent">
-            {SECCIONES.map((seccion) => (
-              <NavLink key={seccion.ruta} to={seccion.ruta} end={seccion.ruta === '/'} className={estilo}>
-                <svg viewBox="0 0 24 24" className="size-6 md:size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                  <path d={seccion.icono} strokeLinejoin="round" />
-                </svg>
-                {seccion.texto}
-              </NavLink>
-            ))}
+          <nav aria-label="Secciones" className="hidden gap-1 md:flex">
+            {enlaces}
           </nav>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Outlet />
       </main>
+      {/* Fuera de la cabecera: su desenfoque haría que "fixed" se ubique dentro de ella y no al pie. */}
+      <nav
+        aria-label="Secciones"
+        className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {enlaces}
+      </nav>
     </div>
   )
 }

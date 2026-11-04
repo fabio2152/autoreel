@@ -6,8 +6,8 @@ import java.util.List;
 
 /**
  * Todo lo propio de un rubro vive en su paquete (sección 7): un nicho nuevo es otro paquete, sin cambiar el resto
- * del sistema. Por ahora expone lo que usan el onboarding y el catálogo; el guion del chat, la plantilla de video,
- * los movimientos, el vocabulario y la música se agregan en sus fases.
+ * del sistema. Por ahora expone lo que usan el onboarding, el catálogo y el chat; la plantilla de video, los
+ * movimientos, el vocabulario y la música se agregan en sus fases.
  */
 public interface PaqueteNicho {
 
@@ -23,6 +23,8 @@ public interface PaqueteNicho {
     List<Pregunta> preguntasOnboarding();
 
     List<Temporada> temporadas();
+
+    GuionChat guionDelChat();
 
     default boolean admiteEstilo(String estilo) {
         return estilos().stream().anyMatch(opcion -> opcion.valor().equals(estilo));

@@ -54,6 +54,10 @@ public class Producto {
     @Column(nullable = false)
     private EstadoProducto estado;
 
+    /** RN-14: un producto subido desde el chat sin aceptar guardarlo existe solo para su video. */
+    @Column(nullable = false)
+    private boolean enCatalogo = true;
+
     @Column(nullable = false, updatable = false)
     private Instant fechaCreacion;
 
@@ -96,6 +100,15 @@ public class Producto {
         return presentes.containsAll(EnumSet.allOf(TipoFoto.class));
     }
 
+    public void dejarFueraDelCatalogo() {
+        this.enCatalogo = false;
+    }
+
+    /** Puede usarse en un video: activo y con sus tres fotos (RN-12, RN-13). */
+    public boolean disponibleParaVideo() {
+        return estado == EstadoProducto.ACTIVO && estaCompleto();
+    }
+
     public void archivar() {
         this.estado = EstadoProducto.ARCHIVADO;
     }
@@ -126,6 +139,10 @@ public class Producto {
 
     public EstadoProducto getEstado() {
         return estado;
+    }
+
+    public boolean isEnCatalogo() {
+        return enCatalogo;
     }
 
     public Instant getFechaCreacion() {

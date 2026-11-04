@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.autoreel.AlmacenEnMemoria;
 import com.autoreel.Imagenes;
 import com.autoreel.PruebaDeIntegracion;
 import jakarta.servlet.http.Cookie;
@@ -26,9 +25,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
 class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
-
-    @Autowired
-    AlmacenEnMemoria almacen;
 
     @Test
     void v08UnNegocioNoPuedeVerNiModificarLosProductosDeOtro() throws Exception {
@@ -265,28 +261,6 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
     }
 
     // --- ayudas ---
-
-    private ResultActions pedirSubida(Cookie cookie, String proposito, String tipo, long tamano) throws Exception {
-        return mvc.perform(post("/api/archivos/url-subida").with(csrf()).cookie(cookie)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(Map.of("proposito", proposito, "tipoContenido", tipo,
-                        "tamano", tamano))));
-    }
-
-    /** Pide la URL firmada y "sube" el archivo, como haría el navegador. Devuelve la clave temporal. */
-    private String subir(Cookie cookie, String proposito, byte[] contenido, String tipo) throws Exception {
-        String clave = json.readTree(pedirSubida(cookie, proposito, tipo, contenido.length)
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("clave").asString();
-        almacen.guardar(clave, contenido, tipo);
-        return clave;
-    }
-
-    private Map<String, String> fotosCompletas(Cookie cookie) throws Exception {
-        return Map.of(
-                "ENTERO", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "DETALLE", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "PORCION", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
-    }
 
     private Map<String, Object> solicitud(Map<String, String> fotos) {
         return Map.of("nombre", "Torta Tres Leches de Fresa",

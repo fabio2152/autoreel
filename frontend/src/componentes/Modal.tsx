@@ -27,7 +27,7 @@ export function Modal({ titulo, abierto, onCerrar, children }: Props) {
         evento.preventDefault()
         onCerrar()
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl bg-white p-0 shadow-xl backdrop:bg-stone-900/50"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-white p-0 shadow-xl backdrop:bg-stone-900/50"
     >
       {abierto && (
         <div className="p-5 sm:p-6">
