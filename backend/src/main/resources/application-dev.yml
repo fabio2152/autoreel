@@ -6,6 +6,12 @@ spring:
 autoreel:
   seguridad:
     cookie-segura: false
+  almacenamiento:
+    crear-bucket: true
+  # Negocio de ejemplo de la sección 16 (solo dev).
+  demo:
+    correo: ${DEMO_NEGOCIO_EMAIL:}
+    contrasena: ${DEMO_NEGOCIO_PASSWORD:}
 
 springdoc:
   api-docs:
