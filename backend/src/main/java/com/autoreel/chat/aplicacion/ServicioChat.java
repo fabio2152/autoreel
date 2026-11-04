@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import com.autoreel.chat.api.ConversacionVista;
 import com.autoreel.chat.api.SolicitudMensaje;
 import com.autoreel.chat.dominio.AgrupadorDeMensajes;
 import com.autoreel.chat.dominio.Conversacion;
+import com.autoreel.chat.dominio.ConversacionCompletada;
 import com.autoreel.chat.dominio.EstadoConversacion;
 import com.autoreel.chat.dominio.EvaluadorDeRespuesta;
 import com.autoreel.chat.dominio.EvaluadorDeRespuesta.Aceptada;
@@ -31,6 +33,8 @@ import com.autoreel.nicho.dominio.GuionChat.PasoChat;
 import com.autoreel.nicho.dominio.GuionChat.TipoPaso;
 import com.autoreel.nicho.dominio.Opcion;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
+import com.autoreel.video.infraestructura.VideoRepositorio;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,14 +52,18 @@ public class ServicioChat {
     private final NegocioRepositorio negocios;
     private final RegistroDeNichos nichos;
     private final ServicioCatalogo catalogo;
+    private final VideoRepositorio videos;
+    private final ApplicationEventPublisher eventos;
     private final Clock reloj;
 
     public ServicioChat(ConversacionRepositorio conversaciones, NegocioRepositorio negocios, RegistroDeNichos nichos,
-            ServicioCatalogo catalogo, Clock reloj) {
+            ServicioCatalogo catalogo, VideoRepositorio videos, ApplicationEventPublisher eventos, Clock reloj) {
         this.conversaciones = conversaciones;
         this.negocios = negocios;
         this.nichos = nichos;
         this.catalogo = catalogo;
+        this.videos = videos;
+        this.eventos = eventos;
         this.reloj = reloj;
     }
 
@@ -227,6 +235,9 @@ public class ServicioChat {
         }
         conversacion.completar(ahora);
         conversacion.decirSistema(guion.mensajes().cierre(), ahora);
+        // El video nace en esta misma transacción; su guion se escribe después, sin hacer esperar al chat.
+        eventos.publishEvent(new ConversacionCompletada(conversacion.getId(), conversacion.getNegocio().getId(),
+                new HashMap<>(conversacion.getRespuestas())));
     }
 
     private void preguntar(Conversacion conversacion, GuionChat guion, PasoChat paso, Instant ahora) {
@@ -264,10 +275,12 @@ public class ServicioChat {
                 .map(m -> new ConversacionVista.Mensaje(m.getId(), m.getAutor(), m.getTexto(), m.getFechaHora(),
                         !m.isProcesado()))
                 .toList();
-        List<ConversacionVista.Resumen> resumen = conversacion.getEstado() == EstadoConversacion.COMPLETA
-                ? resumen(conversacion, guion) : List.of();
+        boolean completa = conversacion.getEstado() == EstadoConversacion.COMPLETA;
+        List<ConversacionVista.Resumen> resumen = completa ? resumen(conversacion, guion) : List.of();
+        Long videoId = completa ? videos.idDeConversacion(conversacion.getId()).orElse(null) : null;
         return new ConversacionVista(conversacion.getId(), conversacion.getEstado(), paso, mensajes, procesarEnMs,
-                respuestas, guion.mensajes().aviso(), guion.maximoCaracteres(), productos, incompletos, resumen);
+                respuestas, guion.mensajes().aviso(), guion.maximoCaracteres(), productos, incompletos, resumen,
+                videoId);
     }
 
     private ConversacionVista.ProductoCarrusel paraCarrusel(Producto producto) {

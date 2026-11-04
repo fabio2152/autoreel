@@ -14,4 +14,9 @@ public interface SuscripcionRepositorio extends JpaRepository<Suscripcion, Long>
 
     @Query("select s from Suscripcion s join fetch s.negocio join fetch s.plan where s.negocio.id = :negocioId")
     Optional<Suscripcion> buscarPorNegocio(Long negocioId);
+
+    @Query("""
+            select s from Suscripcion s join fetch s.plan p join fetch p.modeloTexto join fetch p.modeloVideo
+            where s.negocio.id = :negocioId""")
+    Optional<Suscripcion> buscarConPlanYModelos(Long negocioId);
 }
