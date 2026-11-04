@@ -1,0 +1,50 @@
+{
+  "tonos": {
+    "CASERO": "cálido y cercano, como una pastelería de barrio",
+    "ELEGANTE": "sobrio y refinado, sin exclamaciones",
+    "DIVERTIDO": "alegre, con signos de exclamación"
+  },
+  "prohibidasSalvoQueLasDeclareElProducto": [
+    "saludable",
+    "sin azúcar",
+    "sin gluten",
+    "light",
+    "bajo en calorías",
+    "sin lactosa",
+    "vegano",
+    "keto",
+    "fit"
+  ],
+  "prohibidas": [
+    "el mejor",
+    "la mejor",
+    "los mejores",
+    "las mejores",
+    "el más rico",
+    "la más rica",
+    "número 1",
+    "número uno",
+    "insuperable",
+    "único en",
+    "única en",
+    "inigualable",
+    "entrega inmediata",
+    "entrega en minutos",
+    "llega en",
+    "delivery gratis",
+    "envío gratis",
+    "en 30 minutos"
+  ],
+  "palabrasDePromocion": [
+    "gratis",
+    "descuento",
+    "dscto",
+    "oferta",
+    "promo",
+    "promoción",
+    "regalo",
+    "2x1",
+    "3x2",
+    "rebaja"
+  ]
+}

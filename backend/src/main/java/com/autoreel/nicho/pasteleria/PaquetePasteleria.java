@@ -2,16 +2,22 @@ package com.autoreel.nicho.pasteleria;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import com.autoreel.nicho.dominio.GuionChat;
+import com.autoreel.nicho.dominio.Movimientos;
 import com.autoreel.nicho.dominio.Opcion;
+import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.Pregunta;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.nicho.dominio.Temporada;
+import com.autoreel.nicho.dominio.Texto;
+import com.autoreel.nicho.dominio.Vocabulario;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.DeserializationFeature;
@@ -36,6 +42,10 @@ public class PaquetePasteleria implements PaqueteNicho {
     private final List<Pregunta> preguntas;
     private final List<Temporada> temporadas;
     private final GuionChat guionDelChat;
+    private final PlantillaVideo plantillaVideo;
+    private final Movimientos movimientos;
+    private final Vocabulario vocabulario;
+    private final String instruccionesGuion;
 
     public PaquetePasteleria(ObjectMapper json) {
         ArchivoOnboarding onboarding = leer(json, "onboarding.json", ArchivoOnboarding.class);
@@ -43,13 +53,70 @@ public class PaquetePasteleria implements PaqueteNicho {
         this.preguntas = List.copyOf(onboarding.preguntas());
         this.temporadas = List.copyOf(leer(json, "temporadas.json", ArchivoTemporadas.class).temporadas());
         this.guionDelChat = leer(json, "chat.json", GuionChat.class);
+        this.plantillaVideo = leer(json, "plantilla.json", PlantillaVideo.class);
+        this.movimientos = leer(json, "movimientos.json", Movimientos.class);
+        this.vocabulario = leer(json, "vocabulario.json", Vocabulario.class);
+        this.instruccionesGuion = leerTexto("guion.md");
         validar();
         guionDelChat.validar();
+        validarVideo();
     }
 
     @Override
     public GuionChat guionDelChat() {
         return guionDelChat;
+    }
+
+    @Override
+    public PlantillaVideo plantillaVideo() {
+        return plantillaVideo;
+    }
+
+    @Override
+    public Movimientos movimientos() {
+        return movimientos;
+    }
+
+    @Override
+    public Vocabulario vocabulario() {
+        return vocabulario;
+    }
+
+    @Override
+    public String instruccionesGuion() {
+        return instruccionesGuion;
+    }
+
+    private void validarVideo() {
+        List<Opcion> canales = preguntas.stream().filter(p -> p.id().equals("canales")).findFirst()
+                .map(Pregunta::opciones).orElseThrow(() -> new IllegalStateException("Falta la pregunta canales"));
+        plantillaVideo.validar(canales, guionDelChat.paso("tipoVideo").opciones());
+        for (var plano : plantillaVideo.planosConIa()) {
+            exigir(movimientos.buscar(plano.movimientoDeRespaldo()).isPresent(),
+                    "el movimiento de respaldo del plano " + plano.orden() + " no existe");
+        }
+        // Los textos fijos del respaldo deben cumplir el propio vocabulario del nicho.
+        List<String> fijos = new ArrayList<>(plantillaVideo.ganchosDeRespaldo().values());
+        plantillaVideo.planosConIa().forEach(plano -> fijos.add(plano.textoDeRespaldo()));
+        fijos.add(plantillaVideo.descripcionFijaDeRespaldo());
+        fijos.addAll(plantillaVideo.llamados().values());
+        for (String texto : fijos) {
+            for (String frase : vocabulario.prohibidas()) {
+                exigir(!Texto.contieneFrase(texto, frase), "el texto de respaldo \"" + texto + "\" usa \"" + frase + "\"");
+            }
+            for (String frase : vocabulario.prohibidasSalvoQueLasDeclareElProducto()) {
+                exigir(!Texto.contieneFrase(texto, frase), "el texto de respaldo \"" + texto + "\" usa \"" + frase + "\"");
+            }
+        }
+        exigir(!instruccionesGuion.isBlank(), "faltan las instrucciones del guion");
+    }
+
+    private static String leerTexto(String archivo) {
+        try (InputStream entrada = new ClassPathResource(CARPETA + archivo).getInputStream()) {
+            return new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo leer " + CARPETA + archivo, e);
+        }
     }
 
     @Override
