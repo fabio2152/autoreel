@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.autoreel.nicho.dominio.GuionChat;
 import com.autoreel.nicho.dominio.Opcion;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.Pregunta;
@@ -13,6 +14,7 @@ import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.nicho.dominio.Temporada;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -33,13 +35,21 @@ public class PaquetePasteleria implements PaqueteNicho {
     private final List<Opcion> estilos;
     private final List<Pregunta> preguntas;
     private final List<Temporada> temporadas;
+    private final GuionChat guionDelChat;
 
     public PaquetePasteleria(ObjectMapper json) {
         ArchivoOnboarding onboarding = leer(json, "onboarding.json", ArchivoOnboarding.class);
         this.estilos = List.copyOf(onboarding.estilos());
         this.preguntas = List.copyOf(onboarding.preguntas());
         this.temporadas = List.copyOf(leer(json, "temporadas.json", ArchivoTemporadas.class).temporadas());
+        this.guionDelChat = leer(json, "chat.json", GuionChat.class);
         validar();
+        guionDelChat.validar();
+    }
+
+    @Override
+    public GuionChat guionDelChat() {
+        return guionDelChat;
     }
 
     @Override
@@ -69,7 +79,12 @@ public class PaquetePasteleria implements PaqueteNicho {
 
     private static <T> T leer(ObjectMapper json, String archivo, Class<T> tipo) {
         try (InputStream entrada = new ClassPathResource(CARPETA + archivo).getInputStream()) {
-            return json.readValue(entrada, tipo);
+            // Un campo mal escrito en el archivo debe fallar al arrancar, no ignorarse. Un sí/no que no se escribe
+            // (por ejemplo, "omitible") vale false.
+            return json.readerFor(tipo)
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .without(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                    .readValue(entrada);
         } catch (IOException e) {
             throw new IllegalStateException("No se pudo leer " + CARPETA + archivo, e);
         }
