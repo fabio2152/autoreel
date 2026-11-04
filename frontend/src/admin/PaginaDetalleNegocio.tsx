@@ -18,7 +18,7 @@ import { formatearFecha, formatearFechaHora, formatearMonto } from '../component
 import { ImagenRemota } from '../componentes/ImagenRemota'
 import { ModalContrasenaTemporal } from './ModalContrasenaTemporal'
 
-/** RF-05: detalle del negocio. Pagos, videos y consumo se completan en sus fases. */
+/** RF-05: detalle del negocio. Los pagos y los costos llegan en la fase 7. */
 export function PaginaDetalleNegocio() {
   const id = Number(useParams().id)
   const clienteConsultas = useQueryClient()
@@ -122,10 +122,11 @@ export function PaginaDetalleNegocio() {
       <PerfilDelNegocio perfil={data.perfil} />
       <CatalogoDelNegocio negocioId={id} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <VideosDelNegocio videos={data.videos} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Pendiente titulo="Pagos" fase={7} />
-        <Pendiente titulo="Videos" fase={5} />
-        <Pendiente titulo="Consumo y costos" fase={7} />
+        <Pendiente titulo="Costos" fase={7} />
       </div>
 
       <ModalContrasenaTemporal
@@ -152,6 +153,57 @@ function Dato({ nombre, children }: { nombre: string; children: ReactNode }) {
       <dt className="text-stone-500">{nombre}</dt>
       <dd className="font-medium break-all sm:text-right">{children}</dd>
     </div>
+  )
+}
+
+const ESTADOS_DEL_VIDEO: Record<string, string> = {
+  GUION_PENDIENTE: 'Preparando propuesta',
+  STORYBOARD: 'Por revisar (propuesta)',
+  GENERANDO: 'Generando clips',
+  COMPONIENDO: 'Componiendo',
+  LISTO: 'Listo',
+  APROBADO: 'Aprobado',
+  PROGRAMADO: 'Programado',
+  PUBLICADO: 'Publicado',
+  ERROR: 'Error',
+  DESCARTADO: 'Descartado',
+}
+
+/** RF-05: consumo del mes y últimos videos, para dar soporte. */
+function VideosDelNegocio({ videos }: { videos: NegocioDetalle['videos'] }) {
+  return (
+    <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
+      <h2 className="font-semibold">Videos</h2>
+      <p className="mt-1 text-sm text-stone-600">
+        {videos.delMes === 1 ? '1 video generado' : `${videos.delMes} videos generados`} este mes.
+      </p>
+      {videos.recientes.length === 0 ? (
+        <p className="mt-3 text-sm text-stone-500">Todavía no tiene videos.</p>
+      ) : (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-stone-500 uppercase">
+              <tr>
+                <th className="py-2 pr-4">Fecha</th>
+                <th className="py-2 pr-4">Estado</th>
+                <th className="py-2 pr-4">Planos con respaldo</th>
+                <th className="py-2">Detalle</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {videos.recientes.map((video) => (
+                <tr key={video.id}>
+                  <td className="py-2 pr-4 whitespace-nowrap">{formatearFechaHora(video.fechaCreacion)}</td>
+                  <td className="py-2 pr-4">{ESTADOS_DEL_VIDEO[video.estado] ?? video.estado}</td>
+                  <td className="py-2 pr-4">{video.planosConRespaldo}</td>
+                  <td className="py-2 text-stone-500">{video.motivoError ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 

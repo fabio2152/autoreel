@@ -4,12 +4,16 @@ import { Link, useNavigate, useParams } from 'react-router'
 import type { TipoFoto } from '../api/catalogo'
 import { ErrorApi } from '../api/cliente'
 import {
+  aprobarStoryboard,
+  aprobarVideo,
   CLAVE_VIDEOS,
   claveVideo,
   contarPalabras,
   descartarVideo,
   editarPlano,
+  enlaceDeDescarga,
   obtenerVideo,
+  regenerarPlano,
   type CambioDePlano,
   type CierreVista,
   type PlanoVista,
@@ -21,6 +25,8 @@ import { Cargando } from '../componentes/Cargando'
 import { ImagenRemota } from '../componentes/ImagenRemota'
 import { Modal } from '../componentes/Modal'
 import { SubidorDeImagen } from '../componentes/SubidorDeImagen'
+import { CLAVE_AVISOS } from './avisos'
+import { PantallaGenerando, Reproductor } from './Generacion'
 
 /** A partir de este tiempo esperando el guion, se avisa y se consulta con menos frecuencia. */
 const ESPERA_LARGA_MS = 60_000
@@ -34,7 +40,10 @@ const ENLACE_PEQUENO = 'inline-flex min-h-11 items-center text-xs font-semibold 
 const CAMPO =
   'w-full rounded-lg border border-stone-300 px-3 py-2 text-base focus:border-marca-600 focus:outline-none sm:text-sm'
 
-/** RF-21 y RF-22: la propuesta del video en cuatro planos, para revisarla y ajustarla antes de crearlo. */
+/**
+ * El video en todas sus etapas: la propuesta (storyboard, RF-21 y RF-22), la generación (RF-23), la revisión con el
+ * video final (RF-24) y la descarga (RF-25).
+ */
 export function PaginaStoryboard() {
   const id = Number(useParams().id)
   const clave = claveVideo(id)
@@ -44,6 +53,7 @@ export function PaginaStoryboard() {
     enabled: Number.isInteger(id) && id > 0,
     refetchInterval: (query) => {
       const video = query.state.data
+      if (video?.estado === 'GENERANDO' || video?.estado === 'COMPONIENDO') return 5000
       if (video?.estado !== 'GUION_PENDIENTE') return false
       return query.state.dataUpdatedAt - Date.parse(video.fechaCreacion) > ESPERA_LARGA_MS ? 5000 : 2000
     },
@@ -92,7 +102,11 @@ export function PaginaStoryboard() {
           <Aviso tipo="error">No pudimos actualizar la propuesta. Revisa tu conexión.</Aviso>
         </div>
       )}
-      <Storyboard video={video} />
+      {video.estado === 'GENERANDO' || video.estado === 'COMPONIENDO' ? (
+        <PantallaGenerando key={video.id} video={video} />
+      ) : (
+        <Storyboard key={video.id} video={video} />
+      )}
     </>
   )
 }
@@ -101,12 +115,15 @@ function Storyboard({ video }: { video: Video }) {
   const clienteConsultas = useQueryClient()
   const navegar = useNavigate()
   const clave = claveVideo(video.id)
-  const editable = video.estado === 'STORYBOARD'
+  const enRevision = video.estado === 'LISTO'
+  const editable = video.estado === 'STORYBOARD' || enRevision
   const [confirmarDescarte, setConfirmarDescarte] = useState(false)
 
   const guardar = (nuevo: Video) => {
     clienteConsultas.setQueryData(clave, nuevo)
     clienteConsultas.invalidateQueries({ queryKey: CLAVE_VIDEOS, exact: true })
+    // Si el video empezó a generarse, el aviso de "listo" empieza a vigilarlo.
+    clienteConsultas.invalidateQueries({ queryKey: CLAVE_AVISOS })
   }
   const descartar = useMutation({
     mutationFn: () => descartarVideo(video.id),
@@ -115,6 +132,13 @@ function Storyboard({ video }: { video: Video }) {
       navegar('/videos')
     },
   })
+  const crear = useMutation({ mutationFn: () => aprobarStoryboard(video.id), onSuccess: guardar })
+  const aprobar = useMutation({ mutationFn: () => aprobarVideo(video.id), onSuccess: guardar })
+  const descargar = useMutation({
+    mutationFn: () => enlaceDeDescarga(video.id),
+    onSuccess: (url) => window.location.assign(url),
+  })
+  const { videosHoy } = video.generacion
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -122,20 +146,28 @@ function Storyboard({ video }: { video: Video }) {
         <p className="text-sm text-stone-500">{video.tipoVideo}</p>
         <h1 className="text-xl font-semibold text-stone-900">{video.producto.nombre}</h1>
         <p className="mt-1 text-sm text-stone-600">
-          Revisa los cuatro momentos de tu video de 15 segundos. Puedes cambiar los textos y las fotos.
+          {enRevision
+            ? 'Tu video está listo. Míralo y, si quieres, cambia un texto o pide otra versión de un momento.'
+            : video.estado === 'APROBADO'
+              ? 'Aprobaste tu video. Ya puedes descargarlo.'
+              : 'Revisa los cuatro momentos de tu video de 15 segundos. Puedes cambiar los textos y las fotos.'}
         </p>
       </header>
 
+      {(enRevision || video.estado === 'APROBADO') && <Reproductor video={video} />}
+      {video.generacion.avisoRevision && enRevision && <Aviso tipo="error">{video.generacion.avisoRevision}</Aviso>}
       {video.estado === 'DESCARTADO' && <Aviso>Descartaste esta propuesta.</Aviso>}
       {video.estado === 'ERROR' && (
-        <Aviso tipo="error">No pudimos preparar esta propuesta. Crea otro video desde el inicio.</Aviso>
+        <Aviso tipo="error">
+          {video.generacion.motivoError ?? 'No pudimos preparar este video.'} Crea otro desde el inicio.
+        </Aviso>
       )}
-      {video.avisoDeRespaldo && editable && <Aviso>{video.avisoDeRespaldo}</Aviso>}
+      {video.avisoDeRespaldo && video.estado === 'STORYBOARD' && <Aviso>{video.avisoDeRespaldo}</Aviso>}
 
       <ol className="space-y-4">
         {video.planos.map((plano) => (
           <li key={plano.orden}>
-            <TarjetaPlano video={video} plano={plano} editable={editable} onGuardado={guardar} />
+            <TarjetaPlano video={video} plano={plano} editable={editable} enRevision={enRevision} onGuardado={guardar} />
           </li>
         ))}
         {video.cierre && (
@@ -153,18 +185,45 @@ function Storyboard({ video }: { video: Video }) {
         </section>
       )}
 
-      {editable && (
+      {video.estado === 'STORYBOARD' && (
         <div className="space-y-2 pb-4">
-          <Boton className="w-full" disabled>
+          {crear.isError && <Aviso tipo="error">{mensajeDeError(crear.error)}</Aviso>}
+          <Boton className="w-full" cargando={crear.isPending} disabled={!videosHoy.puedeAprobar} onClick={() => crear.mutate()}>
             Crear mi video
           </Boton>
           <p className="text-center text-xs text-stone-500">
-            Muy pronto podrás crear el video desde aquí. Tu plan {video.plan.nombre} incluye{' '}
-            {video.plan.videosPorDia === 1 ? '1 video' : `${video.plan.videosPorDia} videos`} por día.
+            {videosHoy.puedeAprobar
+              ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
+              : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
           </p>
           <Boton variante="texto" className="w-full" onClick={() => setConfirmarDescarte(true)}>
             Descartar propuesta
           </Boton>
+        </div>
+      )}
+      {enRevision && (
+        <div className="space-y-2 pb-4">
+          {(aprobar.isError || descargar.isError) && (
+            <Aviso tipo="error">{mensajeDeError(aprobar.error ?? descargar.error)}</Aviso>
+          )}
+          <Boton className="w-full" cargando={aprobar.isPending} onClick={() => aprobar.mutate()}>
+            Aprobar mi video
+          </Boton>
+          <Boton variante="secundario" className="w-full" cargando={descargar.isPending} onClick={() => descargar.mutate()}>
+            Descargar
+          </Boton>
+          <Boton variante="texto" className="w-full" onClick={() => setConfirmarDescarte(true)}>
+            Descartar video
+          </Boton>
+        </div>
+      )}
+      {video.estado === 'APROBADO' && (
+        <div className="space-y-2 pb-4">
+          {descargar.isError && <Aviso tipo="error">{mensajeDeError(descargar.error)}</Aviso>}
+          <Boton className="w-full" cargando={descargar.isPending} onClick={() => descargar.mutate()}>
+            Descargar
+          </Boton>
+          <p className="text-center text-xs text-stone-500">Muy pronto podrás publicarlo en Instagram desde aquí.</p>
         </div>
       )}
       {!editable && (
@@ -173,8 +232,15 @@ function Storyboard({ video }: { video: Video }) {
         </Link>
       )}
 
-      <Modal titulo="¿Descartar esta propuesta?" abierto={confirmarDescarte} onCerrar={() => setConfirmarDescarte(false)}>
-        <p className="text-sm text-stone-600">La propuesta quedará en Mis videos como descartada y no se podrá editar.</p>
+      <Modal
+        titulo={enRevision ? '¿Descartar este video?' : '¿Descartar esta propuesta?'}
+        abierto={confirmarDescarte}
+        onCerrar={() => setConfirmarDescarte(false)}
+      >
+        <p className="text-sm text-stone-600">
+          Quedará en Mis videos como descartado y no se podrá editar.
+          {enRevision && ' El video del día que usaste no se devuelve.'}
+        </p>
         {descartar.isError && (
           <div className="mt-3">
             <Aviso tipo="error">{descartar.error.message}</Aviso>
@@ -210,13 +276,23 @@ function TarjetaPlano({
   video,
   plano,
   editable,
+  enRevision,
   onGuardado,
 }: {
   video: Video
   plano: PlanoVista
   editable: boolean
+  enRevision: boolean
   onGuardado: (video: Video) => void
 }) {
+  const regenerar = useMutation({ mutationFn: () => regenerarPlano(video.id, plano.orden), onSuccess: onGuardado })
+  const restantes = video.plan.regeneracionesPorVideo - video.generacion.regeneracionesUsadas
+  const conIa = enRevision && video.generacion.iaDisponible
+  // En la revisión, una foto nueva crea un clip nuevo: sin regeneraciones, no se ofrece.
+  const sinFotoNueva = conIa && restantes <= 0
+  const etiquetaRegenerar =
+    (plano.usoRespaldo ? 'Reintentar con IA' : 'Regenerar este plano') +
+    (restantes > 0 ? ` (te quedan ${restantes})` : ' (ya no quedan)')
   const [texto, setTexto] = useState<string | null>(null)
   const [eligiendoFoto, setEligiendoFoto] = useState(false)
   // Texto y foto se guardan por separado: el error o el éxito de uno no cierra ni borra el otro.
@@ -237,7 +313,7 @@ function TarjetaPlano({
             alt={`Foto del momento ${plano.orden}`}
             className="aspect-[9/16] w-full rounded-xl bg-stone-100 object-cover"
           />
-          {editable && (
+          {editable && !sinFotoNueva && (
             <button
               type="button"
               onClick={() => {
@@ -273,6 +349,25 @@ function TarjetaPlano({
                 >
                   Editar texto
                 </button>
+              )}
+              {enRevision && plano.usoRespaldo && (
+                <p className="mt-1 text-xs text-stone-500">
+                  Este momento usa un acercamiento suave a tu foto: no pudimos crear el clip con IA.
+                </p>
+              )}
+              {conIa && (
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    disabled={restantes <= 0 || regenerar.isPending}
+                    onClick={() => regenerar.mutate()}
+                    aria-label={`${etiquetaRegenerar}, momento ${plano.orden}`}
+                    className={ENLACE_PEQUENO + ' disabled:text-stone-400'}
+                  >
+                    {etiquetaRegenerar}
+                  </button>
+                  {regenerar.isError && <Aviso tipo="error">{mensajeDeError(regenerar.error)}</Aviso>}
+                </div>
               )}
             </div>
           ) : (
@@ -318,6 +413,11 @@ function TarjetaPlano({
 
       <Modal titulo={`Foto del momento ${plano.orden}`} abierto={eligiendoFoto} onCerrar={() => setEligiendoFoto(false)}>
         <p className="text-sm text-stone-600">Elige otra foto de tu producto o sube una nueva solo para este video.</p>
+        {conIa && (
+          <p className="mt-2 text-xs text-stone-500">
+            Cambiar la foto crea un clip nuevo y usa 1 de tus regeneraciones (te quedan {restantes}).
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-3 gap-3">
           {video.fotosDelProducto.map((foto) => {
             const actual = plano.foto.tipo === foto.tipo

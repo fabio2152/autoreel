@@ -13,7 +13,7 @@ export interface NegocioResumen {
   plan: string
   proximaFechaPago: string
   estadoPago: EstadoPago
-  /** Vacío hasta la fase 5, cuando existan los videos. */
+  /** Videos generados en el mes de Lima en curso. */
   videosDelMes: number | null
   estado: EstadoNegocio
   ultimoAcceso: string | null
@@ -47,6 +47,18 @@ export interface NegocioDetalle {
     perfil: Perfil
     /** Respuestas del onboarding con el texto de la pregunta y de las opciones. */
     respuestas: { pregunta: string; respuesta: string }[]
+  }
+  videos: {
+    /** Videos generados en el mes de Lima en curso. */
+    delMes: number
+    recientes: {
+      id: number
+      tipoVideo: string
+      estado: string
+      fechaCreacion: string
+      planosConRespaldo: number
+      motivoError: string | null
+    }[]
   }
 }
 

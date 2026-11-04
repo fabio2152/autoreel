@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { CLAVE_VIDEOS, listarVideos, type EstadoVideo } from '../api/videos'
+import { CLAVE_VIDEOS, EN_PROCESO, listarVideos, type EstadoVideo } from '../api/videos'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Cargando } from '../componentes/Cargando'
@@ -27,7 +27,7 @@ export function PaginaMisVideos() {
     queryFn: listarVideos,
     // Mientras alguna propuesta se está preparando, se vuelve a consultar para mostrar cuándo está lista.
     refetchInterval: (query) =>
-      query.state.data?.some((video) => video.estado === 'GUION_PENDIENTE') ? 5000 : false,
+      query.state.data?.some((video) => EN_PROCESO.includes(video.estado)) ? 5000 : false,
   })
 
   if (videos.isPending) return <Cargando />
