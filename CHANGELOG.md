@@ -19,6 +19,7 @@ Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepac
 - **Sin onboarding no se crean videos** (RN-09, V10).
 - **Resumen final** con las respuestas, que serán la entrada del guion de la fase 4, y "Crear otro video".
 - **Migración `V4`:** `conversacion`, `mensaje_chat` y `producto.en_catalogo`.
+- **Pruebas** (125 en total): agrupación de mensajes, evaluación de respuestas, guion del chat y 16 pruebas de integración del chat (V10, V11, V14, V15, V16, V17, RN-19, aislamiento y concurrencia).
 
 ### Corregido
 
