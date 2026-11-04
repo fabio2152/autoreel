@@ -1,0 +1,16 @@
+# Perfil de desarrollo local: lee las variables del .env de la raíz del repositorio.
+spring:
+  config:
+    import: optional:file:../.env[.properties]
+
+autoreel:
+  seguridad:
+    cookie-segura: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    csrf:
+      enabled: true
