@@ -2,6 +2,53 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fase 5 — Generación] - 2026-11-04
+
+### Agregado
+
+- **"Crear mi video"** (RF-22, RN-26, V22): aprobar el storyboard usa el video del día (día de Lima). Con el video del día ya usado, el botón se desactiva con "Ya usaste tu video de hoy. Mañana tienes uno nuevo."; al día siguiente se puede otra vez. Los videos no usados no se acumulan.
+- **Generación de los clips** (RF-23) con Veo 3.1 Lite en Google Cloud (Vertex AI), a partir de la foto de cada plano y su movimiento de cámara. La credencial es el JSON de una cuenta de servicio, leído del archivo que indica `VEO_CREDENCIAL_ARCHIVO`, nunca del código ni de la base de datos (RN-55).
+- **Plan de respaldo** (RN-30, V24): si un clip falla dos veces, no llega en 10 minutos o no hay credencial, ese plano usa un acercamiento lento de la foto hecho con FFmpeg y el video se entrega igual. Ninguna generación dura más de 20 minutos.
+- **Composición del video final** (RN-31, V23): vertical 1080 × 1920, 30 cuadros por segundo, H.264 con AAC y 15 segundos exactos.
+  1. Los textos de cada plano van dentro de la zona segura de Instagram, con la tipografía del estilo del negocio y un tamaño que se ajusta para que quepan.
+  2. Fundido hacia el cierre: foto del local (o un degradado con los colores de la marca), logo, precio, llamado, distrito y WhatsApp.
+  3. Música del estilo del negocio, con fundido al final.
+  4. Las fotos se enderezan según la cámara y se recortan en vertical antes de usarse.
+- **Pantalla "Creando tu video"** con mensajes que cambian y el avance de cada plano. Se puede salir: el video espera en "Mis videos", y la aplicación avisa "Tu video está listo".
+- **Revisión del video** (RF-24): reproductor vertical y, por plano:
+  1. "Regenerar este plano" (hasta 3 por video en el plan Lite, RN-28, V26). Una regeneración que falla no se cuenta y se conserva el clip anterior.
+  2. "Reintentar con IA" en los planos que usaron el respaldo.
+  3. Editar el texto o el precio vuelve a armar el video sin gastar regeneraciones (RN-29, V25).
+  4. Cambiar la foto crea un clip nuevo y usa una regeneración.
+- **Aprobar y descargar** (RF-25): "Aprobar mi video" y "Descargar" el MP4 con un nombre de archivo propio.
+- **Devolución del video del día** (RN-27, V27): si el video no se puede armar por una falla del sistema, pasa a error y se devuelve el video del día. Si falla un cambio posterior, se conserva el video anterior con un aviso.
+- **Costo de cada clip** por segundo (RN-32); el video registra Gemini y Veo 3.1 Lite como modelos usados en el plan Lite (V39).
+- **Biblioteca de música** por nicho y estilo, cargada desde el paquete de nicho al arrancar (`musica.json`).
+- **Tipografías por estilo** con licencia OFL en el paquete de nicho: Nunito (casero), Playfair Display (elegante) y Fredoka (divertido).
+- **Panel de administración:** la lista muestra los videos del mes de cada negocio (RF-02) y el detalle, el consumo del mes y sus últimos videos con su estado, los planos con respaldo y el motivo de error (RF-05).
+- **Migración `V6`:** `pista_musical`, `consumo_diario`, columnas nuevas de `video` y `plano`, y los datos del modelo Veo.
+- **FFmpeg** como requisito del backend (`FFMPEG_PATH`); el CI lo instala con apt.
+- **Pruebas** (220 en total): composición con FFmpeg real (V23), adaptador de Veo contra un servidor simulado y 10 pruebas de integración de la generación (V22, V24, V25, V26, V27, V39, regeneración fallida, recomposición fallida, sin credencial, 10 minutos sin clip y aislamiento entre negocios, V08).
+
+### Pendiente en fases siguientes
+
+- **Publicar en Instagram** el video aprobado: fase 6. Hoy el video aprobado muestra "Muy pronto podrás publicarlo en Instagram desde aquí".
+- **Editar la descripción y los hashtags:** todavía solo se muestran.
+- **Aviso al administrador** cuando falla una integración de IA (RN-57) y beneficios temporales en el consumo diario: fase 7.
+- **Precio por segundo de Veo:** sin confirmar en la página oficial; es un dato editable que se ajusta en la fase 7.
+- **FFmpeg en el servidor y credenciales desde AWS Secrets Manager:** fase 8.
+- **Música definitiva** (P-02): las tres pistas actuales son de relleno.
+- **Prueba con Veo real:** cuando haya una cuenta de servicio de Google Cloud.
+
+### Decisiones
+
+- **Veo 3.1 en Google Cloud (Vertex AI):** Google cerró los Veo 3.1 *preview* de la API de Gemini el 22/10/2026. El plan Lite sigue con Veo 3.1 Lite (`veo-3.1-lite-generate-001`, en vista previa en Google Cloud); Veo 3.1 y Veo 3.1 Fast son GA. El modelo es un dato editable.
+- **Sin credencial todavía:** el adaptador se probó contra un servidor simulado y, sin `VEO_CREDENCIAL_ARCHIVO`, todos los planos usan el acercamiento de FFmpeg.
+- **Una regeneración que falla no se cobra** y conserva el clip anterior. Sin IA disponible, no se ofrece regenerar.
+- **El video del día se devuelve en el día del error** (día de Lima), una sola vez.
+- **Música y tipografías dentro del paquete de nicho**, como el resto del contenido del nicho.
+- **FFmpeg instalado en la PC con winget** y en el CI con apt; en producción, en la imagen del servidor (fase 8).
+
 ## [Fase 4 — Guion] - 2026-11-04
 
 ### Agregado
