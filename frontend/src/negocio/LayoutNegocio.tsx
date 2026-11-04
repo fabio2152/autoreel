@@ -3,6 +3,7 @@ import { Marca } from '../componentes/Marca'
 
 const SECCIONES = [
   { ruta: '/', texto: 'Inicio', icono: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
+  { ruta: '/videos', texto: 'Mis videos', icono: 'M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Zm12 4 5-3v10l-5-3' },
   { ruta: '/catalogo', texto: 'Catálogo', icono: 'M4 5h7v7H4zM13 5h7v7h-7zM4 14h7v6H4zM13 14h7v6h-7z' },
   {
     ruta: '/ajustes',

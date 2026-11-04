@@ -1,0 +1,43 @@
+{
+  "movimientos": [
+    {
+      "id": "ACERCAMIENTO_LENTO",
+      "descripcion": "La cámara se acerca muy despacio",
+      "instruccion": "Very slow, smooth camera push-in toward the product."
+    },
+    {
+      "id": "ALEJAMIENTO_LENTO",
+      "descripcion": "La cámara se aleja muy despacio",
+      "instruccion": "Very slow, smooth camera pull-back from the product."
+    },
+    {
+      "id": "DESPLAZAMIENTO_LATERAL",
+      "descripcion": "La cámara se desliza un poco hacia un lado",
+      "instruccion": "Gentle lateral camera slide of a few centimeters, product stays centered."
+    },
+    {
+      "id": "BRILLO_GLASEADO",
+      "descripcion": "Destellos suaves sobre el glaseado",
+      "instruccion": "Subtle glints of light moving across the glaze or syrup."
+    },
+    {
+      "id": "AZUCAR_CAYENDO",
+      "descripcion": "Azúcar impalpable cayendo suavemente",
+      "instruccion": "Fine powdered sugar gently falling onto the product."
+    },
+    {
+      "id": "VAPOR_SUAVE",
+      "descripcion": "Vapor tenue (solo horneados o bebidas calientes)",
+      "instruccion": "Faint wisps of steam rising from the product.",
+      "soloTiposVideo": [
+        "RECIEN_HORNEADO"
+      ]
+    },
+    {
+      "id": "LUZ_CALIDA",
+      "descripcion": "La luz cálida cambia lentamente",
+      "instruccion": "Warm window light slowly shifting across the scene."
+    }
+  ],
+  "prohibiciones": "No people, no hands, no faces, no knives or moving utensils, no text, letters or logos, do not change the product's shape, color or decoration, do not rotate the product more than 15 degrees, no new objects that are not in the photo, no camera cuts."
+}

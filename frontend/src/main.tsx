@@ -18,6 +18,8 @@ import { reaccionarAErrorDeApi } from './auth/useSesion'
 import './index.css'
 import { LayoutNegocio } from './negocio/LayoutNegocio'
 import { AsistenteOnboarding } from './onboarding/AsistenteOnboarding'
+import { PaginaMisVideos } from './videos/PaginaMisVideos'
+import { PaginaStoryboard } from './videos/PaginaStoryboard'
 
 const clienteConsultas: QueryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (error) => reaccionarAErrorDeApi(clienteConsultas, error) }),
@@ -62,6 +64,8 @@ const enrutador = createBrowserRouter([
               { index: true, element: <PaginaChat /> },
               { path: 'catalogo', element: <PaginaCatalogo /> },
               { path: 'catalogo/:id', element: <PaginaProducto /> },
+              { path: 'videos', element: <PaginaMisVideos /> },
+              { path: 'videos/:id', element: <PaginaStoryboard /> },
               { path: 'ajustes', element: <PaginaAjustes /> },
             ],
           },

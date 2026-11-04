@@ -1,0 +1,30 @@
+{
+  "planos": [
+    { "orden": 1, "nombre": "Gancho", "foto": "DETALLE", "maxPalabras": 6, "segundos": 3, "conIa": true,
+      "movimientoDeRespaldo": "ACERCAMIENTO_LENTO", "respaldoDesde": ["GANCHO_DEL_TIPO"],
+      "textoDeRespaldo": "Un antojo que no espera" },
+    { "orden": 2, "nombre": "Producto", "foto": "ENTERO", "maxPalabras": 5, "segundos": 4, "conIa": true,
+      "movimientoDeRespaldo": "DESPLAZAMIENTO_LATERAL", "respaldoDesde": ["PRODUCTO"],
+      "textoDeRespaldo": "Hecho para compartir" },
+    { "orden": 3, "nombre": "Relleno", "foto": "PORCION", "maxPalabras": 7, "segundos": 4, "conIa": true,
+      "movimientoDeRespaldo": "LUZ_CALIDA", "respaldoDesde": ["ESPECIAL", "DESCRIPCION_PRODUCTO"],
+      "textoDeRespaldo": "Cada porción con mucho cariño" },
+    { "orden": 4, "nombre": "Cierre", "maxPalabras": 0, "segundos": 4, "conIa": false }
+  ],
+  "llamados": {
+    "WHATSAPP": "Pide por WhatsApp",
+    "DELIVERY": "Pídelo por delivery",
+    "TIENDA": "Te esperamos en {distrito}"
+  },
+  "ganchosDeRespaldo": {
+    "PRODUCTO_ESTRELLA": "Nuestro favorito de siempre",
+    "PROMOCION": "Una promoción para darte gusto",
+    "TORTAS_POR_ENCARGO": "Tu torta hecha a medida",
+    "RECIEN_HORNEADO": "Recién salido del horno"
+  },
+  "descripcionDeRespaldo": "Hoy te presentamos {producto}. {especial} {llamado}.",
+  "descripcionFijaDeRespaldo": "Hoy te presentamos uno de nuestros favoritos, hecho con mucho cariño. {llamado}.",
+  "hashtagsBase": ["#pasteleria", "#postres", "#reposteria", "#dulces", "#antojo"],
+  "maximoCaracteresPrecio": 40,
+  "avisoDeRespaldo": "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto."
+}

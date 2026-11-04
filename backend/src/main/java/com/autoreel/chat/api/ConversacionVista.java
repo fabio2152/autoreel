@@ -18,10 +18,11 @@ import com.autoreel.nicho.dominio.Opcion;
  * @param productos           carrusel, solo en el paso de producto (V11: activos, en el catálogo y completos).
  * @param productosIncompletos productos del catálogo que no aparecen por faltarles fotos.
  * @param resumen             respuestas legibles al terminar.
+ * @param videoId             el video que nació al terminar la conversación; vacío mientras está en curso.
  */
 public record ConversacionVista(Long id, EstadoConversacion estado, Paso paso, List<Mensaje> mensajes,
         Long procesarEnMs, Map<String, Object> respuestas, String aviso, int maximoCaracteres,
-        List<ProductoCarrusel> productos, int productosIncompletos, List<Resumen> resumen) {
+        List<ProductoCarrusel> productos, int productosIncompletos, List<Resumen> resumen, Long videoId) {
 
     /**
      * @param omitible    se puede responder "No, gracias" (no es obligatoria en este momento).

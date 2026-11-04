@@ -26,6 +26,15 @@ public interface PaqueteNicho {
 
     GuionChat guionDelChat();
 
+    PlantillaVideo plantillaVideo();
+
+    Movimientos movimientos();
+
+    Vocabulario vocabulario();
+
+    /** Instrucciones base para el modelo de texto, con marcadores {así} que se reemplazan (sección 8.1). */
+    String instruccionesGuion();
+
     default boolean admiteEstilo(String estilo) {
         return estilos().stream().anyMatch(opcion -> opcion.valor().equals(estilo));
     }
