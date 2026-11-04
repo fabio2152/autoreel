@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import {
   CLAVE_CHAT,
   iniciarConversacion,
@@ -360,8 +361,16 @@ function TarjetaFinal({
           </div>
         ))}
       </dl>
-      <p className="mt-4 text-sm text-stone-600">Guardamos todo. Muy pronto verás aquí la propuesta de tu video.</p>
-      <Boton variante="secundario" className="mt-4 w-full" onClick={onOtro} cargando={empezando}>
+      <p className="mt-4 text-sm text-stone-600">Guardamos todo. Estoy preparando la propuesta de tu video.</p>
+      {conversacion.videoId !== null && (
+        <Link
+          to={`/videos/${conversacion.videoId}`}
+          className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg bg-marca-700 px-4 py-2 text-sm font-semibold text-white hover:bg-marca-800"
+        >
+          Ver mi propuesta
+        </Link>
+      )}
+      <Boton variante="secundario" className="mt-3 w-full" onClick={onOtro} cargando={empezando}>
         Crear otro video
       </Boton>
     </section>

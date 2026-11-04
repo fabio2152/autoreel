@@ -46,6 +46,8 @@ export interface Conversacion {
   productos: ProductoCarrusel[]
   productosIncompletos: number
   resumen: { pregunta: string; respuesta: string }[]
+  /** El video que nació al terminar la conversación; null mientras está en curso. */
+  videoId: number | null
 }
 
 /** Exactamente una forma de respuesta, junto con el paso al que responde. */
