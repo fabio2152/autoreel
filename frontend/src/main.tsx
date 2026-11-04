@@ -9,6 +9,7 @@ import { PaginaAjustes } from './ajustes/PaginaAjustes'
 import { ErrorApi } from './api/cliente'
 import { PaginaCrearContrasena } from './auth/PaginaCrearContrasena'
 import { PaginaCatalogo } from './catalogo/PaginaCatalogo'
+import { PaginaChat } from './chat/PaginaChat'
 import { PaginaProducto } from './catalogo/PaginaProducto'
 import { PaginaLogin } from './auth/PaginaLogin'
 import { RutaOnboarding } from './auth/RutaOnboarding'
@@ -16,7 +17,6 @@ import { RutaProtegida } from './auth/RutaProtegida'
 import { reaccionarAErrorDeApi } from './auth/useSesion'
 import './index.css'
 import { LayoutNegocio } from './negocio/LayoutNegocio'
-import { PaginaInicioNegocio } from './negocio/PaginaInicioNegocio'
 import { AsistenteOnboarding } from './onboarding/AsistenteOnboarding'
 
 const clienteConsultas: QueryClient = new QueryClient({
@@ -59,7 +59,7 @@ const enrutador = createBrowserRouter([
           {
             element: <LayoutNegocio />,
             children: [
-              { index: true, element: <PaginaInicioNegocio /> },
+              { index: true, element: <PaginaChat /> },
               { path: 'catalogo', element: <PaginaCatalogo /> },
               { path: 'catalogo/:id', element: <PaginaProducto /> },
               { path: 'ajustes', element: <PaginaAjustes /> },
