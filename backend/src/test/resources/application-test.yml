@@ -1,0 +1,17 @@
+# Valores solo para las pruebas automatizadas. La base de datos la entrega Testcontainers (@ServiceConnection).
+spring:
+  datasource:
+    url: jdbc:postgresql://testcontainers/no-usada
+    username: testcontainers
+    password: testcontainers
+
+autoreel:
+  url-aplicacion: http://localhost:5173
+  seguridad:
+    # 32 bytes en base64, exclusivos para pruebas.
+    jwt-secreto: dGVzdC1zZWNyZXRvLXNvbG8tcGFyYS1wcnVlYmFzLTMyYg==
+    sesion-horas: 8
+    cookie-segura: false
+  admin:
+    correo: admin@autoreel.test
+    contrasena: AdminPrueba123
