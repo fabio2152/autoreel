@@ -60,3 +60,15 @@ autoreel:
     clave-acceso: ${AWS_ACCESS_KEY_ID:}
     clave-secreta: ${AWS_SECRET_ACCESS_KEY:}
     crear-bucket: false
+  # Credenciales de los proveedores de IA por nombre de secreto (RN-55). En producción, Secrets Manager (fase 8).
+  # La clave va entre comillas y corchetes para conservar la "/".
+  secretos:
+    "[autoreel/gemini]": ${GEMINI_API_KEY:}
+  ia:
+    gemini:
+      url: ${GEMINI_URL:https://generativelanguage.googleapis.com}
+      tiempo-conexion: 5s
+      tiempo-lectura: 30s
+  tareas:
+    activas: true
+    guiones-cada: 3s

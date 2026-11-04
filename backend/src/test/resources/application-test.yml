@@ -19,3 +19,14 @@ autoreel:
     # Las pruebas de integración usan AlmacenEnMemoria; S3Almacen se prueba aparte contra SeaweedFS.
     tipo: memoria
     bucket: pruebas
+  # Sin clave por defecto: el guion usa el respaldo. Las pruebas que la necesitan la ponen con @DynamicPropertySource.
+  secretos:
+    "[autoreel/gemini]": ""
+  ia:
+    gemini:
+      url: http://127.0.0.1:9
+      tiempo-conexion: 500ms
+      tiempo-lectura: 500ms
+  # Las pruebas llaman a los procesadores directamente.
+  tareas:
+    activas: false
