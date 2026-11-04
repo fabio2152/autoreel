@@ -50,3 +50,13 @@ autoreel:
   admin:
     correo: ${ADMIN_EMAIL:}
     contrasena: ${ADMIN_PASSWORD:}
+  almacenamiento:
+    tipo: s3
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION:us-east-1}
+    # Vacíos en AWS (se usa el rol de la instancia); con valor en desarrollo (SeaweedFS).
+    endpoint: ${S3_ENDPOINT:}
+    endpoint-publico: ${S3_ENDPOINT_PUBLICO:}
+    clave-acceso: ${AWS_ACCESS_KEY_ID:}
+    clave-secreta: ${AWS_SECRET_ACCESS_KEY:}
+    crear-bucket: false

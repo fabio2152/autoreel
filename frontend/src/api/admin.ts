@@ -1,4 +1,6 @@
+import type { Producto } from './catalogo'
 import { pedir } from './cliente'
+import type { Perfil } from './negocio'
 
 export type EstadoPago = 'AL_DIA' | 'POR_VENCER' | 'VENCE_HOY' | 'VENCIDO'
 export type EstadoNegocio = 'ACTIVO' | 'SUSPENDIDO'
@@ -40,6 +42,11 @@ export interface NegocioDetalle {
     proximaFechaPago: string
     diasAviso: number
     estadoPago: EstadoPago
+  }
+  perfil: {
+    perfil: Perfil
+    /** Respuestas del onboarding con el texto de la pregunta y de las opciones. */
+    respuestas: { pregunta: string; respuesta: string }[]
   }
 }
 
@@ -86,6 +93,9 @@ export function listarNegocios(filtros: { busqueda?: string; estadoPago?: Estado
 }
 
 export const obtenerNegocio = (id: number) => pedir<NegocioDetalle>(`/api/admin/negocios/${id}`)
+
+/** Catálogo completo del negocio, incluidos los archivados. */
+export const listarProductosDeNegocio = (id: number) => pedir<Producto[]>(`/api/admin/negocios/${id}/productos`)
 
 export const crearNegocio = (solicitud: SolicitudCrearNegocio) =>
   pedir<ContrasenaTemporal>('/api/admin/negocios', 'POST', solicitud)

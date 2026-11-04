@@ -2,6 +2,32 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fase 2 — Negocio] - 2026-11-04
+
+### Agregado
+
+- **Paquete de nicho Pastelería** (`PaqueteNicho` / `PaquetePasteleria`): estilos, preguntas del onboarding y temporadas en `resources/nichos/pasteleria/`, validados al arrancar. Cálculo de temporadas vigentes y fechas especiales próximas (15 días), listo para el chat de la fase 3.
+- **Almacenamiento de archivos** (`AlmacenDeArchivos` → `S3Almacen`):
+  - Subida directa desde el navegador con URL firmada (tipo y tamaño exactos).
+  - Verificación del contenido real (formato, medidas, transparencia del logo, orientación de la cámara, límites contra imágenes enormes o animadas).
+  - Copia a una clave definitiva que nadie puede sobrescribir.
+  - SeaweedFS en docker compose para desarrollo; Amazon S3 en producción sin cambiar código.
+- **Onboarding y perfil** (RF-16, RF-17, RN-09): asistente de tres pasos en pantalla completa (marca, negocio, toque), que se retoma donde quedó. Logo PNG, dos colores con "Tomar del logo", estilo, preguntas del paquete, foto del local opcional. Edición en Ajustes.
+- **Catálogo de productos** (RF-18, RN-10 a RN-13): nombre, descripción, temporadas y tres fotos (entero, detalle, porción) con imagen de ejemplo e indicaciones. Productos incompletos marcados; archivar y reactivar.
+- **Fotos preparadas en el navegador:** se aplica la orientación de la cámara, se reducen a 2560 px y se quitan los metadatos (GPS).
+- **Ajustes** del negocio: perfil y cambio de contraseña (RF-15).
+- **Panel de administración:** el detalle del negocio muestra su perfil y su catálogo (RF-05).
+- **Negocio de ejemplo** en el perfil `dev` (sección 16), con imágenes de relleno generadas.
+- **Migración `V3`:** `perfil_negocio`, `producto` y `foto_producto`.
+- **Pruebas** (93 en total): paquete de nicho y temporadas, validación de respuestas, verificador de imágenes (incluidos logos de paleta y PNG animados), adaptador S3 contra SeaweedFS real, e integración para V08, V11, V12, aislamiento de archivos entre negocios, reintento tras un guardado fallido, onboarding y catálogo.
+
+### Pendiente en fases siguientes
+
+- **V10, V13 y V14** se verifican con el chat (fase 3); la regla RN-09 ya está guardada en `onboardingCompleto`.
+- **RN-14** (producto subido desde el chat sin guardarlo) llega con el chat.
+- **RN-15** (detección de rostros con Rekognition) en la fase 9.
+- **Limpieza de subidas abandonadas:** regla de expiración del bucket en la fase 8.
+
 ## [Fase 1 — Base] - 2026-11-03
 
 ### Agregado

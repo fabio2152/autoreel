@@ -3,9 +3,11 @@ package com.autoreel.admin.api;
 import java.util.List;
 
 import com.autoreel.admin.aplicacion.ServicioGestionNegocios;
+import com.autoreel.catalogo.api.ProductoVista;
+import com.autoreel.catalogo.aplicacion.ServicioCatalogo;
 import com.autoreel.facturacion.dominio.EstadoPago;
-import com.autoreel.nicho.Nicho;
-import com.autoreel.nicho.RegistroDeNichos;
+import com.autoreel.nicho.dominio.Nicho;
+import com.autoreel.nicho.dominio.RegistroDeNichos;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -23,11 +25,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminNegocioController {
 
     private final ServicioGestionNegocios servicio;
+    private final ServicioCatalogo catalogo;
     private final RegistroDeNichos nichos;
 
-    public AdminNegocioController(ServicioGestionNegocios servicio, RegistroDeNichos nichos) {
+    public AdminNegocioController(ServicioGestionNegocios servicio, ServicioCatalogo catalogo,
+            RegistroDeNichos nichos) {
         this.servicio = servicio;
+        this.catalogo = catalogo;
         this.nichos = nichos;
+    }
+
+    /** Catálogo completo del negocio, incluidos los productos archivados (RF-05). */
+    @GetMapping("/negocios/{id}/productos")
+    public List<ProductoVista> productos(@PathVariable Long id) {
+        servicio.detalle(id);
+        return catalogo.listar(id, null);
     }
 
     @GetMapping("/negocios")

@@ -9,6 +9,8 @@ export interface Sesion {
   negocioId: number | null
   nombreNegocio: string | null
   debeCambiarContrasena: boolean
+  /** RF-16: el negocio pasa por el onboarding antes de usar el resto. Siempre true para el administrador. */
+  onboardingCompleto: boolean
 }
 
 /** Devuelve la sesión actual, o null si no hay una activa. */

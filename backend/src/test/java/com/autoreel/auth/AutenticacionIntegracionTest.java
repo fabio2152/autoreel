@@ -55,8 +55,8 @@ class AutenticacionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarContrasena").value(false))
                 .andReturn().getResponse().getCookie(CookieDeSesion.NOMBRE);
-        // Con la contraseña propia ya puede usar las rutas del negocio (404: el perfil llega en la fase 2).
-        mvc.perform(get("/api/perfil").cookie(propia)).andExpect(status().isNotFound());
+        // Con la contraseña propia ya puede usar las rutas del negocio.
+        mvc.perform(get("/api/perfil").cookie(propia)).andExpect(status().isOk());
         iniciarSesion(correo, "MiClave2026").andExpect(status().isOk());
     }
 

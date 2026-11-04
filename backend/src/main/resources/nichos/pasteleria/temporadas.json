@@ -1,0 +1,13 @@
+{
+  "temporadas": [
+    { "id": "TODO_EL_ANIO", "nombre": "Todo el año", "clase": "SIEMPRE", "regla": { "tipo": "SIEMPRE" } },
+    { "id": "VERANO", "nombre": "Verano", "clase": "TEMPORADA", "regla": { "tipo": "RANGO", "desde": "12-21", "hasta": "03-20" } },
+    { "id": "INVIERNO", "nombre": "Invierno", "clase": "TEMPORADA", "regla": { "tipo": "RANGO", "desde": "06-21", "hasta": "09-22" } },
+    { "id": "SAN_VALENTIN", "nombre": "San Valentín", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "FECHAS", "fechas": ["02-14"] } },
+    { "id": "DIA_DE_LA_MADRE", "nombre": "Día de la Madre", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "N_ESIMO_DOMINGO", "mes": 5, "n": 2 } },
+    { "id": "DIA_DEL_PADRE", "nombre": "Día del Padre", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "N_ESIMO_DOMINGO", "mes": 6, "n": 3 } },
+    { "id": "FIESTAS_PATRIAS", "nombre": "Fiestas Patrias", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "FECHAS", "fechas": ["07-28", "07-29"] } },
+    { "id": "HALLOWEEN_CANCION_CRIOLLA", "nombre": "Halloween y Canción Criolla", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "FECHAS", "fechas": ["10-31"] } },
+    { "id": "NAVIDAD", "nombre": "Navidad", "clase": "FECHA_ESPECIAL", "regla": { "tipo": "MES", "mes": 12 } }
+  ]
+}
