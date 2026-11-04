@@ -14,10 +14,18 @@ interface PropsSeccion {
   borrador: BorradorPerfil
   onCambiar: (cambios: CambioDeBorrador) => void
   onSubiendo: (subiendo: boolean) => void
+  /** Bloquea las subidas mientras se guarda, para que ninguna se pierda. */
+  deshabilitado?: boolean
 }
 
 /** Paso 1 del onboarding y primera parte de Ajustes → Perfil: nombre, logo, colores y estilo. */
-export function SeccionMarca({ borrador, onCambiar, onSubiendo, estilos }: PropsSeccion & { estilos: Opcion[] }) {
+export function SeccionMarca({
+  borrador,
+  onCambiar,
+  onSubiendo,
+  estilos,
+  deshabilitado,
+}: PropsSeccion & { estilos: Opcion[] }) {
   const [sinColoresDelLogo, setSinColoresDelLogo] = useState(false)
 
   const tomarDelLogo = async () => {
@@ -42,6 +50,7 @@ export function SeccionMarca({ borrador, onCambiar, onSubiendo, estilos }: Props
         forma="cuadrada"
         actual={borrador.logoUrl}
         onSubiendo={onSubiendo}
+        deshabilitado={deshabilitado}
         onSubida={(imagen) => onCambiar({ logo: imagen.clave, logoUrl: imagen.vistaPrevia, logoArchivo: imagen.archivo })}
         guia={<p>PNG con fondo transparente, de hasta 5 MB. Así se verá limpio sobre tus videos.</p>}
       />
@@ -124,13 +133,14 @@ export function SeccionPreguntas({
 }
 
 /** Foto opcional de la vitrina o la fachada: fondo del plano de cierre. */
-export function SeccionFotoLocal({ borrador, onCambiar, onSubiendo }: PropsSeccion) {
+export function SeccionFotoLocal({ borrador, onCambiar, onSubiendo, deshabilitado }: PropsSeccion) {
   return (
     <SubidorDeImagen
       proposito="FOTO_LOCAL"
       etiqueta="Foto del local (opcional)"
       actual={borrador.fotoLocalUrl}
       onSubiendo={onSubiendo}
+      deshabilitado={deshabilitado}
       onSubida={(imagen) => onCambiar({ fotoLocal: imagen.clave, fotoLocalUrl: imagen.vistaPrevia })}
       onQuitar={() => onCambiar({ fotoLocal: null, fotoLocalUrl: null })}
       guia={

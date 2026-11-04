@@ -70,7 +70,9 @@ function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) 
 function FormularioPerfil({ configuracion, perfil }: { configuracion: ConfiguracionNicho; perfil: Perfil }) {
   const clienteConsultas = useQueryClient()
   const [borrador, setBorrador] = useState(() => borradorDesde(perfil))
-  const [subiendo, setSubiendo] = useState(false)
+  const [subidas, setSubidas] = useState(0)
+  const subiendo = subidas > 0
+  const alSubir = (activo: boolean) => setSubidas((n) => n + (activo ? 1 : -1))
   const [faltante, setFaltante] = useState<string | null>(null)
   const [guardado, setGuardado] = useState(false)
 
@@ -110,7 +112,13 @@ function FormularioPerfil({ configuracion, perfil }: { configuracion: Configurac
   return (
     <form onSubmit={enviar} className="space-y-8">
       <Seccion titulo="Tu marca">
-        <SeccionMarca borrador={borrador} onCambiar={cambiar} onSubiendo={setSubiendo} estilos={configuracion.estilos} />
+        <SeccionMarca
+          borrador={borrador}
+          onCambiar={cambiar}
+          onSubiendo={alSubir}
+          estilos={configuracion.estilos}
+          deshabilitado={guardar.isPending}
+        />
         {perfil.logoSinTransparencia && (
           <Aviso tipo="info">Tu logo no tiene fondo transparente. Se verá mejor si subes una versión transparente.</Aviso>
         )}
@@ -128,7 +136,12 @@ function FormularioPerfil({ configuracion, perfil }: { configuracion: Configurac
           onCambiar={cambiar}
           preguntas={configuracion.preguntas.filter((p) => p.paso === 3)}
         />
-        <SeccionFotoLocal borrador={borrador} onCambiar={cambiar} onSubiendo={setSubiendo} />
+        <SeccionFotoLocal
+          borrador={borrador}
+          onCambiar={cambiar}
+          onSubiendo={alSubir}
+          deshabilitado={guardar.isPending}
+        />
       </Seccion>
       <div className="space-y-2">
         {(faltante || guardar.error) && <Aviso tipo="error">{faltante ?? guardar.error?.message}</Aviso>}

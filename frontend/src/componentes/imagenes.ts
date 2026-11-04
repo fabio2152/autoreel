@@ -55,6 +55,9 @@ export async function normalizarFoto(archivo: File): Promise<{ foto: Blob; horiz
   lienzo.height = alto
   const contexto = lienzo.getContext('2d')
   if (!contexto) throw new ErrorDeImagen('Tu navegador no pudo procesar la foto.')
+  // JPEG no tiene transparencia: lo transparente quedaría negro.
+  contexto.fillStyle = '#ffffff'
+  contexto.fillRect(0, 0, ancho, alto)
   contexto.drawImage(imagen, 0, 0, ancho, alto)
   imagen.close()
   const foto = await new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, 'image/jpeg', CALIDAD_JPEG))

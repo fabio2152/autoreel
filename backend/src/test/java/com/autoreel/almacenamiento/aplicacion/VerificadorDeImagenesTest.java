@@ -81,6 +81,21 @@ class VerificadorDeImagenesTest {
     }
 
     @Test
+    void aceptaUnLogoDePaletaConTransparencia() {
+        assertThat(verificador.verificar(Imagenes.pngDePaleta(500, 500, true), PropositoArchivo.LOGO, "image/png")
+                .sinTransparencia()).isFalse();
+        assertThat(verificador.verificar(Imagenes.pngDePaleta(500, 500, false), PropositoArchivo.LOGO, "image/png")
+                .sinTransparencia()).isTrue();
+    }
+
+    @Test
+    void rechazaUnPngAnimadoAunqueUnTextoDigaIdat() {
+        assertThatThrownBy(() -> verificador.verificar(Imagenes.pngAnimado(1080, 1920),
+                PropositoArchivo.FOTO_PRODUCTO, "image/png"))
+                .extracting("codigo").isEqualTo("IMAGEN_ANIMADA");
+    }
+
+    @Test
     void rechazaUnLogoMuyPequeno() {
         assertThatThrownBy(() -> verificador.verificar(Imagenes.png(120, 120, true), PropositoArchivo.LOGO,
                 "image/png"))

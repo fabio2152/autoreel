@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
@@ -116,10 +117,32 @@ public class VerificadorDeImagenes {
                     && (contenido[20] & 0x02) != 0;
         }
         if (tipo.equals("image/png")) {
-            String inicio = new String(contenido, 0, Math.min(contenido.length, 64 * 1024), StandardCharsets.ISO_8859_1);
-            int datos = inicio.indexOf("IDAT");
-            int animacion = inicio.indexOf("acTL");
-            return animacion >= 0 && (datos < 0 || animacion < datos);
+            return pngAnimado(contenido);
+        }
+        return false;
+    }
+
+    /**
+     * Recorre los bloques del PNG (longitud, tipo, datos y CRC) desde la firma: es animado si aparece acTL antes del
+     * primer IDAT. Buscar el texto "acTL" en los bytes fallaría con bloques de texto que lo contengan.
+     */
+    private static boolean pngAnimado(byte[] contenido) {
+        ByteBuffer datos = ByteBuffer.wrap(contenido);
+        int posicion = 8;
+        while (posicion + 8 <= contenido.length) {
+            long longitud = Integer.toUnsignedLong(datos.getInt(posicion));
+            String bloque = new String(contenido, posicion + 4, 4, StandardCharsets.US_ASCII);
+            if (bloque.equals("acTL")) {
+                return true;
+            }
+            if (bloque.equals("IDAT") || bloque.equals("IEND")) {
+                return false;
+            }
+            long siguiente = posicion + 12L + longitud;
+            if (siguiente > contenido.length) {
+                return false;
+            }
+            posicion = (int) siguiente;
         }
         return false;
     }
@@ -153,10 +176,24 @@ public class VerificadorDeImagenes {
         if (!imagen.getColorModel().hasAlpha()) {
             return false;
         }
+        // PNG de paleta (los que dejan TinyPNG o pngquant): no tienen canal alfa separado; se mira el alfa de cada
+        // píxel a través de su color.
         var alfa = imagen.getAlphaRaster();
-        int[] fila = new int[imagen.getWidth()];
+        int ancho = imagen.getWidth();
+        int[] fila = new int[ancho];
+        if (alfa == null) {
+            for (int y = 0; y < imagen.getHeight(); y++) {
+                imagen.getRGB(0, y, ancho, 1, fila, 0, ancho);
+                for (int argb : fila) {
+                    if ((argb >>> 24) < 255) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         for (int y = 0; y < imagen.getHeight(); y++) {
-            alfa.getSamples(0, y, imagen.getWidth(), 1, 0, fila);
+            alfa.getSamples(0, y, ancho, 1, 0, fila);
             for (int valor : fila) {
                 if (valor < 255) {
                     return true;

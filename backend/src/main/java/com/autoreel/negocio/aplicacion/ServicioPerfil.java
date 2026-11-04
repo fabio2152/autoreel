@@ -98,20 +98,9 @@ public class ServicioPerfil {
             throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "No reconocemos el campo \"" + campo + "\".");
         });
 
+        // Primero lo que no son archivos: si algo es inválido, no se llega a confirmar ninguna subida.
         if (cambios.containsKey("nombre")) {
             negocio.cambiarNombre(nombre(cambios.get("nombre")));
-        }
-        if (cambios.containsKey("logo")) {
-            String clave = texto(cambios.get("logo"), "logo");
-            if (clave == null) {
-                perfil.cambiarLogo(null, false);
-            } else if (!clave.equals(perfil.getLogoClave())) {
-                ImagenGuardada logo = guardar(negocioId, PropositoArchivo.LOGO, clave);
-                perfil.cambiarLogo(logo.clave(), logo.imagen().sinTransparencia());
-                if (logo.imagen().sinTransparencia()) {
-                    avisos.add(AVISO_LOGO_SIN_TRANSPARENCIA);
-                }
-            }
         }
         if (cambios.containsKey("colorPrimario") || cambios.containsKey("colorSecundario")) {
             perfil.cambiarColores(
@@ -125,6 +114,21 @@ public class ServicioPerfil {
             }
             perfil.cambiarEstilo(estilo);
         }
+        if (cambios.containsKey("respuestas")) {
+            perfil.cambiarRespuestas(fusionar(paquete, perfil.getRespuestas(), cambios.get("respuestas")));
+        }
+        if (cambios.containsKey("logo")) {
+            String clave = texto(cambios.get("logo"), "logo");
+            if (clave == null) {
+                perfil.cambiarLogo(null, false);
+            } else if (!clave.equals(perfil.getLogoClave())) {
+                ImagenGuardada logo = guardar(negocioId, PropositoArchivo.LOGO, clave);
+                perfil.cambiarLogo(logo.clave(), logo.imagen().sinTransparencia());
+                if (logo.imagen().sinTransparencia()) {
+                    avisos.add(AVISO_LOGO_SIN_TRANSPARENCIA);
+                }
+            }
+        }
         if (cambios.containsKey("fotoLocal")) {
             String clave = texto(cambios.get("fotoLocal"), "fotoLocal");
             if (clave == null) {
@@ -136,9 +140,6 @@ public class ServicioPerfil {
                     avisos.add(AVISO_FOTO_LOCAL_HORIZONTAL);
                 }
             }
-        }
-        if (cambios.containsKey("respuestas")) {
-            perfil.cambiarRespuestas(fusionar(paquete, perfil.getRespuestas(), cambios.get("respuestas")));
         }
         if (negocio.isOnboardingCompleto()) {
             exigirCompleto(perfil, paquete);

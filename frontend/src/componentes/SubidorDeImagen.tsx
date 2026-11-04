@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { subirArchivo, type PropositoArchivo } from '../api/archivos'
 import { Aviso } from './Aviso'
 import { ErrorDeImagen, normalizarFoto, revisarLogo } from './imagenes'
@@ -23,6 +23,8 @@ interface Props {
   onSubiendo?: (subiendo: boolean) => void
   /** Proporción de la vista previa: vertical para fotos, cuadrada para el logo. */
   forma?: 'vertical' | 'cuadrada'
+  /** Bloquea el subidor (por ejemplo, mientras se guarda el formulario). */
+  deshabilitado?: boolean
 }
 
 /**
@@ -38,6 +40,7 @@ export function SubidorDeImagen({
   onQuitar,
   onSubiendo,
   forma = 'vertical',
+  deshabilitado = false,
 }: Props) {
   const id = useId()
   const entrada = useRef<HTMLInputElement>(null)
@@ -46,12 +49,12 @@ export function SubidorDeImagen({
   const [error, setError] = useState<string | null>(null)
   const [horizontal, setHorizontal] = useState(false)
 
-  useEffect(() => () => {
-    if (vistaPrevia) URL.revokeObjectURL(vistaPrevia)
-  }, [vistaPrevia])
+  // La vista previa (object URL) no se revoca aquí: quien recibe la subida puede seguir mostrándola
+  // (por ejemplo, al volver a un paso anterior del asistente). El navegador la libera al cerrar la página.
+  const ocupado = progreso !== null || deshabilitado
 
   const elegir = async (archivo: File | undefined) => {
-    if (!archivo) return
+    if (!archivo || ocupado) return
     setError(null)
     setProgreso(0)
     onSubiendo?.(true)
@@ -87,7 +90,7 @@ export function SubidorDeImagen({
         <button
           type="button"
           onClick={() => entrada.current?.click()}
-          disabled={progreso !== null}
+          disabled={ocupado}
           className={`relative w-28 shrink-0 overflow-hidden rounded-xl ring-1 ring-stone-300 ${proporcion} ${fondo} hover:ring-marca-600 disabled:opacity-70`}
           aria-describedby={`${id}-guia`}
         >
@@ -108,17 +111,23 @@ export function SubidorDeImagen({
         <div id={`${id}-guia`} className="min-w-0 flex-1 text-xs text-stone-600">
           {guia}
           <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" onClick={() => entrada.current?.click()} className="font-semibold text-marca-700">
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={() => entrada.current?.click()}
+              className="font-semibold text-marca-700 disabled:opacity-50"
+            >
               {mostrada ? 'Cambiar' : 'Subir'}
             </button>
             {mostrada && onQuitar && (
               <button
                 type="button"
+                disabled={ocupado}
                 onClick={() => {
                   setVistaPrevia(null)
                   onQuitar()
                 }}
-                className="font-semibold text-stone-500"
+                className="font-semibold text-stone-500 disabled:opacity-50"
               >
                 Quitar
               </button>
@@ -132,6 +141,7 @@ export function SubidorDeImagen({
         type="file"
         accept={proposito === 'LOGO' ? 'image/png' : 'image/jpeg,image/png,image/webp'}
         className="sr-only"
+        disabled={ocupado}
         onChange={(evento) => elegir(evento.target.files?.[0])}
       />
       {horizontal && <Aviso tipo="info">La foto es horizontal: la recortaremos al formato vertical del Reel.</Aviso>}

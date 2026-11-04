@@ -67,22 +67,28 @@ function Asistente({ configuracion, perfil }: { configuracion: ConfiguracionNich
   const [avisos, setAvisos] = useState<string[]>([])
   const preguntasDelPaso = (numero: number) => configuracion.preguntas.filter((p) => p.paso === numero)
 
+  /** Las subidas ya se movieron a su lugar definitivo: el borrador usa las claves y URLs del perfil guardado. */
+  const aplicarGuardado = (guardado: Perfil) => {
+    clienteConsultas.setQueryData(CLAVE_PERFIL, guardado)
+    setBorrador((actual) => ({
+      ...actual,
+      logo: guardado.logo?.clave ?? null,
+      logoUrl: guardado.logo?.url ?? null,
+      fotoLocal: guardado.fotoLocal?.clave ?? null,
+      fotoLocalUrl: guardado.fotoLocal?.url ?? null,
+      respuestas: guardado.respuestas,
+    }))
+    setAvisos((anteriores) => [...anteriores, ...guardado.avisos])
+  }
+
   const guardar = useMutation({
     mutationFn: async (cambios: CambiosPerfil) => {
       const guardado = await actualizarPerfil(cambios)
-      if (paso === PASOS.length - 1) return completarOnboarding()
-      return guardado
+      aplicarGuardado(guardado)
+      return paso === PASOS.length - 1 ? completarOnboarding() : guardado
     },
     onSuccess: (guardado) => {
-      clienteConsultas.setQueryData(CLAVE_PERFIL, guardado)
-      // Las claves de subida ya se movieron a su lugar definitivo: se usan las del perfil guardado.
-      setBorrador((actual) => ({
-        ...actual,
-        logo: guardado.logo?.clave ?? null,
-        fotoLocal: guardado.fotoLocal?.clave ?? null,
-        respuestas: guardado.respuestas,
-      }))
-      setAvisos(guardado.avisos)
+      aplicarGuardado(guardado)
       if (guardado.onboardingCompleto) {
         clienteConsultas.setQueryData<Sesion | null>(CLAVE_SESION, (actual) =>
           actual ? { ...actual, onboardingCompleto: true, nombreNegocio: guardado.nombre } : actual,
@@ -151,13 +157,24 @@ function Asistente({ configuracion, perfil }: { configuracion: ConfiguracionNich
         </p>
 
         {paso === 0 && (
-          <SeccionMarca borrador={borrador} onCambiar={cambiar} onSubiendo={setSubiendo} estilos={configuracion.estilos} />
+          <SeccionMarca
+            borrador={borrador}
+            onCambiar={cambiar}
+            onSubiendo={setSubiendo}
+            estilos={configuracion.estilos}
+            deshabilitado={guardar.isPending}
+          />
         )}
         {paso === 1 && <SeccionPreguntas borrador={borrador} onCambiar={cambiar} preguntas={preguntasDelPaso(2)} />}
         {paso === 2 && (
           <div className="space-y-6">
             <SeccionPreguntas borrador={borrador} onCambiar={cambiar} preguntas={preguntasDelPaso(3)} />
-            <SeccionFotoLocal borrador={borrador} onCambiar={cambiar} onSubiendo={setSubiendo} />
+            <SeccionFotoLocal
+              borrador={borrador}
+              onCambiar={cambiar}
+              onSubiendo={setSubiendo}
+              deshabilitado={guardar.isPending}
+            />
           </div>
         )}
 

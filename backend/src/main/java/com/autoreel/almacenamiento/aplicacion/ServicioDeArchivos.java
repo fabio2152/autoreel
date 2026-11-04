@@ -14,8 +14,12 @@ import com.autoreel.almacenamiento.dominio.AlmacenDeArchivos;
 import com.autoreel.almacenamiento.dominio.ArchivoAlmacenado;
 import com.autoreel.almacenamiento.dominio.PropositoArchivo;
 import com.autoreel.compartido.error.ExcepcionDeNegocio;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Subida directa de archivos desde el navegador (sección 11.4), en dos tiempos:
@@ -29,6 +33,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ServicioDeArchivos {
+
+    private static final Logger log = LoggerFactory.getLogger(ServicioDeArchivos.class);
 
     static final Duration VIGENCIA_SUBIDA = Duration.ofMinutes(10);
     static final Duration VIGENCIA_LECTURA = Duration.ofHours(1);
@@ -104,8 +110,29 @@ public class ServicioDeArchivos {
             throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "ARCHIVO_MODIFICADO",
                     "El archivo cambió mientras lo revisábamos. Vuelve a subirlo.");
         }
-        almacen.eliminar(claveSubida);
+        eliminarAlConfirmar(claveSubida);
         return new ImagenGuardada(definitiva, imagen);
+    }
+
+    /**
+     * La subida temporal se borra solo si la operación se confirma: si falla más adelante, el usuario puede
+     * reintentar con la misma clave. Las que queden se limpian con la regla de expiración del bucket.
+     */
+    private void eliminarAlConfirmar(String claveSubida) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            almacen.eliminar(claveSubida);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    almacen.eliminar(claveSubida);
+                } catch (RuntimeException e) {
+                    log.warn("No se pudo borrar la subida temporal {}", claveSubida, e);
+                }
+            }
+        });
     }
 
     /** Si la clave es una ya guardada de este negocio y propósito (no una subida nueva). */

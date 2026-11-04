@@ -112,9 +112,11 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
         String deA = subir(a, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
         String definitivaDeA = foto(crearProducto(a, fotosCompletas(a)), "ENTERO");
         String deB = subir(b, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
-        String conRecorrido = deB.replaceFirst("/foto_producto/", "/foto_producto/../../../") ;
+        // Recorridos de carpeta armados desde el prefijo del propio negocio B, que apuntan a otra carpeta.
+        String conRecorrido = deB.replaceFirst("/foto_producto/", "/foto_producto/../../../");
+        String conRecorridoCodificado = deB.replaceFirst("/foto_producto/", "/foto_producto/%2e%2e/%2e%2e/");
 
-        for (String ajena : List.of(deA, definitivaDeA, conRecorrido, deA.replace("subidas/", "subidas/%2e%2e/"))) {
+        for (String ajena : List.of(deA, definitivaDeA, conRecorrido, conRecorridoCodificado)) {
             Map<String, String> fotos = new HashMap<>(fotosCompletas(b));
             fotos.put("ENTERO", ajena);
             mvc.perform(post("/api/productos").with(csrf()).cookie(b)
@@ -195,6 +197,28 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
         actualizarPerfil(negocio, Map.of("respuestas", borrarHorario))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PERFIL_INCOMPLETO"));
+    }
+
+    @Test
+    void siElGuardadoFallaSePuedeReintentarConLaMismaSubida() throws Exception {
+        Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
+        String foto = subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
+        Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
+        fotos.put("ENTERO", foto);
+        fotos.put("DETALLE", "subidas/negocios/999999/foto_producto/00000000-0000-0000-0000-000000000000.jpg");
+
+        // La foto ENTERO se verifica y se copia, pero DETALLE falla: la transacción se deshace.
+        mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
+                .andExpect(status().isBadRequest());
+        assertThat(almacen.existe(foto)).as("la subida sigue disponible para reintentar").isTrue();
+
+        fotos.put("DETALLE", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+        mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.completo").value(true));
+        assertThat(almacen.existe(foto)).as("confirmado el guardado, la subida temporal se borra").isFalse();
     }
 
     @Test

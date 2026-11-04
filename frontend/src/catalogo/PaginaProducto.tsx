@@ -167,7 +167,10 @@ function FormularioProducto({
             key={tipo}
             proposito="FOTO_PRODUCTO"
             etiqueta={NOMBRE_FOTO[tipo]}
-            actual={producto ? fotoDe(producto, tipo)?.url : null}
+            actual={
+              producto && fotos[tipo] === fotoDe(producto, tipo)?.clave ? fotoDe(producto, tipo)?.url : null
+            }
+            deshabilitado={guardar.isPending}
             guia={<GuiaDeFoto tipo={tipo} />}
             onSubiendo={(activo) => setSubiendo((n) => n + (activo ? 1 : -1))}
             onSubida={(imagen) => setFotos((actual) => ({ ...actual, [tipo]: imagen.clave }))}

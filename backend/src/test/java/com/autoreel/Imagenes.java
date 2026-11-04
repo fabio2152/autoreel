@@ -44,6 +44,49 @@ public final class Imagenes {
         return codificar(imagen, "png");
     }
 
+    /** PNG de paleta (como los que dejan TinyPNG o pngquant), con o sin un color transparente. */
+    public static byte[] pngDePaleta(int ancho, int alto, boolean conTransparencia) {
+        byte[] rojos = {(byte) 0xBE, (byte) 0xFF};
+        byte[] verdes = {0x12, (byte) 0xFF};
+        byte[] azules = {0x3C, (byte) 0xFF};
+        byte[] alfas = {(byte) 0xFF, (byte) (conTransparencia ? 0 : 0xFF)};
+        var paleta = new java.awt.image.IndexColorModel(1, 2, rojos, verdes, azules, alfas);
+        BufferedImage imagen = new BufferedImage(ancho, alto, BufferedImage.TYPE_BYTE_BINARY, paleta);
+        Graphics2D g = imagen.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, ancho, alto);
+        g.setColor(new Color(0xBE123C));
+        g.fillOval(ancho / 4, alto / 4, ancho / 2, alto / 2);
+        g.dispose();
+        return codificar(imagen, "png");
+    }
+
+    /**
+     * PNG animado (APNG): agrega un bloque acTL antes de los datos, precedido de un bloque de texto que contiene la
+     * palabra "IDAT" para confundir a una búsqueda ingenua.
+     */
+    public static byte[] pngAnimado(int ancho, int alto) {
+        byte[] png = png(ancho, alto, false);
+        int finIhdr = 8 + 25;
+        byte[] texto = bloque("tEXt", "Comment\0IDAT".getBytes());
+        byte[] animacion = bloque("acTL", new byte[] {0, 0, 0, 1, 0, 0, 0, 0});
+        byte[] resultado = new byte[png.length + texto.length + animacion.length];
+        System.arraycopy(png, 0, resultado, 0, finIhdr);
+        System.arraycopy(texto, 0, resultado, finIhdr, texto.length);
+        System.arraycopy(animacion, 0, resultado, finIhdr + texto.length, animacion.length);
+        System.arraycopy(png, finIhdr, resultado, finIhdr + texto.length + animacion.length, png.length - finIhdr);
+        return resultado;
+    }
+
+    private static byte[] bloque(String tipo, byte[] datos) {
+        var crc = new java.util.zip.CRC32();
+        crc.update(tipo.getBytes());
+        crc.update(datos);
+        var salida = java.nio.ByteBuffer.allocate(12 + datos.length);
+        salida.putInt(datos.length).put(tipo.getBytes()).put(datos).putInt((int) crc.getValue());
+        return salida.array();
+    }
+
     /**
      * JPEG con la etiqueta EXIF de orientación: la cámara guardó los píxeles de lado y pide girarlos al mostrarlos.
      */

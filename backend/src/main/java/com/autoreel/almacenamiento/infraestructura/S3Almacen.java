@@ -89,7 +89,7 @@ public class S3Almacen implements AlmacenDeArchivos, AutoCloseable {
         } catch (NoSuchKeyException e) {
             return Optional.empty();
         } catch (S3Exception e) {
-            if (e.statusCode() == 404 || e.statusCode() == 412) {
+            if (noExiste(e) || e.statusCode() == 412) {
                 return Optional.empty();
             }
             throw e;
@@ -103,11 +103,24 @@ public class S3Almacen implements AlmacenDeArchivos, AutoCloseable {
                     .destinationBucket(bucket).destinationKey(destino).copySourceIfMatch(etiqueta));
             return true;
         } catch (S3Exception e) {
-            if (e.statusCode() == 412 || e.statusCode() == 404) {
+            if (e.statusCode() == 412 || noExiste(e)) {
                 return false;
             }
             throw e;
         }
+    }
+
+    /**
+     * Sin el permiso s3:ListBucket, AWS responde 403 (y no 404) cuando la clave no existe. Las claves ya se validaron
+     * contra el negocio de la sesión, así que un 403 aquí significa "no existe"; se registra por si fuera un permiso
+     * mal configurado.
+     */
+    private static boolean noExiste(S3Exception e) {
+        if (e.statusCode() == 403) {
+            log.warn("S3 respondió 403 al leer una clave; se trata como inexistente");
+            return true;
+        }
+        return e.statusCode() == 404;
     }
 
     @Override
