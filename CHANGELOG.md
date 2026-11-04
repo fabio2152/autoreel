@@ -28,9 +28,15 @@ Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepac
 - **Administrador inicial** creado desde `ADMIN_EMAIL` y `ADMIN_PASSWORD`.
 - **Errores de la API** con la forma `{"codigo", "mensaje"}` en español, incluidos los de seguridad.
 - **Documentación OpenAPI** con springdoc, solo en el perfil `dev`.
-- **Pruebas** (40):
+- **Endurecimiento del inicio de sesión:**
+  - Los correos inexistentes se bloquean igual que las cuentas reales y responden en el mismo tiempo, para no revelar qué correos están registrados.
+  - Los intentos simultáneos se cuentan uno a uno (bloqueo de fila).
+  - El límite de 72 bytes de BCrypt se valida como regla de contraseña.
+  - Los errores estándar de Spring MVC conservan su estado HTTP.
+- **Frontend:** si la sesión termina en el servidor, la aplicación vuelve al inicio de sesión; los fallos de red se muestran con un mensaje en español y la opción de reintentar.
+- **Pruebas** (45):
   - Reglas de contraseña, generador de contraseñas temporales, usuario y cálculo del estado de pago.
-  - Integración con PostgreSQL real (Testcontainers) para V01 a V07, V09 y V33, bloqueo, CSRF y datos iniciales.
+  - Integración con PostgreSQL real (Testcontainers) para V01 a V07, V09 y V33, bloqueo y su duración, desbloqueo al reiniciar, correos inexistentes, CSRF y datos iniciales.
 - **CI con GitHub Actions** en cada push y pull request: compilación y pruebas del backend; lint y build del frontend.
 - **Documentación:** `README.md`, `CLAUDE.md` y este changelog. `docs/` es local y no se versiona.
 
