@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import com.autoreel.video.dominio.EstadoVideo;
 import com.autoreel.video.dominio.Video;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Limit;
@@ -52,4 +53,28 @@ public interface VideoRepositorio extends JpaRepository<Video, Long> {
             where v.id = :id and v.estado = com.autoreel.video.dominio.EstadoVideo.GUION_PENDIENTE
               and (v.guionReclamadoHasta is null or v.guionReclamadoHasta < :ahora)""")
     int reclamar(Long id, Instant ahora, Instant hasta);
+
+    @Query("""
+            select v from Video v join fetch v.modeloVideoUsado join fetch v.planAplicado where v.id = :id""")
+    Optional<Video> buscarConModeloDeVideo(Long id);
+
+    /** Videos en un estado del procesador (GENERANDO o COMPONIENDO) que nadie está procesando. */
+    @Query("""
+            select v.id from Video v
+            where v.estado = :estado and (v.trabajoReclamadoHasta is null or v.trabajoReclamadoHasta < :ahora)
+            order by v.fechaActualizacion, v.id""")
+    List<Long> enProceso(EstadoVideo estado, Instant ahora, Limit limite);
+
+    /** Toma el video para el procesador; devuelve 1 solo si nadie lo tenía tomado. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Video v set v.trabajoReclamadoHasta = :hasta
+            where v.id = :id and v.estado = :estado
+              and (v.trabajoReclamadoHasta is null or v.trabajoReclamadoHasta < :ahora)""")
+    int reclamarTrabajo(Long id, EstadoVideo estado, Instant ahora, Instant hasta);
+
+    /** Extiende el reclamo justo antes de un trabajo largo (FFmpeg). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Video v set v.trabajoReclamadoHasta = :hasta where v.id = :id and v.estado = :estado")
+    int renovarReclamo(Long id, EstadoVideo estado, Instant hasta);
 }

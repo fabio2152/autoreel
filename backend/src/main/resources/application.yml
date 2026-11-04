@@ -18,6 +18,11 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  task:
+    scheduling:
+      # Guiones, clips y composición en hilos distintos: una composición larga no frena lo demás.
+      pool:
+        size: 3
 
 server:
   error:
@@ -64,11 +69,26 @@ autoreel:
   # La clave va entre comillas y corchetes para conservar la "/".
   secretos:
     "[autoreel/gemini]": ${GEMINI_API_KEY:}
+  # Secretos que van en un archivo: el JSON de la cuenta de servicio de Google Cloud (Veo).
+  secretos-en-archivo:
+    "[autoreel/veo]": ${VEO_CREDENCIAL_ARCHIVO:}
   ia:
     gemini:
       url: ${GEMINI_URL:https://generativelanguage.googleapis.com}
       tiempo-conexion: 5s
       tiempo-lectura: 30s
+    veo:
+      url: ${VEO_URL:https://{region}-aiplatform.googleapis.com}
+      url-token: https://oauth2.googleapis.com/token
+      tiempo-conexion: 5s
+      # La respuesta trae el clip en base64.
+      tiempo-lectura: 60s
+  ffmpeg:
+    ruta: ${FFMPEG_PATH:ffmpeg}
+    tiempo-maximo: 2m
+    hilos: 2
   tareas:
     activas: true
     guiones-cada: 3s
+    clips-cada: 10s
+    composicion-cada: 10s

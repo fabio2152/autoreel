@@ -68,6 +68,14 @@ public class S3Almacen implements AlmacenDeArchivos, AutoCloseable {
     }
 
     @Override
+    public String urlDeDescargaComoAdjunto(String clave, String nombreArchivo, Duration vigencia) {
+        return firmador.presignGetObject(firma -> firma.signatureDuration(vigencia)
+                        .getObjectRequest(objeto -> objeto.bucket(bucket).key(clave)
+                                .responseContentDisposition("attachment; filename=\"" + nombreArchivo + "\"")))
+                .url().toString();
+    }
+
+    @Override
     public String urlDeDescarga(String clave, Duration vigencia) {
         return firmador.presignGetObject(firma -> firma.signatureDuration(vigencia)
                         .getObjectRequest(objeto -> objeto.bucket(bucket).key(clave)))

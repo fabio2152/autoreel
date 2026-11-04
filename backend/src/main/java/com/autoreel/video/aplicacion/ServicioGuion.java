@@ -119,7 +119,7 @@ public class ServicioGuion {
                         MotivoRespaldo.PROCESO_INTERRUMPIDO, null));
             } catch (RuntimeException e) {
                 log.error("No se pudo armar el guion de respaldo del video {}", videoId, e);
-                marcarError(videoId, "No se pudo preparar la propuesta: " + e.getMessage());
+                marcarError(videoId, "No pudimos preparar la propuesta.");
             }
             return;
         }

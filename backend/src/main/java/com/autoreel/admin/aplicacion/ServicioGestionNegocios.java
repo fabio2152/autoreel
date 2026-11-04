@@ -29,6 +29,10 @@ import com.autoreel.negocio.infraestructura.NegocioRepositorio;
 import com.autoreel.negocio.aplicacion.ServicioPerfil;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
+import com.autoreel.video.aplicacion.ServicioConsumo;
+import com.autoreel.video.dominio.Plano;
+import com.autoreel.video.infraestructura.VideoRepositorio;
+import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -50,12 +54,14 @@ public class ServicioGestionNegocios {
     private final PasswordEncoder codificador;
     private final PropiedadesAplicacion propiedades;
     private final ServicioPerfil perfiles;
+    private final ServicioConsumo consumo;
+    private final VideoRepositorio videos;
     private final Clock reloj;
 
     public ServicioGestionNegocios(NegocioRepositorio negocios, UsuarioRepositorio usuarios,
             SuscripcionRepositorio suscripciones, PlanRepositorio planes, RegistroDeNichos nichos,
             GeneradorDeContrasenaTemporal generador, PasswordEncoder codificador, PropiedadesAplicacion propiedades,
-            ServicioPerfil perfiles, Clock reloj) {
+            ServicioPerfil perfiles, ServicioConsumo consumo, VideoRepositorio videos, Clock reloj) {
         this.negocios = negocios;
         this.usuarios = usuarios;
         this.suscripciones = suscripciones;
@@ -65,6 +71,8 @@ public class ServicioGestionNegocios {
         this.codificador = codificador;
         this.propiedades = propiedades;
         this.perfiles = perfiles;
+        this.consumo = consumo;
+        this.videos = videos;
         this.reloj = reloj;
     }
 
@@ -121,7 +129,14 @@ public class ServicioGestionNegocios {
                         suscripcion.getMontoMensual(), suscripcion.getFechaInicio(),
                         suscripcion.getProximaFechaPago(), suscripcion.getDiasAviso(),
                         suscripcion.estadoPago(LocalDate.now(reloj))),
-                perfiles.paraAdmin(negocioId));
+                perfiles.paraAdmin(negocioId),
+                new NegocioDetalle.Videos(consumo.delMes(negocioId),
+                        videos.listarDeNegocio(negocioId, Limit.of(20)).stream()
+                                .map(video -> new NegocioDetalle.VideoDelNegocio(video.getId(), video.getTipoVideo(),
+                                        video.getEstado(), video.getFechaCreacion(),
+                                        video.planosConFoto().stream().filter(Plano::isUsoRespaldo).count(),
+                                        video.getMotivoError()))
+                                .toList()));
     }
 
     /** RF-04 y RN-05: la contraseña anterior deja de funcionar y se cierran las sesiones abiertas. */
@@ -150,7 +165,7 @@ public class ServicioGestionNegocios {
         Negocio negocio = suscripcion.getNegocio();
         return new NegocioResumen(negocio.getId(), negocio.getNombre(), usuario == null ? null : usuario.getCorreo(),
                 negocio.getNicho(), suscripcion.getPlan().getNombre(), suscripcion.getProximaFechaPago(),
-                suscripcion.estadoPago(hoy), null, negocio.getEstado(),
+                suscripcion.estadoPago(hoy), (int) consumo.delMes(negocio.getId()), negocio.getEstado(),
                 usuario == null ? null : usuario.getUltimoAcceso());
     }
 

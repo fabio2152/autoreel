@@ -2,12 +2,14 @@ package com.autoreel.video.dominio;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import com.autoreel.catalogo.dominio.TipoFoto;
+import com.autoreel.compartido.error.ExcepcionDeNegocio;
 import com.autoreel.facturacion.dominio.Plan;
 import com.autoreel.ia.dominio.ModeloIA;
 import jakarta.persistence.CascadeType;
@@ -27,6 +29,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.http.HttpStatus;
 
 /**
  * Video del día de un negocio (sección 9.1). Nace al completarse el chat con el plan y los modelos vigentes, que
@@ -101,6 +104,31 @@ public class Video {
     @Version
     private int version;
 
+    /** Día de Lima en que se consumió el video del día (RN-26). */
+    private LocalDate consumoFecha;
+
+    @Column(nullable = false)
+    private boolean consumoDevuelto;
+
+    @Column(nullable = false)
+    private int regeneracionesUsadas;
+
+    @Column(nullable = false)
+    private int intentosComposicion;
+
+    /** Reclamo del procesador de videos (generación y composición). */
+    private Instant trabajoReclamadoHasta;
+
+    /** Inicio de la generación en curso (al aprobar o al regenerar), para el plazo total. */
+    private Instant generacionIniciadaEn;
+
+    private String claveFinal;
+
+    /** Aviso para el usuario en la revisión, por ejemplo si no se pudo aplicar un cambio. */
+    private String avisoRevision;
+
+    private Long pistaMusicalId;
+
     @Column(nullable = false, updatable = false)
     private Instant fechaCreacion;
 
@@ -126,6 +154,11 @@ public class Video {
         this.opcionesProduccion = Map.copyOf(plan.getOpcionesProduccionPermitidas());
         this.fechaCreacion = ahora;
         this.fechaActualizacion = ahora;
+    }
+
+    /** Suma el costo de un clip (RN-32). */
+    public void sumarCosto(BigDecimal costo) {
+        this.costoEstimado = this.costoEstimado.add(costo);
     }
 
     /** Suma una llamada al modelo de texto y su costo (RN-32). */
@@ -165,6 +198,7 @@ public class Video {
     public void marcarError(String motivo, Instant ahora) {
         this.motivoError = motivo.length() > 300 ? motivo.substring(0, 300) : motivo;
         this.guionReclamadoHasta = null;
+        this.trabajoReclamadoHasta = null;
         this.estado = EstadoVideo.ERROR;
         this.fechaActualizacion = ahora;
     }
@@ -176,6 +210,121 @@ public class Video {
 
     public void marcarActualizado(Instant ahora) {
         this.fechaActualizacion = ahora;
+    }
+
+    /** RF-22: empieza la generación de los clips con la pista elegida; el consumo lo registra el servicio. */
+    public void aprobarStoryboard(LocalDate dia, Long pistaMusicalId, Instant ahora) {
+        exigirEstado(EstadoVideo.STORYBOARD);
+        this.consumoFecha = dia;
+        this.pistaMusicalId = pistaMusicalId;
+        this.generacionIniciadaEn = ahora;
+        this.estado = EstadoVideo.GENERANDO;
+        planosConFoto().forEach(Plano::pendiente);
+        this.fechaActualizacion = ahora;
+    }
+
+    /**
+     * RN-28: pedir otro clip para un plano. Es la única forma de regenerar (botón o cambio de foto en la revisión).
+     *
+     * @param conservarClipAnterior false si cambió la foto: el clip anterior ya no corresponde.
+     * @return la clave del clip descartado, para borrarlo; vacía si se conserva.
+     */
+    public String regenerarPlano(int orden, int regeneracionesPorVideo, boolean conservarClipAnterior, Instant ahora) {
+        exigirEstado(EstadoVideo.LISTO);
+        if (regeneracionesUsadas >= regeneracionesPorVideo) {
+            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "SIN_REGENERACIONES",
+                    "Ya usaste las " + regeneracionesPorVideo + " regeneraciones de este video. Todavía puedes "
+                            + "editar los textos.");
+        }
+        Plano plano = planoConFoto(orden);
+        regeneracionesUsadas++;
+        String descartado = plano.regenerar(conservarClipAnterior);
+        this.avisoRevision = null;
+        this.generacionIniciadaEn = ahora;
+        this.estado = EstadoVideo.GENERANDO;
+        this.fechaActualizacion = ahora;
+        return descartado;
+    }
+
+    /** Una regeneración que terminó en respaldo no se cobra (decisión del usuario). */
+    public void devolverRegeneracion() {
+        if (regeneracionesUsadas > 0) {
+            regeneracionesUsadas--;
+        }
+    }
+
+    /** Si todos los planos con IA tienen su clip o su respaldo. */
+    public boolean clipsTerminados() {
+        return planosConFoto().stream().allMatch(Plano::terminado);
+    }
+
+    public void pasarAComponer(Instant ahora) {
+        this.intentosComposicion = 0;
+        this.estado = EstadoVideo.COMPONIENDO;
+        this.fechaActualizacion = ahora;
+    }
+
+    /** RN-29: un cambio de texto o de precio en la revisión solo vuelve a componer. */
+    public void recomponer(Instant ahora) {
+        exigirEstado(EstadoVideo.LISTO);
+        this.avisoRevision = null;
+        pasarAComponer(ahora);
+    }
+
+    public void contarIntentoDeComposicion() {
+        this.intentosComposicion++;
+    }
+
+    /** @return la clave del MP4 anterior, para borrarlo; vacía si no había. */
+    public String composicionLista(String clave, Instant ahora) {
+        String anterior = this.claveFinal;
+        this.claveFinal = clave;
+        this.estado = EstadoVideo.LISTO;
+        this.trabajoReclamadoHasta = null;
+        this.fechaActualizacion = ahora;
+        return anterior;
+    }
+
+    /** Una recomposición falló: el video vuelve a la revisión con su MP4 anterior. */
+    public void recomposicionFallida(String aviso, Instant ahora) {
+        this.avisoRevision = aviso;
+        this.estado = EstadoVideo.LISTO;
+        this.trabajoReclamadoHasta = null;
+        this.fechaActualizacion = ahora;
+    }
+
+    /** RN-27: marca el consumo como devuelto; false si ya se había devuelto o no hubo consumo. */
+    public boolean devolverConsumo() {
+        if (consumoFecha == null || consumoDevuelto) {
+            return false;
+        }
+        this.consumoDevuelto = true;
+        return true;
+    }
+
+    public void liberarTrabajo() {
+        this.trabajoReclamadoHasta = null;
+    }
+
+    public void aprobar(Instant ahora) {
+        exigirEstado(EstadoVideo.LISTO);
+        this.estado = EstadoVideo.APROBADO;
+        this.fechaActualizacion = ahora;
+    }
+
+    public List<Plano> planosConFoto() {
+        return planos.stream().filter(plano -> !plano.esCierre()).toList();
+    }
+
+    public Plano planoConFoto(int orden) {
+        return plano(orden).filter(plano -> !plano.esCierre())
+                .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("Ese plano no existe."));
+    }
+
+    private void exigirEstado(EstadoVideo esperado) {
+        if (estado != esperado) {
+            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_EDITABLE", "Este video ya no se puede cambiar.");
+        }
     }
 
     public Optional<Plano> plano(int orden) {
@@ -268,5 +417,41 @@ public class Video {
 
     public List<Plano> getPlanos() {
         return planos;
+    }
+
+    public LocalDate getConsumoFecha() {
+        return consumoFecha;
+    }
+
+    public boolean isConsumoDevuelto() {
+        return consumoDevuelto;
+    }
+
+    public int getRegeneracionesUsadas() {
+        return regeneracionesUsadas;
+    }
+
+    public int getIntentosComposicion() {
+        return intentosComposicion;
+    }
+
+    public Instant getTrabajoReclamadoHasta() {
+        return trabajoReclamadoHasta;
+    }
+
+    public Instant getGeneracionIniciadaEn() {
+        return generacionIniciadaEn;
+    }
+
+    public String getClaveFinal() {
+        return claveFinal;
+    }
+
+    public String getAvisoRevision() {
+        return avisoRevision;
+    }
+
+    public Long getPistaMusicalId() {
+        return pistaMusicalId;
     }
 }

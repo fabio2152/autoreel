@@ -15,6 +15,9 @@ public interface AlmacenDeArchivos {
     /** URL temporal para leer un archivo privado. */
     String urlDeDescarga(String clave, Duration vigencia);
 
+    /** URL temporal que el navegador descarga como archivo con ese nombre (RF-25). */
+    String urlDeDescargaComoAdjunto(String clave, String nombreArchivo, Duration vigencia);
+
     /**
      * Lee el archivo si existe. Si pesa más de {@code bytesMaximos}, no descarga el contenido: devuelve solo el
      * tamaño, para que quien llama rechace el archivo sin leerlo entero.
