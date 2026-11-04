@@ -19,7 +19,7 @@ Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepac
 - **Panel de administración:** el detalle del negocio muestra su perfil y su catálogo (RF-05).
 - **Negocio de ejemplo** en el perfil `dev` (sección 16), con imágenes de relleno generadas.
 - **Migración `V3`:** `perfil_negocio`, `producto` y `foto_producto`.
-- **Pruebas** (90 en total): paquete de nicho y temporadas, validación de respuestas, verificador de imágenes, adaptador S3 contra SeaweedFS real, e integración para V08, V11, V12, aislamiento de archivos entre negocios, onboarding y catálogo.
+- **Pruebas** (93 en total): paquete de nicho y temporadas, validación de respuestas, verificador de imágenes (incluidos logos de paleta y PNG animados), adaptador S3 contra SeaweedFS real, e integración para V08, V11, V12, aislamiento de archivos entre negocios, reintento tras un guardado fallido, onboarding y catálogo.
 
 ### Pendiente en fases siguientes
 
