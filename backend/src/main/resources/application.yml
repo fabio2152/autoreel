@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: autoreel
+  autoconfigure:
+    # La autenticación es propia (FiltroJwtCookie); no se necesita el usuario en memoria de Spring Boot.
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+autoreel:
+  url-aplicacion: ${APP_URL}
+  seguridad:
+    jwt-secreto: ${JWT_SECRET}
+    sesion-horas: ${SESION_HORAS:8}
+    cookie-segura: true
+  admin:
+    correo: ${ADMIN_EMAIL:}
+    contrasena: ${ADMIN_PASSWORD:}
