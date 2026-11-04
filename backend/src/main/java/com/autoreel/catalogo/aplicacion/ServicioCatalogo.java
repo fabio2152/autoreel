@@ -2,10 +2,12 @@ package com.autoreel.catalogo.aplicacion;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.autoreel.almacenamiento.aplicacion.ServicioDeArchivos;
 import com.autoreel.almacenamiento.aplicacion.ServicioDeArchivos.ImagenGuardada;
@@ -35,6 +37,7 @@ public class ServicioCatalogo {
     public static final String AVISO_FOTO_HORIZONTAL = "FOTO_HORIZONTAL";
     static final int LONGITUD_MAXIMA_NOMBRE = 50;
     static final int LONGITUD_MAXIMA_DESCRIPCION = 200;
+    static final String TEMPORADA_POR_DEFECTO = "TODO_EL_ANIO";
 
     private final ProductoRepositorio productos;
     private final NegocioRepositorio negocios;
@@ -70,6 +73,55 @@ public class ServicioCatalogo {
                 temporadas(paquete, solicitud), reloj.instant());
         List<String> avisos = aplicarFotos(negocioId, producto, solicitud.fotos());
         return vista(productos.save(producto), avisos);
+    }
+
+    /**
+     * Carrusel del chat (RF-20, V11): productos activos del catálogo con sus tres fotos, del más reciente al más
+     * antiguo, y cuántos se quedaron fuera por faltarles fotos.
+     */
+    public record Carrusel(List<Producto> productos, int incompletos) {
+    }
+
+    @Transactional(readOnly = true)
+    public Carrusel carrusel(Long negocioId) {
+        List<Producto> activos = productos.listarParaCarrusel(negocioId);
+        List<Producto> completos = activos.stream().filter(Producto::estaCompleto).toList();
+        return new Carrusel(completos, activos.size() - completos.size());
+    }
+
+    /** Producto que puede usarse en un video del negocio: activo y completo, esté o no en el catálogo. */
+    @Transactional(readOnly = true)
+    public Optional<Producto> paraVideo(Long negocioId, Long productoId) {
+        return productos.buscarParaVideo(productoId, negocioId).filter(Producto::disponibleParaVideo);
+    }
+
+    public String urlDeFoto(FotoProducto foto) {
+        return archivos.urlDeLectura(foto.getClaveS3());
+    }
+
+    /**
+     * Producto subido desde el chat (RF-20): exige las tres fotos para usarse en el video y, si el usuario no aceptó
+     * guardarlo, queda fuera del catálogo (RN-14). Su temporada es "Todo el año"; puede cambiarse en el catálogo.
+     */
+    @Transactional
+    public Producto crearDesdeChat(Long negocioId, String nombre, String descripcion, Map<TipoFoto, String> fotos,
+            boolean guardarEnCatalogo) {
+        if (fotos == null || Arrays.stream(TipoFoto.values()).anyMatch(tipo -> fotos.get(tipo) == null
+                || fotos.get(tipo).isBlank())) {
+            throw new ExcepcionDeNegocio("PRODUCTO_INCOMPLETO",
+                    "Para usar el producto en tu video necesitamos sus tres fotos: entero, detalle y porción.");
+        }
+        Negocio negocio = negocios.findById(negocioId)
+                .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos tu negocio."));
+        PaqueteNicho paquete = nichos.de(negocio.getNicho());
+        SolicitudProducto solicitud = new SolicitudProducto(nombre, descripcion, List.of(TEMPORADA_POR_DEFECTO), fotos);
+        Producto producto = new Producto(negocio, nombre(solicitud), descripcion(solicitud),
+                temporadas(paquete, solicitud), reloj.instant());
+        if (!guardarEnCatalogo) {
+            producto.dejarFueraDelCatalogo();
+        }
+        aplicarFotos(negocioId, producto, fotos);
+        return productos.save(producto);
     }
 
     @Transactional
