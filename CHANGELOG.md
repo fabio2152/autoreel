@@ -2,6 +2,39 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fase 4 — Guion] - 2026-11-04
+
+### Agregado
+
+- **Propuesta del video (storyboard)** (RF-21, RF-22): al terminar el chat, "Ver mi propuesta" abre el storyboard. Mientras se escribe el guion, "Estoy preparando tu propuesta…"; si tarda más de un minuto, un aviso de que se puede salir y volver.
+  1. Gancho, producto y relleno: cada uno con su foto (detalle, entera, porción), el movimiento de cámara en palabras simples y su texto.
+  2. Cierre armado por el sistema, sin IA: el precio tal como lo escribió el usuario (editable, hasta 40 caracteres; si es más largo, se propone recortado sin dejar la frase cortada), el llamado según los canales del negocio, el distrito y el logo sobre la foto del local o los colores de la marca.
+  3. Descripción de la publicación y hashtags.
+- **Edición del storyboard:** cambiar los textos con contador de palabras (V21: un texto por encima del límite muestra un error), cambiar la foto de un plano por otra del producto o por una nueva solo para ese video, y descartar la propuesta. "Crear mi video" se ve, pero se activa en la fase 5.
+- **Mis videos:** nueva pestaña con las propuestas del negocio, las más recientes primero.
+- **Guion con IA** (Gemini) a partir de las respuestas del chat, el perfil y la descripción del producto, con hasta 3 intentos. El modelo de texto se elige desde la base de datos (fábrica de proveedores) y la clave se lee de `GEMINI_API_KEY`, nunca del código ni de la base de datos (RN-55).
+- **Validador del guion** (RN-21 a RN-24, V18, V19): planos y fotos de la plantilla, textos dentro de su máximo de palabras, sin precios ni promociones que el usuario no haya escrito (también en palabras, como "45 soles", y en los hashtags), sin palabras prohibidas del nicho ni del negocio, sin emojis ni caracteres de control en pantalla, textos de hasta 200 caracteres, descripción sin hashtags dentro y, con los hashtags, de hasta 600 caracteres y entre 5 y 8 hashtags con uno del distrito.
+- **Guion de respaldo** (RN-25, V20): si la IA no responde, no hay clave o devuelve un guion inválido tres veces, el usuario igual recibe su propuesta, armada con sus respuestas y textos fijos del paquete de nicho, con un aviso para que la revise. Si el negocio prohibió una palabra de los textos fijos o de los hashtags base, se omite sin descartar el resto.
+- **Paquete de nicho Pastelería:** plantilla de 4 planos, movimientos de cámara, vocabulario por estilo y las instrucciones del guion (`plantilla.json`, `movimientos.json`, `vocabulario.json`, `guion.md`), validados al arrancar.
+- **Registro de costos** (RN-32): cada respuesta del modelo de texto guarda su costo.
+- **El video guarda el plan y los modelos** con los que se creó (RN-54).
+- **Migración `V5`:** `video`, `plano` y `registro_costo`.
+- **Pruebas** (193 en total): validador del guion, guion de respaldo, recorte del precio del cierre, adaptador de Gemini contra un servidor simulado y 9 pruebas de integración del storyboard (V18, V19, V20, V21, sin clave, proveedor caído, proceso interrumpido, aislamiento y "Mis videos").
+
+### Pendiente en fases siguientes
+
+- **"Crear mi video"** (aprobar el storyboard, consumir el video del día con RN-26 y V22) y la generación de los clips: fase 5.
+- **Editar la descripción y los hashtags** del storyboard: todavía solo se muestran.
+- **Aviso al administrador** cuando falla una integración de IA (RN-57): por ahora queda en el registro de la aplicación; la notificación llega en la fase 7.
+- **Credenciales desde AWS Secrets Manager:** fase 8.
+
+### Decisiones
+
+- **El cierre lo arma el sistema**, no la IA: así el precio siempre es el que escribió el usuario.
+- **Sin clave de Gemini todavía:** el adaptador se probó contra un servidor simulado y, sin `GEMINI_API_KEY`, la propuesta usa el guion de respaldo.
+- **"Mis videos" desde esta fase**, como base del historial de la fase 5.
+- **Sin temporadas ni fechas especiales** en el guion, igual que en el chat (decisión de la fase 3).
+
 ## [Fase 3 — Chat] - 2026-11-04
 
 ### Agregado

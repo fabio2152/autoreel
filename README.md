@@ -4,7 +4,7 @@ Plataforma web para que negocios pequeños, sin conocimientos de marketing, cree
 
 El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la plataforma crea cada negocio, le asigna un plan y una fecha de pago, y le entrega su acceso.
 
-> **Estado:** fase 3 de 9 (chat del video del día). Ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado:** fase 4 de 9 (guion con IA y propuesta del video). Ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tecnologías
 
@@ -13,6 +13,7 @@ El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la
 | Backend | Java 21, Spring Boot 4.1 (Web MVC, Security, Data JPA, Validation, Actuator), Flyway, springdoc-openapi |
 | Base de datos | PostgreSQL 17 |
 | Archivos | Amazon S3 (en local, SeaweedFS con API compatible con S3), AWS SDK for Java v2 |
+| IA | Google Gemini (guion), llamado por su API REST |
 | Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, TanStack Query, React Router |
 | Pruebas | JUnit 5, Spring Security Test, Testcontainers (PostgreSQL y SeaweedFS) |
 | CI | GitHub Actions: backend (`mvnw verify`) y frontend (lint y build) |
@@ -27,7 +28,7 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
 
 ## Ejecutar en local
 
-1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par.
+1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par. `GEMINI_API_KEY` es **opcional**: si la dejas vacía, la propuesta del video usa el guion de respaldo (sin IA); con una clave de Google AI Studio, el guion lo escribe Gemini.
 
 2. **Base de datos y almacenamiento** (PostgreSQL y SeaweedFS):
 
@@ -56,6 +57,7 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
 
 - **Administrador:** se crea al primer arranque con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del `.env` (solo si todavía no existe uno).
 - **Negocio de ejemplo:** con el perfil `dev` se crea "Pastelería Dulce Encanto" (Miraflores) con `DEMO_NEGOCIO_EMAIL` y `DEMO_NEGOCIO_PASSWORD`, su perfil completo y tres productos con imágenes de relleno.
+- **Recorrido del negocio:** en Inicio, el chat del video del día; al terminarlo, "Ver mi propuesta" abre el storyboard (`/videos/{id}`), donde se editan los textos, se cambian las fotos y se ajusta el precio. Todas las propuestas quedan en "Mis videos" (`/videos`). "Crear mi video" se activa en la fase 5.
 - **Negocio nuevo:** créalo desde el panel (`/admin` → "Crear negocio"). El sistema muestra una contraseña temporal una sola vez; al entrar con ella, el negocio crea su propia contraseña y pasa por el onboarding. Para la demostración en vivo de la sección 20, usa un correo distinto del negocio de ejemplo.
 
 ### Probar desde el celular
@@ -68,6 +70,8 @@ En la misma red Wi-Fi, ejecuta el frontend con `npm run dev -- --host` y abre `h
 cd backend && ./mvnw verify        # unitarias + integración (requiere Docker)
 cd frontend && npm run lint && npm run build
 ```
+
+Las pruebas no necesitan `GEMINI_API_KEY`: el adaptador de Gemini se prueba contra un servidor simulado.
 
 ## Documentación
 
