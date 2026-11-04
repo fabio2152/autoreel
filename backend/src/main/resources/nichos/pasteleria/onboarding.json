@@ -1,0 +1,104 @@
+{
+  "estilos": [
+    { "valor": "CASERO", "texto": "Casero" },
+    { "valor": "ELEGANTE", "texto": "Elegante" },
+    { "valor": "DIVERTIDO", "texto": "Divertido" }
+  ],
+  "preguntas": [
+    {
+      "id": "especialidad",
+      "paso": 2,
+      "texto": "¿Cuál es tu especialidad?",
+      "ayuda": "Puedes elegir varias.",
+      "tipo": "SELECCION_MULTIPLE",
+      "obligatoria": true,
+      "opciones": [
+        { "valor": "TORTAS_PERSONALIZADAS", "texto": "Tortas personalizadas" },
+        { "valor": "POSTRES_INDIVIDUALES", "texto": "Postres individuales" },
+        { "valor": "DULCES_TRADICIONALES", "texto": "Dulces tradicionales" },
+        { "valor": "PANADERIA_DULCE", "texto": "Panadería dulce" },
+        { "valor": "OPCIONES_SALUDABLES", "texto": "Opciones saludables" }
+      ]
+    },
+    {
+      "id": "publico",
+      "paso": 2,
+      "texto": "¿Quiénes son tus clientes principales?",
+      "ayuda": "Puedes elegir varios.",
+      "tipo": "SELECCION_MULTIPLE",
+      "obligatoria": true,
+      "opciones": [
+        { "valor": "FAMILIAS", "texto": "Familias" },
+        { "valor": "JOVENES", "texto": "Jóvenes" },
+        { "valor": "CELEBRACIONES", "texto": "Celebraciones y cumpleaños" },
+        { "valor": "EMPRESAS", "texto": "Empresas y eventos" }
+      ]
+    },
+    {
+      "id": "ciudad",
+      "paso": 2,
+      "texto": "Ciudad",
+      "tipo": "TEXTO",
+      "obligatoria": true,
+      "maxLongitud": 60
+    },
+    {
+      "id": "distrito",
+      "paso": 2,
+      "texto": "Distrito",
+      "ayuda": "Lo usamos en el cierre del video: \"Te esperamos en Miraflores\".",
+      "tipo": "TEXTO",
+      "obligatoria": true,
+      "maxLongitud": 60
+    },
+    {
+      "id": "canales",
+      "paso": 2,
+      "texto": "¿Cómo te piden?",
+      "ayuda": "Marca al menos una opción.",
+      "tipo": "SELECCION_MULTIPLE",
+      "obligatoria": true,
+      "opciones": [
+        { "valor": "WHATSAPP", "texto": "Por WhatsApp" },
+        { "valor": "DELIVERY", "texto": "Por apps de delivery" },
+        { "valor": "TIENDA", "texto": "En la tienda" }
+      ]
+    },
+    {
+      "id": "whatsapp",
+      "paso": 2,
+      "texto": "Número de WhatsApp",
+      "ayuda": "Celular de 9 dígitos. Aparece en el cierre del video.",
+      "tipo": "TELEFONO",
+      "obligatoria": false,
+      "obligatoriaSi": { "pregunta": "canales", "contiene": "WHATSAPP" }
+    },
+    {
+      "id": "horario",
+      "paso": 2,
+      "texto": "Horario de atención",
+      "ayuda": "Por ejemplo: lunes a sábado de 9 a. m. a 8 p. m.",
+      "tipo": "TEXTO",
+      "obligatoria": true,
+      "maxLongitud": 120
+    },
+    {
+      "id": "distintivo",
+      "paso": 3,
+      "texto": "¿Qué te hace distinto?",
+      "ayuda": "En una frase. Por ejemplo: \"Recetas de la abuela con fruta de temporada\".",
+      "tipo": "TEXTO",
+      "obligatoria": false,
+      "maxLongitud": 80
+    },
+    {
+      "id": "palabrasProhibidas",
+      "paso": 3,
+      "texto": "Palabras o temas que nunca quieres en tus videos",
+      "ayuda": "Sepáralos con comas.",
+      "tipo": "TEXTO",
+      "obligatoria": false,
+      "maxLongitud": 300
+    }
+  ]
+}

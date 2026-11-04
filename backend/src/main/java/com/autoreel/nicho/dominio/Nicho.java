@@ -1,4 +1,4 @@
-package com.autoreel.nicho;
+package com.autoreel.nicho.dominio;
 
 /**
  * Rubro de negocio que la plataforma atiende con un paquete propio.
