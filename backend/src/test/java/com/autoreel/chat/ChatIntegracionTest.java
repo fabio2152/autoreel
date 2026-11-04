@@ -71,6 +71,36 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value((int) id))
                 .andExpect(jsonPath("$.estado").value("COMPLETA"));
+
+        // Si después archiva el producto, el resumen igual lo muestra.
+        mvc.perform(post("/api/productos/" + producto + "/archivar").with(csrf()).cookie(negocio))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/chat/conversaciones/actual").cookie(negocio))
+                .andExpect(jsonPath("$.resumen[1].respuesta").value("Torta Tres Leches de Fresa"));
+    }
+
+    @Test
+    void losMensajesNuevosLleganConSuId() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = hastaElPaso(negocio, "especial", "PRODUCTO_ESTRELLA");
+        responderTexto(negocio, id, "especial", "Fresas frescas");
+        procesarDespues(negocio, id);
+
+        JsonNode vista = json.readTree(responder(negocio, id, Map.of("paso", "precio", "omitir", true))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        vista.get("mensajes").forEach(mensaje -> assertThat(mensaje.get("id").isNull()).isFalse());
+    }
+
+    @Test
+    void procesarUnaConversacionAbandonadaSeRechaza() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long abandonada = hastaElPaso(negocio, "especial", "PRODUCTO_ESTRELLA");
+        responderTexto(negocio, abandonada, "especial", "Fresas frescas");
+        iniciarDeNuevo(negocio);
+
+        mvc.perform(post("/api/chat/conversaciones/" + abandonada + "/procesar").with(csrf()).cookie(negocio))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONVERSACION_CERRADA"));
     }
 
     @Test

@@ -35,19 +35,44 @@ export function PaginaChat() {
   }, [conversacion.data, iniciar])
 
   if (conversacion.isPending || (conversacion.data === null && !iniciar.error)) return <Cargando texto="Abriendo tu chat…" />
-  const error = conversacion.error ?? iniciar.error
-  if (error) return <Aviso tipo="error">{error.message}</Aviso>
-  if (!conversacion.data) return <Cargando />
+  if (!conversacion.data) {
+    const error = conversacion.error ?? iniciar.error
+    return (
+      <div className="mx-auto max-w-md space-y-3 py-10">
+        <Aviso tipo="error">{error?.message ?? 'No pudimos abrir tu chat.'}</Aviso>
+        <Boton
+          onClick={() => {
+            iniciar.reset()
+            if (conversacion.error) conversacion.refetch()
+            else iniciar.mutate(false)
+          }}
+        >
+          Reintentar
+        </Boton>
+      </div>
+    )
+  }
+  const ultimoDelSistema = [...conversacion.data.mensajes].reverse().find((m) => m.autor === 'SISTEMA')
 
   return (
-    <Chat
-      key={conversacion.data.id}
-      conversacion={conversacion.data}
-      onActualizar={guardar}
-      onRecargar={() => clienteConsultas.invalidateQueries({ queryKey: CLAVE_CHAT })}
-      onEmpezarDeNuevo={() => iniciar.mutate(true)}
-      empezando={iniciar.isPending}
-    />
+    <>
+      {/* Región viva estable (no se vuelve a montar al empezar de nuevo): anuncia cada pregunta nueva. */}
+      <p className="sr-only" aria-live="polite">
+        {ultimoDelSistema?.texto}
+      </p>
+      <Chat
+        key={conversacion.data.id}
+        conversacion={conversacion.data}
+        onActualizar={guardar}
+        onRecargar={() => clienteConsultas.invalidateQueries({ queryKey: CLAVE_CHAT })}
+        onEmpezarDeNuevo={() => {
+          iniciar.reset()
+          iniciar.mutate(true)
+        }}
+        empezando={iniciar.isPending}
+        errorAlEmpezar={iniciar.error?.message ?? null}
+      />
+    </>
   )
 }
 
@@ -57,9 +82,10 @@ interface PropsChat {
   onRecargar: () => void
   onEmpezarDeNuevo: () => void
   empezando: boolean
+  errorAlEmpezar: string | null
 }
 
-function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empezando }: PropsChat) {
+function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empezando, errorAlEmpezar }: PropsChat) {
   const clienteConsultas = useQueryClient()
   const [texto, setTexto] = useState('')
   const [hojaAbierta, setHojaAbierta] = useState(false)
@@ -74,7 +100,8 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
     mutationFn: (respuesta: Respuesta) => responder(conversacion.id, respuesta),
     onSuccess: (nueva, respuesta) => {
       onActualizar(nueva)
-      if ('texto' in respuesta) setTexto('')
+      // Si siguió escribiendo mientras viajaba el envío, lo nuevo se conserva.
+      if ('texto' in respuesta) setTexto((actual) => (actual.trim() === respuesta.texto ? '' : actual))
       if ('productoNuevo' in respuesta) {
         setHojaAbierta(false)
         clienteConsultas.invalidateQueries({ queryKey: CLAVE_PRODUCTOS })
@@ -87,7 +114,13 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
       }
     },
   })
-  const cerrarGrupo = useMutation({ mutationFn: () => procesar(conversacion.id), onSuccess: onActualizar })
+  const cerrarGrupo = useMutation({
+    mutationFn: () => procesar(conversacion.id),
+    onSuccess: onActualizar,
+    onError: (error) => {
+      if (error instanceof ErrorApi && error.codigo === 'CONVERSACION_CERRADA') onRecargar()
+    },
+  })
 
   // RN-17: 4 s después del último mensaje, el backend agrupa lo escrito en una sola respuesta.
   const { procesarEnMs } = conversacion
@@ -109,6 +142,19 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
     final.current?.scrollIntoView({ block: 'end' })
   }, [conversacion.mensajes.length, paso?.id])
 
+  // Al abrirse el teclado del celular la lista se achica: se mantiene a la vista la última pregunta.
+  useEffect(() => {
+    const pantalla = window.visualViewport
+    if (!pantalla) return
+    const alCambiar = () => final.current?.scrollIntoView({ block: 'end' })
+    pantalla.addEventListener('resize', alCambiar)
+    return () => pantalla.removeEventListener('resize', alCambiar)
+  }, [])
+
+  // La hoja de producto nuevo solo se muestra mientras la pregunta sea la del producto
+  // (otra pestaña pudo haber avanzado la conversación).
+  const hojaVisible = hojaAbierta && paso?.tipo === 'PRODUCTO'
+
   const pendiente = conversacion.mensajes.filter((m) => m.pendiente).reduce((total, m) => total + m.texto.length + 1, 0)
   const restantes = conversacion.maximoCaracteres - pendiente - texto.trim().length
   const ocupado = enviar.isPending || empezando
@@ -116,14 +162,14 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
 
   const enviarTexto = (evento: FormEvent) => {
     evento.preventDefault()
-    if (!paso || paso.tipo !== 'TEXTO' || !texto.trim() || restantes < 0) return
+    if (ocupado || !paso || paso.tipo !== 'TEXTO' || !texto.trim() || restantes < 0) return
     enviar.mutate({ paso: paso.id, texto: texto.trim() })
   }
 
   const errorVisible =
-    enviar.error && !hojaAbierta && !(enviar.error instanceof ErrorApi && enviar.error.codigo === 'PASO_CAMBIADO')
+    enviar.error && !hojaVisible && !(enviar.error instanceof ErrorApi && enviar.error.codigo === 'PASO_CAMBIADO')
       ? enviar.error.message
-      : (cerrarGrupo.error?.message ?? null)
+      : (errorAlEmpezar ?? cerrarGrupo.error?.message ?? null)
 
   return (
     <div className="-mx-4 -my-6 flex h-[calc(100dvh-3.5rem-4rem)] flex-col md:h-[calc(100dvh-3.5rem)] md:flex-row">
@@ -132,7 +178,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
       </aside>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div role="log" aria-live="polite" aria-label="Conversación" className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
+        <div role="log" aria-live="off" aria-label="Conversación" className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
           {conversacion.mensajes.map((mensaje) => (
             <Burbuja key={mensaje.id} mensaje={mensaje} />
           ))}
@@ -241,7 +287,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
                     enterKeyHint="send"
                     onChange={(e) => setTexto(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) enviarTexto(e)
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) enviarTexto(e)
                     }}
                     placeholder="Escribe tu respuesta…"
                     className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border-0 bg-stone-100 px-4 py-2.5 text-base focus:ring-2 focus:ring-marca-600 sm:text-sm"
@@ -264,11 +310,14 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
       </div>
 
       <HojaProductoNuevo
-        key={hojaAbierta ? 'abierta' : 'cerrada'}
-        abierto={hojaAbierta}
+        key={hojaVisible ? 'abierta' : 'cerrada'}
+        abierto={hojaVisible}
         enviando={enviar.isPending}
-        error={hojaAbierta && enviar.error ? enviar.error.message : null}
-        onCerrar={() => setHojaAbierta(false)}
+        error={hojaVisible && enviar.error ? enviar.error.message : null}
+        onCerrar={() => {
+          setHojaAbierta(false)
+          enviar.reset()
+        }}
         onUsar={(producto: ProductoNuevo) => paso && enviar.mutate({ paso: paso.id, productoNuevo: producto })}
       />
     </div>

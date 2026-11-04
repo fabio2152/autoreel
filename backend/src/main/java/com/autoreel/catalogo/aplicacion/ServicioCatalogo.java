@@ -95,6 +95,12 @@ public class ServicioCatalogo {
         return productos.buscarParaVideo(productoId, negocioId).filter(Producto::disponibleParaVideo);
     }
 
+    /** Producto ya elegido para un video, para mostrarlo aunque después se haya archivado. */
+    @Transactional(readOnly = true)
+    public Optional<Producto> elegidoParaVideo(Long negocioId, Long productoId) {
+        return productos.buscarParaVideo(productoId, negocioId);
+    }
+
     public String urlDeFoto(FotoProducto foto) {
         return archivos.urlDeLectura(foto.getClaveS3());
     }

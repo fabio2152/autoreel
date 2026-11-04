@@ -148,18 +148,18 @@ public class ServicioChat {
             aplicar(conversacion, guion, paso,
                     EvaluadorDeRespuesta.omitir(guion, paso, conversacion.getRespuestas()), ahora);
         }
+        // Los mensajes nuevos se guardan ahora, para devolverlos con su id.
+        conversaciones.flush();
         return vista(conversacion, ahora);
     }
 
     /** Cierra la respuesta agrupada si ya pasaron 4 segundos sin mensajes nuevos. Se puede llamar varias veces. */
     @Transactional
     public ConversacionVista procesar(Long negocioId, Long conversacionId) {
-        Conversacion conversacion = conversaciones.bloquearDeNegocio(conversacionId, negocioId)
-                .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos esa conversación."));
+        Conversacion conversacion = bloquear(negocioId, conversacionId);
         Instant ahora = reloj.instant();
-        if (conversacion.enCurso()) {
-            procesarPendientes(conversacion, guion(conversacion.getNegocio()), ahora);
-        }
+        procesarPendientes(conversacion, guion(conversacion.getNegocio()), ahora);
+        conversaciones.flush();
         return vista(conversacion, ahora);
     }
 
@@ -286,7 +286,7 @@ public class ServicioChat {
     private Optional<Producto> productoElegido(Conversacion conversacion, GuionChat guion) {
         Object id = conversacion.getRespuestas().get(pasoProducto(guion).id());
         return id instanceof Number numero
-                ? catalogo.paraVideo(conversacion.getNegocio().getId(), numero.longValue())
+                ? catalogo.elegidoParaVideo(conversacion.getNegocio().getId(), numero.longValue())
                 : Optional.empty();
     }
 
