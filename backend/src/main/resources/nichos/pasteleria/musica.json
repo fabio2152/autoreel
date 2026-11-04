@@ -1,0 +1,25 @@
+{
+  "pistas": [
+    {
+      "estilo": "CASERO",
+      "nombre": "Tarde en la pastelería (relleno)",
+      "archivo": "casero.m4a",
+      "duracionSegundos": 20,
+      "licencia": "Pista de relleno generada por AutoReel; reemplazar por una con licencia comercial (P-02)."
+    },
+    {
+      "estilo": "ELEGANTE",
+      "nombre": "Vitrina de noche (relleno)",
+      "archivo": "elegante.m4a",
+      "duracionSegundos": 20,
+      "licencia": "Pista de relleno generada por AutoReel; reemplazar por una con licencia comercial (P-02)."
+    },
+    {
+      "estilo": "DIVERTIDO",
+      "nombre": "Fiesta de colores (relleno)",
+      "archivo": "divertido.m4a",
+      "duracionSegundos": 20,
+      "licencia": "Pista de relleno generada por AutoReel; reemplazar por una con licencia comercial (P-02)."
+    }
+  ]
+}

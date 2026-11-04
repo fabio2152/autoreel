@@ -59,10 +59,28 @@ public final class Texto {
                 .count();
     }
 
-    /** Emojis, saltos de línea y símbolos que no se pueden dibujar en el video. */
+    /**
+     * Si el texto tiene algo que las tipografías del video no pueden dibujar: emojis, saltos de línea, caracteres de
+     * control o letras fuera del latín básico. Es una lista blanca: el latín de U+0020 a U+00FF (incluye á, ñ, ¿, ¡)
+     * y la puntuación tipográfica que traen las tres fuentes.
+     */
     public static boolean tieneCaracteresNoDibujables(String texto) {
-        // CONTROL incluye los saltos de línea, el tabulador y el resto de caracteres de control (U+0000 a U+001F...).
-        return texto.codePoints().anyMatch(c -> Character.getType(c) == Character.CONTROL
-                || Character.getType(c) == Character.OTHER_SYMBOL || Character.isSupplementaryCodePoint(c));
+        return texto.codePoints().anyMatch(c -> !esDibujable(c));
     }
+
+    /** El texto sin los caracteres que no se pueden dibujar (para datos del perfil o del catálogo en el cierre). */
+    public static String soloDibujable(String texto) {
+        if (texto == null) {
+            return null;
+        }
+        StringBuilder limpio = new StringBuilder();
+        texto.codePoints().filter(Texto::esDibujable).forEach(limpio::appendCodePoint);
+        return limpio.toString().replaceAll("\\s+", " ").strip();
+    }
+
+    private static boolean esDibujable(int c) {
+        return (c >= 0x20 && c <= 0x7E) || (c >= 0xA0 && c <= 0xFF) || PUNTUACION_TIPOGRAFICA.indexOf(c) >= 0;
+    }
+
+    private static final String PUNTUACION_TIPOGRAFICA = "‘’“”–—…€";
 }

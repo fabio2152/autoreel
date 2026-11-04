@@ -14,11 +14,12 @@ import java.util.Optional;
  * @param descripcionDeRespaldo     descripción del respaldo con los datos del usuario ({producto}, {especial},
  *                                  {llamado}).
  * @param descripcionFijaDeRespaldo descripción sin datos del usuario, si la anterior no pasa el validador.
+ * @param tipografias        archivo de la carpeta {@code fuentes/} del paquete para cada estilo (P-05).
  */
 public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, String> llamados,
         Map<String, String> ganchosDeRespaldo, String descripcionDeRespaldo, String descripcionFijaDeRespaldo,
         List<String> hashtagsBase,
-        int maximoCaracteresPrecio, String avisoDeRespaldo) {
+        int maximoCaracteresPrecio, Map<String, String> tipografias, String avisoDeRespaldo) {
 
     /**
      * @param foto                 foto del producto que usa el plano (DETALLE, ENTERO o PORCION); vacía en el cierre.
@@ -48,6 +49,7 @@ public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, 
     public PlantillaVideo {
         planos = List.copyOf(planos);
         hashtagsBase = List.copyOf(hashtagsBase);
+        tipografias = tipografias == null ? Map.of() : Map.copyOf(tipografias);
     }
 
     public PlanoPlantilla plano(int orden) {
@@ -77,7 +79,9 @@ public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, 
         return llamadosPara(canales, distrito).stream().findFirst();
     }
 
-    public void validar(List<Opcion> canalesDelOnboarding, List<Opcion> tiposDeVideo) {
+    public void validar(List<Opcion> canalesDelOnboarding, List<Opcion> tiposDeVideo, List<Opcion> estilos) {
+        estilos.forEach(estilo -> exigir(tipografias.containsKey(estilo.valor()),
+                "falta la tipografía del estilo " + estilo.valor()));
         exigir(planos.size() == 4, "la plantilla debe tener 4 planos");
         exigir(planos.stream().filter(p -> !p.conIa()).count() == 1, "debe haber un solo plano sin IA (el cierre)");
         for (PlanoPlantilla plano : planosConIa()) {

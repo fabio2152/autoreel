@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.autoreel.nicho.dominio.GuionChat;
@@ -13,6 +15,7 @@ import com.autoreel.nicho.dominio.Movimientos;
 import com.autoreel.nicho.dominio.Opcion;
 import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PaqueteNicho;
+import com.autoreel.nicho.dominio.PistaDelNicho;
 import com.autoreel.nicho.dominio.Pregunta;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.nicho.dominio.Temporada;
@@ -38,6 +41,9 @@ public class PaquetePasteleria implements PaqueteNicho {
     private record ArchivoTemporadas(List<Temporada> temporadas) {
     }
 
+    private record ArchivoMusica(List<PistaDelNicho> pistas) {
+    }
+
     private final List<Opcion> estilos;
     private final List<Pregunta> preguntas;
     private final List<Temporada> temporadas;
@@ -46,6 +52,9 @@ public class PaquetePasteleria implements PaqueteNicho {
     private final Movimientos movimientos;
     private final Vocabulario vocabulario;
     private final String instruccionesGuion;
+    private final List<PistaDelNicho> pistas;
+    /** Las tipografías se leen una vez: FFmpeg las necesita como archivo, y en el JAR no hay ruta de archivo. */
+    private final Map<String, byte[]> tipografias = new HashMap<>();
 
     public PaquetePasteleria(ObjectMapper json) {
         ArchivoOnboarding onboarding = leer(json, "onboarding.json", ArchivoOnboarding.class);
@@ -57,6 +66,9 @@ public class PaquetePasteleria implements PaqueteNicho {
         this.movimientos = leer(json, "movimientos.json", Movimientos.class);
         this.vocabulario = leer(json, "vocabulario.json", Vocabulario.class);
         this.instruccionesGuion = leerTexto("guion.md");
+        this.pistas = List.copyOf(leer(json, "musica.json", ArchivoMusica.class).pistas());
+        plantillaVideo.tipografias().forEach((estilo, archivo) ->
+                tipografias.put(estilo, leerBytes("fuentes/" + archivo)));
         validar();
         guionDelChat.validar();
         validarVideo();
@@ -87,10 +99,38 @@ public class PaquetePasteleria implements PaqueteNicho {
         return instruccionesGuion;
     }
 
+    @Override
+    public byte[] tipografia(String estilo) {
+        byte[] tipografia = tipografias.get(estilo);
+        if (tipografia == null) {
+            throw new IllegalArgumentException("No hay tipografía para el estilo " + estilo);
+        }
+        return tipografia.clone();
+    }
+
+    @Override
+    public List<PistaDelNicho> pistas() {
+        return pistas;
+    }
+
+    @Override
+    public byte[] leerPista(PistaDelNicho pista) {
+        return leerBytes("musica/" + pista.archivo());
+    }
+
     private void validarVideo() {
         List<Opcion> canales = preguntas.stream().filter(p -> p.id().equals("canales")).findFirst()
                 .map(Pregunta::opciones).orElseThrow(() -> new IllegalStateException("Falta la pregunta canales"));
-        plantillaVideo.validar(canales, guionDelChat.paso("tipoVideo").opciones());
+        plantillaVideo.validar(canales, guionDelChat.paso("tipoVideo").opciones(), estilos);
+        for (Opcion estilo : estilos) {
+            exigir(pistas.stream().anyMatch(pista -> pista.estilo().equals(estilo.valor())),
+                    "falta una pista de música del estilo " + estilo.valor());
+        }
+        for (PistaDelNicho pista : pistas) {
+            exigir(new ClassPathResource(CARPETA + "musica/" + pista.archivo()).exists(),
+                    "no existe la pista " + pista.archivo());
+            exigir(pista.duracionSegundos() >= 15, "la pista " + pista.archivo() + " dura menos de 15 segundos");
+        }
         for (var plano : plantillaVideo.planosConIa()) {
             exigir(movimientos.buscar(plano.movimientoDeRespaldo()).isPresent(),
                     "el movimiento de respaldo del plano " + plano.orden() + " no existe");
@@ -109,6 +149,14 @@ public class PaquetePasteleria implements PaqueteNicho {
             }
         }
         exigir(!instruccionesGuion.isBlank(), "faltan las instrucciones del guion");
+    }
+
+    private static byte[] leerBytes(String archivo) {
+        try (InputStream entrada = new ClassPathResource(CARPETA + archivo).getInputStream()) {
+            return entrada.readAllBytes();
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo leer " + CARPETA + archivo, e);
+        }
     }
 
     private static String leerTexto(String archivo) {
