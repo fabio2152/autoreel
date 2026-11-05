@@ -2,6 +2,26 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Proveedores de Google] - 2026-11-05
+
+### Agregado
+
+- **Dos caminos de Google para texto y video**, elegibles desde la base de datos sin programar (RN-56):
+  - **Google AI Studio (activo):** una sola clave (`GEMINI_API_KEY`) para el guion con Gemini y para los clips con **Gemini Omni Flash** (`gemini-omni-1.2-flash`, adaptador `GEMINI_OMNI`), por la API de interacciones en modo síncrono (con segundo plano como opción).
+  - **Google Cloud (listo, inactivo):** una cuenta de servicio (`GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`) para los clips con Veo y para el guion con **Gemini en Vertex AI** (adaptador `GEMINI_CLOUD`, endpoint `global`).
+- El costo de un clip usa los segundos que informa el proveedor (tokens de video de Omni) cuando vienen.
+- **Migración `V7`:** los dos modelos nuevos, Veo y Gemini Cloud inactivos con el secreto `autoreel/google-cloud`, y el plan Lite con Gemini Omni Flash para el video. Los videos ya creados conservan su modelo (RN-54).
+- **Pruebas** (234 en total): adaptadores de Omni y de Gemini en Google Cloud contra servidores simulados, y la generación de punta a punta con Omni.
+
+### Cambiado
+
+- La credencial de Google Cloud se llama `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO` (la variable anterior, `VEO_CREDENCIAL_ARCHIVO`, sigue funcionando como respaldo) y sus propiedades pasan a `autoreel.ia.google-cloud`.
+- El plazo total de la generación cuenta desde el último envío de cada plano, no desde la aprobación: con un proveedor síncrono, un video que espera su turno no pierde sus clips.
+
+### Decisiones
+
+- **Por ahora, todo con Google AI Studio** (decisión del usuario): la clave se crea en https://aistudio.google.com/apikey, en un proyecto con facturación activa porque Omni no tiene plan gratuito.
+
 ## [Fase 5 — Generación] - 2026-11-04
 
 ### Agregado

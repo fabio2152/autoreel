@@ -13,7 +13,7 @@ El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la
 | Backend | Java 21, Spring Boot 4.1 (Web MVC, Security, Data JPA, Validation, Actuator), Flyway, springdoc-openapi |
 | Base de datos | PostgreSQL 17 |
 | Archivos | Amazon S3 (en local, SeaweedFS con API compatible con S3), AWS SDK for Java v2 |
-| IA | Google Gemini (guion) y Veo 3.1 en Google Cloud (clips de video), llamados por sus API REST |
+| IA | Google AI Studio: Gemini (guion) y Gemini Omni Flash (clips de video), activos. Google Cloud: Gemini y Veo 3.1, listos e inactivos. Todos por sus API REST |
 | Video | FFmpeg (composición del video final) |
 | Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, TanStack Query, React Router |
 | Pruebas | JUnit 5, Spring Security Test, Testcontainers (PostgreSQL y SeaweedFS), FFmpeg real para la composición |
@@ -30,7 +30,7 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
 
 ## Ejecutar en local
 
-1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par. `GEMINI_API_KEY` es **opcional**: si la dejas vacía, la propuesta del video usa el guion de respaldo (sin IA); con una clave de Google AI Studio, el guion lo escribe Gemini. `VEO_CREDENCIAL_ARCHIVO` también es **opcional**: es la ruta al JSON de una cuenta de servicio de Google Cloud con acceso a Veo (nunca lo subas a git: guárdalo fuera del repositorio o en la carpeta `credenciales/`, que git ignora); si la dejas vacía, cada plano del video usa un acercamiento lento de la foto hecho con FFmpeg y el video se entrega igual. `FFMPEG_PATH` es la ruta a `ffmpeg`: déjala en `ffmpeg` si está en el PATH o pon la ruta completa (en Windows, la carpeta `bin` de la instalación de winget).
+1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par. `GEMINI_API_KEY` es **opcional**: es una clave de Google AI Studio (https://aistudio.google.com/apikey) y sirve para el guion (Gemini) y para los clips de video (Gemini Omni Flash). Los clips tienen costo por segundo (unos US$0,07 a 720p, sin plan gratuito), así que el proyecto de la clave necesita facturación activa. Si la dejas vacía, la propuesta usa el guion de respaldo y cada plano, un acercamiento lento de la foto hecho con FFmpeg; el video se entrega igual. `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO` también es **opcional**: es la ruta al JSON de una cuenta de servicio de Google Cloud (Gemini y Veo en Vertex AI). Solo se usa si se activan esos modelos en la base de datos; hoy están inactivos. Nunca lo subas a git: guárdalo fuera del repositorio o en la carpeta `credenciales/`, que git ignora. `FFMPEG_PATH` es la ruta a `ffmpeg`: déjala en `ffmpeg` si está en el PATH o pon la ruta completa (en Windows, la carpeta `bin` de la instalación de winget).
 
 2. **Base de datos y almacenamiento** (PostgreSQL y SeaweedFS):
 
@@ -77,7 +77,7 @@ cd backend && ./mvnw verify        # unitarias + integración (requiere Docker)
 cd frontend && npm run lint && npm run build
 ```
 
-Las pruebas no necesitan `GEMINI_API_KEY` ni `VEO_CREDENCIAL_ARCHIVO`: los adaptadores de Gemini y de Veo se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 220 pruebas en el backend.
+Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 233 pruebas en el backend.
 
 ## Documentación
 
