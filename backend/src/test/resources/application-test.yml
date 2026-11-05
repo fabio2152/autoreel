@@ -23,14 +23,17 @@ autoreel:
   secretos:
     "[autoreel/gemini]": ""
   secretos-en-archivo:
-    "[autoreel/veo]": ""
+    "[autoreel/google-cloud]": ""
   ia:
     gemini:
       url: http://127.0.0.1:9
       tiempo-conexion: 500ms
       tiempo-lectura: 500ms
-    veo:
+    omni:
+      tiempo-lectura: 2s
+    google-cloud:
       url: http://127.0.0.1:9
+      url-global: http://127.0.0.1:9
       url-token: http://127.0.0.1:9/token
       tiempo-conexion: 500ms
       tiempo-lectura: 2s

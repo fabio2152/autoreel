@@ -77,33 +77,7 @@ public class GeminiGuionista implements Guionista {
         } catch (ResourceAccessException e) {
             throw new ErrorDeProveedor(Tipo.NO_DISPONIBLE, "Gemini no respondió a tiempo o no se pudo conectar", e);
         }
-        return leer(respuesta);
-    }
-
-    private RespuestaDelModelo leer(JsonNode respuesta) {
-        if (respuesta == null) {
-            return RespuestaDelModelo.sinTexto("Gemini respondió vacío");
-        }
-        JsonNode bloqueo = respuesta.path("promptFeedback").path("blockReason");
-        if (!bloqueo.isMissingNode() && !bloqueo.isNull()) {
-            return RespuestaDelModelo.sinTexto("Gemini bloqueó la solicitud: " + bloqueo.asString());
-        }
-        JsonNode candidato = respuesta.path("candidates").path(0);
-        if (candidato.isMissingNode()) {
-            return RespuestaDelModelo.sinTexto("Gemini no devolvió ninguna respuesta");
-        }
-        String fin = candidato.path("finishReason").asString("STOP");
-        if (!fin.equals("STOP")) {
-            return RespuestaDelModelo.sinTexto("La respuesta de Gemini terminó antes de tiempo (" + fin + ")");
-        }
-        StringBuilder texto = new StringBuilder();
-        for (JsonNode parte : candidato.path("content").path("parts")) {
-            if (!parte.path("thought").asBoolean(false) && parte.has("text")) {
-                texto.append(parte.get("text").asString());
-            }
-        }
-        return texto.isEmpty() ? RespuestaDelModelo.sinTexto("Gemini devolvió una respuesta sin texto")
-                : RespuestaDelModelo.conTexto(texto.toString());
+        return RespuestaGemini.leer(respuesta, "Gemini");
     }
 
     private static ErrorDeProveedor clasificar(HttpStatusCode estado, Exception causa) {
