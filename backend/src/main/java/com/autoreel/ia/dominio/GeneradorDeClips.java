@@ -35,7 +35,10 @@ public interface GeneradorDeClips {
     record EnCurso() implements EstadoDeClip {
     }
 
-    record Listo(byte[] video, String tipoContenido) implements EstadoDeClip {
+    /**
+     * @param segundosGenerados duración que cobra el proveedor, si la informa; vacía si se cobra la duración pedida.
+     */
+    record Listo(byte[] video, String tipoContenido, Double segundosGenerados) implements EstadoDeClip {
     }
 
     /** El proveedor terminó sin clip (filtro de contenido o error de la tarea). */

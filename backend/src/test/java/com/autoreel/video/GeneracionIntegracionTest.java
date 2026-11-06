@@ -20,7 +20,7 @@ import com.autoreel.costos.dominio.ConceptoCosto;
 import com.autoreel.costos.dominio.RegistroCosto;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
-import com.autoreel.ia.infraestructura.ServidorVeoSimulado;
+import com.autoreel.ia.infraestructura.ServidorOmniSimulado;
 import com.autoreel.video.aplicacion.ServicioComposicion;
 import com.autoreel.video.aplicacion.ServicioGeneracion;
 import com.autoreel.video.aplicacion.ServicioGuion;
@@ -43,29 +43,29 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Generación y revisión (V22 a V27, V39 y V08) de punta a punta: aprobar el storyboard, clips con el adaptador VEO
- * real contra un servidor simulado, respaldo, composición (con un componedor de prueba; FFmpeg se prueba aparte),
+ * Generación y revisión (V22 a V27, V39 y V08) de punta a punta: aprobar el storyboard, clips con el adaptador
+ * GEMINI_OMNI (Google AI Studio, el del plan Lite) real contra un servidor simulado, respaldo, composición (con un componedor de prueba; FFmpeg se prueba aparte),
  * regeneraciones, consumo diario y descarga.
  */
 @Import(GeneracionIntegracionTest.Configuracion.class)
 class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
-    private static final ServidorVeoSimulado VEO = new ServidorVeoSimulado();
+    private static final ServidorOmniSimulado OMNI = new ServidorOmniSimulado();
 
+    /** La API de Gemini (guion y Omni) apunta al servidor simulado; el guion recibe 404 y usa su respaldo. */
     @DynamicPropertySource
-    static void veo(DynamicPropertyRegistry propiedades) {
-        propiedades.add("autoreel.ia.veo.url", VEO::url);
-        propiedades.add("autoreel.ia.veo.url-token", VEO::urlToken);
+    static void aiStudio(DynamicPropertyRegistry propiedades) {
+        propiedades.add("autoreel.ia.gemini.url", OMNI::url);
     }
 
-    /** Solo la credencial de Veo; sin la de Gemini, el guion usa su respaldo. */
+    /** La clave de Google AI Studio, que pueden quitar las pruebas. */
     static class SecretosDePrueba implements ProveedorDeSecretos {
 
-        volatile boolean conVeo = true;
+        volatile boolean conClave = true;
 
         @Override
         public Optional<String> obtener(String nombreSecreto) {
-            return conVeo && nombreSecreto.equals("autoreel/veo") ? Optional.of(VEO.cuentaDeServicio())
+            return conClave && nombreSecreto.equals("autoreel/gemini") ? Optional.of("clave-ai-studio")
                     : Optional.empty();
         }
     }
@@ -129,8 +129,8 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     @BeforeEach
     void reiniciar() {
-        VEO.reiniciar();
-        secretos.conVeo = true;
+        OMNI.reiniciar();
+        secretos.conClave = true;
         componedor.fallar = false;
         componedor.ultima = null;
     }
@@ -165,8 +165,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         aprobar(negocio, id).andExpect(status().isOk());
 
         generacion.procesar(id);
-        assertThat(VEO.creacionesRecibidas()).hasSize(3);
-        assertThat(VEO.creacionesRecibidas().getFirst().cuerpo()).contains("\"negativePrompt\"", "\"9:16\"");
+        assertThat(OMNI.creacionesRecibidas()).hasSize(3);
+        assertThat(OMNI.creacionesRecibidas().getFirst().clave()).isEqualTo("clave-ai-studio");
+        assertThat(OMNI.creacionesRecibidas().getFirst().cuerpo()).contains("\"9:16\"", "Never show:");
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("GENERANDO"))
                 .andExpect(jsonPath("$.planos[0].estado").value("GENERANDO"));
@@ -185,14 +186,15 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         assertThat(componedor.ultima.musica()).as("la pista del estilo").isNotNull();
         assertThat(componedor.ultima.cierre().llamado()).isEqualTo("Te esperamos en Miraflores");
 
-        // RN-32 y V39: tres clips de 4 s a 0,05 dólares por segundo, con Veo 3.1 Lite.
+        // RN-32 y V39: tres clips de 4 s (según los tokens de video de la respuesta) a 0,07 dólares por segundo,
+        // con Gemini Omni Flash, el modelo de video del plan Lite.
         List<RegistroCosto> clips = costos.findByVideoIdOrderById(id).stream()
                 .filter(costo -> costo.getConcepto() == ConceptoCosto.CLIP).toList();
         assertThat(clips).hasSize(3).allSatisfy(costo ->
-                assertThat(costo.getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.20")));
+                assertThat(costo.getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.28")));
         new TransactionTemplate(transacciones).executeWithoutResult(estado -> assertThat(
                 videos.findById(id).orElseThrow().getModeloVideoUsado().getIdentificadorModelo())
-                .isEqualTo("veo-3.1-lite-generate-001"));
+                .isEqualTo("gemini-omni-1.2-flash"));
 
         mvc.perform(get("/api/videos/" + id + "/descarga").cookie(negocio))
                 .andExpect(status().isOk())
@@ -210,13 +212,12 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         long id = storyboard(negocio);
         aprobar(negocio, id);
 
-        generacion.procesar(id);
-        VEO.consultaFallida();
-        VEO.consultaLista();
-        VEO.consultaLista();
+        // El primer plano falla en sus dos intentos (Omni lo informa al crear la interacción).
+        OMNI.crearFallida();
         generacion.procesar(id);
         generacion.procesar(id);
-        VEO.consultaFallida();
+        OMNI.crearFallida();
+        generacion.procesar(id);
         generacion.procesar(id);
         composicion.procesar(id);
 
@@ -225,7 +226,7 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.planos[0].estado").value("RESPALDO"))
                 .andExpect(jsonPath("$.planos[0].usoRespaldo").value(true))
                 .andExpect(jsonPath("$.planos[1].usoRespaldo").value(false));
-        assertThat(VEO.creacionesRecibidas()).hasSize(4);
+        assertThat(OMNI.creacionesRecibidas()).hasSize(4);
         var plano1 = componedor.ultima.planos().stream().filter(p -> p.orden() == 1).findFirst().orElseThrow();
         assertThat(plano1.clip()).isNull();
         assertThat(plano1.foto()).isNotEmpty();
@@ -270,8 +271,8 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         long id = videoListo(negocio);
 
         regenerar(negocio, id, 1).andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(1));
-        VEO.crearResponde(503, "{}");
-        VEO.crearResponde(503, "{}");
+        OMNI.crearResponde(503, "{}");
+        OMNI.crearResponde(503, "{}");
         generacion.procesar(id);
         generacion.procesar(id);
         composicion.procesar(id);
@@ -326,7 +327,7 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     @Test
     void sinCredencialTodosLosPlanosUsanElAcercamientoYNoSeOfreceRegenerar() throws Exception {
-        secretos.conVeo = false;
+        secretos.conClave = false;
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long id = storyboard(negocio);
         aprobar(negocio, id);
@@ -339,7 +340,7 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.planos[*].usoRespaldo").value(org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.is(true))))
                 .andExpect(jsonPath("$.generacion.iaDisponible").value(false));
-        assertThat(VEO.peticiones()).isEmpty();
+        assertThat(OMNI.peticiones()).isEmpty();
         assertThat(costos.findByVideoIdOrderById(id)).noneMatch(costo -> costo.getConcepto() == ConceptoCosto.CLIP);
         regenerar(negocio, id, 1)
                 .andExpect(status().isConflict())
@@ -357,12 +358,15 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long id = storyboard(negocio);
         aprobar(negocio, id);
+        OMNI.crearEnCurso();
+        OMNI.crearEnCurso();
+        OMNI.crearEnCurso();
         generacion.procesar(id);
 
         reloj.avanzar(Duration.ofMinutes(11));
-        VEO.consultaEnCurso();
-        VEO.consultaEnCurso();
-        VEO.consultaEnCurso();
+        OMNI.consultaResponde(200, ServidorOmniSimulado.enCurso("en-curso"));
+        OMNI.consultaResponde(200, ServidorOmniSimulado.enCurso("en-curso"));
+        OMNI.consultaResponde(200, ServidorOmniSimulado.enCurso("en-curso"));
         generacion.procesar(id);
 
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
@@ -372,6 +376,24 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         // La tarea ya se había enviado: el proveedor la cobra (RN-32).
         assertThat(costos.findByVideoIdOrderById(id)).filteredOn(costo -> costo.getConcepto() == ConceptoCosto.CLIP)
                 .hasSize(3);
+    }
+
+    @Test
+    void unVideoQueEsperaEnLaColaNoPierdeSusClipsPorElPlazo() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboard(negocio);
+        aprobar(negocio, id);
+        // Con un proveedor síncrono, el video pudo esperar a que terminaran otros.
+        reloj.avanzar(Duration.ofMinutes(25));
+
+        generacion.procesar(id);
+        generacion.procesar(id);
+
+        assertThat(OMNI.creacionesRecibidas()).hasSize(3);
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("COMPONIENDO"))
+                .andExpect(jsonPath("$.planos[*].usoRespaldo").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is(false))));
     }
 
     @Test

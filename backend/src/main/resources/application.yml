@@ -69,16 +69,21 @@ autoreel:
   # La clave va entre comillas y corchetes para conservar la "/".
   secretos:
     "[autoreel/gemini]": ${GEMINI_API_KEY:}
-  # Secretos que van en un archivo: el JSON de la cuenta de servicio de Google Cloud (Veo).
+  # Secretos que van en un archivo: el JSON de la cuenta de servicio de Google Cloud (Veo y Gemini en Vertex AI).
   secretos-en-archivo:
-    "[autoreel/veo]": ${VEO_CREDENCIAL_ARCHIVO:}
+    "[autoreel/google-cloud]": ${GOOGLE_CLOUD_CREDENCIAL_ARCHIVO:${VEO_CREDENCIAL_ARCHIVO:}}
   ia:
     gemini:
       url: ${GEMINI_URL:https://generativelanguage.googleapis.com}
       tiempo-conexion: 5s
       tiempo-lectura: 30s
-    veo:
-      url: ${VEO_URL:https://{region}-aiplatform.googleapis.com}
+    # Gemini Omni Flash (video en Google AI Studio, misma clave que el guion): la generación síncrona tarda minutos.
+    omni:
+      tiempo-lectura: 5m
+    # Google Cloud (Vertex AI): Veo para video y Gemini para texto, con la cuenta de servicio.
+    google-cloud:
+      url: https://{region}-aiplatform.googleapis.com
+      url-global: https://aiplatform.googleapis.com
       url-token: https://oauth2.googleapis.com/token
       tiempo-conexion: 5s
       # La respuesta trae el clip en base64.

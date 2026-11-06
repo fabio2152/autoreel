@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.autoreel.PruebaDeIntegracion;
+import com.autoreel.ia.dominio.EstadoModelo;
 import com.autoreel.auth.infraestructura.UsuarioRepositorio;
 import com.autoreel.ia.infraestructura.ModeloIARepositorio;
 import jakarta.servlet.http.Cookie;
@@ -184,10 +185,19 @@ class GestionNegociosIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$[0].videosPorDia").value(1))
                 .andExpect(jsonPath("$[0].regeneracionesPorVideo").value(3))
                 .andExpect(jsonPath("$[0].modeloTexto").value("Gemini"))
-                .andExpect(jsonPath("$[0].modeloVideo").value("Veo 3.1 Lite"));
+                .andExpect(jsonPath("$[0].modeloVideo").value("Gemini Omni Flash"));
 
-        var veo = modelos.findAll().stream().filter(m -> m.getAdaptador().equals("VEO")).findFirst().orElseThrow();
-        assertThat(veo.getParametros()).containsEntry("relacionAspecto", "9:16");
+        // Los dos caminos de Google (V7): activos los de AI Studio, listos e inactivos los de Google Cloud.
+        var porAdaptador = modelos.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(m -> m.getAdaptador(), m -> m));
+        assertThat(porAdaptador.get("GEMINI").getEstado()).isEqualTo(EstadoModelo.ACTIVO);
+        assertThat(porAdaptador.get("GEMINI_OMNI").getEstado()).isEqualTo(EstadoModelo.ACTIVO);
+        assertThat(porAdaptador.get("GEMINI_OMNI").getNombreSecreto()).isEqualTo("autoreel/gemini");
+        assertThat(porAdaptador.get("GEMINI_OMNI").getParametros()).containsEntry("relacionAspecto", "9:16");
+        assertThat(porAdaptador.get("VEO").getEstado()).isEqualTo(EstadoModelo.INACTIVO);
+        assertThat(porAdaptador.get("VEO").getNombreSecreto()).isEqualTo("autoreel/google-cloud");
+        assertThat(porAdaptador.get("GEMINI_CLOUD").getEstado()).isEqualTo(EstadoModelo.INACTIVO);
+        assertThat(porAdaptador.get("GEMINI_CLOUD").getParametros()).containsEntry("ubicacion", "global");
         assertThat(planes.findAll().getFirst().getOpcionesProduccionPermitidas()).containsEntry("vozEnOff", false);
     }
 }

@@ -34,9 +34,9 @@ class VeoGeneradorDeClipsTest {
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final ServidorVeoSimulado servidor = new ServidorVeoSimulado();
-    private final VeoGeneradorDeClips veo = new VeoGeneradorDeClips(new VeoGeneradorDeClips.PropiedadesVeo(
-            servidor.url(), servidor.urlToken(), Duration.ofSeconds(1), Duration.ofSeconds(2)), json,
-            Clock.systemUTC());
+    private final VeoGeneradorDeClips veo = new VeoGeneradorDeClips(new GoogleCloud(
+            new GoogleCloud.PropiedadesGoogleCloud(servidor.url(), servidor.url(), servidor.urlToken(),
+                    Duration.ofSeconds(1), Duration.ofSeconds(2)), json, Clock.systemUTC()));
 
     @AfterEach
     void apagar() {
@@ -128,7 +128,7 @@ class VeoGeneradorDeClipsTest {
                 "resolucion", "720p", "generarAudio", false));
         ReflectionTestUtils.setField(modelo, "costoReferencial", new BigDecimal("0.05"));
         ReflectionTestUtils.setField(modelo, "unidadCosto", UnidadCosto.POR_SEGUNDO);
-        ReflectionTestUtils.setField(modelo, "nombreSecreto", "autoreel/veo");
+        ReflectionTestUtils.setField(modelo, "nombreSecreto", "autoreel/google-cloud");
         ReflectionTestUtils.setField(modelo, "estado", EstadoModelo.ACTIVO);
         return modelo;
     }

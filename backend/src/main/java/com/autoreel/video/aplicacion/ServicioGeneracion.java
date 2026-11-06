@@ -57,7 +57,7 @@ public class ServicioGeneracion {
     static final Duration RECLAMO = Duration.ofMinutes(5);
     /** Sin el clip a los 10 minutos de enviarlo, el plano usa el respaldo (8.5). */
     static final Duration ESPERA_POR_CLIP = Duration.ofMinutes(10);
-    /** Red de seguridad: ninguna generación dura más que esto. */
+    /** Red de seguridad para un plano que quedó pendiente después de un envío. */
     static final Duration PLAZO_TOTAL = Duration.ofMinutes(20);
     /** RN-30: un plano que falla dos veces usa el respaldo. */
     static final int INTENTOS_POR_CLIP = 2;
@@ -65,7 +65,7 @@ public class ServicioGeneracion {
     private static final long TAMANO_MAXIMO = 200L * 1024 * 1024;
 
     private record Trabajo(Long videoId, Long negocioId, ModeloIA modelo, Movimientos movimientos,
-            Instant generacionIniciadaEn, List<PlanoATrabajar> planos) {
+            List<PlanoATrabajar> planos) {
     }
 
     private record PlanoATrabajar(int orden, EstadoPlano estado, int intentos, String idTarea, Instant enviadoEn,
@@ -122,15 +122,13 @@ public class ServicioGeneracion {
             Optional<GeneradorDeClips> generador = proveedores.generadorDeClips(trabajo.modelo());
             Optional<String> credencial = secretos.obtener(trabajo.modelo().getNombreSecreto());
             boolean avisado = false;
-            boolean vencido = reloj.instant().isAfter(trabajo.generacionIniciadaEn().plus(PLAZO_TOTAL));
             for (PlanoATrabajar plano : trabajo.planos()) {
                 if (plano.estado() == EstadoPlano.LISTO || plano.estado() == EstadoPlano.RESPALDO) {
                     continue;
                 }
                 try {
-                    if (vencido) {
-                        respaldo(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO,
-                                plano.estado() == EstadoPlano.GENERANDO);
+                    if (plazoVencido(plano)) {
+                        respaldo(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, false);
                     } else if (generador.isEmpty() || credencial.isEmpty()) {
                         MotivoRespaldoPlano motivo = generador.isEmpty() ? MotivoRespaldoPlano.MODELO_INACTIVO
                                 : MotivoRespaldoPlano.SIN_CREDENCIAL;
@@ -159,6 +157,16 @@ public class ServicioGeneracion {
                 video.liberarTrabajo();
             }));
         }
+    }
+
+    /**
+     * Red de seguridad para un plano que ya se intentó enviar y quedó pendiente: pasado el plazo total desde su último
+     * envío, usa el respaldo. No cuenta la espera en la cola (con un proveedor síncrono, un video puede esperar a que
+     * terminen otros) ni los planos enviados: esos se consultan primero y tienen su propia espera de 10 minutos.
+     */
+    private boolean plazoVencido(PlanoATrabajar plano) {
+        return plano.estado() == EstadoPlano.PENDIENTE && plano.intentos() > 0 && plano.enviadoEn() != null
+                && reloj.instant().isAfter(plano.enviadoEn().plus(PLAZO_TOTAL));
     }
 
     /** @return si se avisó al administrador. */
@@ -241,7 +249,7 @@ public class ServicioGeneracion {
                 + "-" + UUID.randomUUID() + ".mp4";
         almacen.guardar(clave, listo.video(), listo.tipoContenido());
         conPlano(trabajo, plano.orden(), (video, entidad) -> {
-            registrarCosto(trabajo, video);
+            registrarCosto(trabajo, video, listo.segundosGenerados());
             borrarAlConfirmar(entidad.clipListo(clave));
         });
     }
@@ -287,8 +295,19 @@ public class ServicioGeneracion {
     }
 
     private void registrarCosto(Trabajo trabajo, Video video) {
+        registrarCosto(trabajo, video, null);
+    }
+
+    /**
+     * RN-32: el costo de un clip. Si el proveedor informa cuántos segundos generó (y cobra), se usan esos; si no, la
+     * duración pedida.
+     */
+    private void registrarCosto(Trabajo trabajo, Video video, Double segundosGenerados) {
+        BigDecimal segundos = segundosGenerados != null && segundosGenerados > 0
+                ? BigDecimal.valueOf(segundosGenerados).setScale(3, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.valueOf(segundosDelClip(trabajo.modelo()));
         BigDecimal costo = costos.registrar(trabajo.negocioId(), trabajo.videoId(), trabajo.modelo(),
-                ConceptoCosto.CLIP, BigDecimal.valueOf(segundosDelClip(trabajo.modelo())));
+                ConceptoCosto.CLIP, segundos);
         video.sumarCosto(costo);
     }
 
@@ -313,9 +332,8 @@ public class ServicioGeneracion {
                         plano.getIdTareaProveedor(), plano.getEnviadoEn(), plano.getClaveFoto(),
                         plano.getMovimiento()))
                 .toList();
-        Instant inicio = video.getGeneracionIniciadaEn() == null ? reloj.instant() : video.getGeneracionIniciadaEn();
         return new Trabajo(video.getId(), video.getNegocioId(), video.getModeloVideoUsado(), paquete.movimientos(),
-                inicio, planos);
+                planos);
     }
 
     private byte[] leerArchivo(String clave) {
