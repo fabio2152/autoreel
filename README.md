@@ -81,4 +81,4 @@ Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: 
 
 ## Documentación
 
-La especificación, la arquitectura, el modelo de datos, los ADR y los manuales se mantienen en la carpeta `docs/` **local**, que no se versiona (ver `CLAUDE.md`). Las reglas de trabajo del proyecto están en [`CLAUDE.md`](CLAUDE.md).
+La especificación, la arquitectura, el modelo de datos, los ADR, los manuales y las reglas de trabajo del proyecto (`CLAUDE.md`) se mantienen solo en local: la carpeta `docs/`, `.claude/` y `CLAUDE.md` no se versionan.
