@@ -4,7 +4,7 @@ Plataforma web para que negocios pequeños, sin conocimientos de marketing, cree
 
 El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la plataforma crea cada negocio, le asigna un plan y una fecha de pago, y le entrega su acceso.
 
-> **Estado:** fase 5 de 9 (generación, revisión y descarga del video). Ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado:** fases 1 a 5 y 7 terminadas: el negocio crea, revisa y descarga su video, y el administrador gestiona negocios, pagos, planes, integraciones de IA, beneficios y costos. La publicación en Instagram (fase 6) y el despliegue en AWS (fase 8) están pendientes. Ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tecnologías
 
@@ -30,7 +30,7 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
 
 ## Ejecutar en local
 
-1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par. `GEMINI_API_KEY` es **opcional**: es una clave de Google AI Studio (https://aistudio.google.com/apikey) y sirve para el guion (Gemini) y para los clips de video (Gemini Omni Flash). Los clips tienen costo por segundo (unos US$0,07 a 720p, sin plan gratuito), así que el proyecto de la clave necesita facturación activa. Si la dejas vacía, la propuesta usa el guion de respaldo y cada plano, un acercamiento lento de la foto hecho con FFmpeg; el video se entrega igual. `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO` también es **opcional**: es la ruta al JSON de una cuenta de servicio de Google Cloud (Gemini y Veo en Vertex AI). Solo se usa si se activan esos modelos en la base de datos; hoy están inactivos. Nunca lo subas a git: guárdalo fuera del repositorio o en la carpeta `credenciales/`, que git ignora. `FFMPEG_PATH` es la ruta a `ffmpeg`: déjala en `ffmpeg` si está en el PATH o pon la ruta completa (en Windows, la carpeta `bin` de la instalación de winget).
+1. **Variables de entorno.** Copia `.env.example` como `.env` en la raíz y completa los valores. Genera `JWT_SECRET` con `openssl rand -base64 32`. Si el puerto 5432 está ocupado, cambia `POSTGRES_PORT` y el puerto de `DB_URL`. Las credenciales `AWS_*` del `.env` son solo para SeaweedFS local: inventa cualquier par. `GEMINI_API_KEY` es una clave de Google AI Studio (https://aistudio.google.com/apikey) y sirve para el guion (Gemini) y para los clips de video (Gemini Omni Flash). Los clips tienen costo por segundo (unos US$0,07 a 720p, sin plan gratuito), así que el proyecto de la clave necesita facturación activa. **Sin ella no se pueden crear videos**: la propuesta usa el guion de respaldo, pero no hay clips sin IA y "Crear mi video" queda desactivado. También puedes pegar la clave después desde el panel (Ajustes → Integraciones y claves): se guarda en `credenciales/secretos-del-panel.json` (o en `SECRETOS_PANEL_ARCHIVO`), fuera de la base de datos, y tiene prioridad sobre el `.env`. `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO` es **opcional**: es la ruta al JSON de una cuenta de servicio de Google Cloud (Gemini y Veo en Vertex AI). Solo se usa si se activan esos modelos; hoy están inactivos. Nunca subas claves a git: la carpeta `credenciales/` está ignorada. `FFMPEG_PATH` es la ruta a `ffmpeg`: déjala en `ffmpeg` si está en el PATH o pon la ruta completa (en Windows, la carpeta `bin` de la instalación de winget).
 
 2. **Base de datos y almacenamiento** (PostgreSQL y SeaweedFS):
 
@@ -57,10 +57,14 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
 
 ## Cuentas de prueba
 
-- **Administrador:** se crea al primer arranque con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del `.env` (solo si todavía no existe uno).
+- **Administrador:** se crea al primer arranque con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del `.env` (solo si todavía no existe uno). Desde `/admin`:
+  - Crea negocios, registra pagos (la próxima fecha avanza un mes) y atiende la campana de notificaciones.
+  - Cambia planes, otorga beneficios temporales y revisa los costos de IA por mes.
+  - En Ajustes gestiona los planes, los modelos de IA (con "Probar conexión") y sus claves.
+  - Con "Entrar como el negocio" ve AutoReel tal como lo ve un cliente.
 - **Negocio de ejemplo:** con el perfil `dev` se crea "Pastelería Dulce Encanto" (Miraflores) con `DEMO_NEGOCIO_EMAIL` y `DEMO_NEGOCIO_PASSWORD`, su perfil completo y tres productos con imágenes de relleno.
 - **Recorrido del negocio:**
-  1. En Inicio, el chat del video del día; al terminarlo, "Ver mi propuesta" abre el storyboard (`/videos/{id}`), donde se editan los textos, se cambian las fotos y se ajusta el precio.
+  1. En Inicio, el chat del video del día. Cada pregunta se responde con un botón o escribiendo, y trae un ejemplo. Al terminarlo, "Ver mi propuesta" abre el storyboard (`/videos/{id}`), donde se editan los textos, se cambian las fotos y se ajusta el precio.
   2. "Crear mi video" usa el video del día y muestra "Creando tu video" con el avance de cada plano. Se puede salir: cuando termina, la aplicación avisa "Tu video está listo".
   3. En la revisión se ve el video, se regenera un plano (hasta 3 veces en el plan Lite), se edita un texto o el precio (no gasta regeneraciones) y se aprueba.
   4. "Descargar" baja el MP4 de 15 segundos. Todos los videos quedan en "Mis videos" (`/videos`). La publicación en Instagram llega en la fase 6.
@@ -77,7 +81,7 @@ cd backend && ./mvnw verify        # unitarias + integración (requiere Docker)
 cd frontend && npm run lint && npm run build
 ```
 
-Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 233 pruebas en el backend.
+Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 253 pruebas en el backend.
 
 ## Documentación
 

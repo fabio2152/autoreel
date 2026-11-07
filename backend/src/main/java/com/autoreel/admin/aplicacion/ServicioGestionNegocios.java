@@ -34,7 +34,6 @@ import com.autoreel.negocio.aplicacion.ServicioPerfil;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.video.aplicacion.ServicioConsumo;
-import com.autoreel.video.dominio.Plano;
 import com.autoreel.video.infraestructura.VideoRepositorio;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
@@ -157,7 +156,6 @@ public class ServicioGestionNegocios {
                                 .map(video -> new NegocioDetalle.VideoDelNegocio(video.getId(), video.getTipoVideo(),
                                         video.getEstado(), video.getFechaCreacion(),
                                         video.getModeloVideoUsado().getNombre(), video.getCostoEstimado(),
-                                        video.planosConFoto().stream().filter(Plano::isUsoRespaldo).count(),
                                         video.getMotivoError()))
                                 .toList()));
     }

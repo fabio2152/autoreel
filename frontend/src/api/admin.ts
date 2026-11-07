@@ -75,7 +75,6 @@ export interface NegocioDetalle {
       fechaCreacion: string
       modeloVideo: string
       costoEstimado: number
-      planosConRespaldo: number
       motivoError: string | null
     }[]
   }
