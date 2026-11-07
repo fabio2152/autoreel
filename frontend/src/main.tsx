@@ -3,6 +3,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { LayoutAdmin } from './admin/LayoutAdmin'
+import { PaginaAjustesAdmin } from './admin/PaginaAjustesAdmin'
+import { PaginaCostos } from './admin/PaginaCostos'
 import { PaginaDetalleNegocio } from './admin/PaginaDetalleNegocio'
 import { PaginaNegocios } from './admin/PaginaNegocios'
 import { PaginaAjustes } from './ajustes/PaginaAjustes'
@@ -46,6 +48,8 @@ const enrutador = createBrowserRouter([
         children: [
           { index: true, element: <PaginaNegocios /> },
           { path: 'negocios/:id', element: <PaginaDetalleNegocio /> },
+          { path: 'costos', element: <PaginaCostos /> },
+          { path: 'ajustes', element: <PaginaAjustesAdmin /> },
         ],
       },
     ],

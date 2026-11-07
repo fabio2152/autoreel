@@ -49,6 +49,15 @@ public class GeminiCloudGuionista implements Guionista {
         return RespuestaGemini.leer(respuesta, NOMBRE);
     }
 
+    /** Cuenta los tokens de un texto corto ({@code countTokens}): verifica la cuenta y el modelo sin costo. */
+    @Override
+    public void probar(ModeloIA modelo, String credencial) {
+        googleCloud.llamar(modelo, credencial, GoogleCloud.parametro(modelo, "ubicacion", GoogleCloud.UBICACION_GLOBAL),
+                "countTokens",
+                Map.of("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", "AutoReel"))))),
+                NOMBRE);
+    }
+
     private static double temperatura(ModeloIA modelo) {
         Object valor = modelo.getParametros() == null ? null : modelo.getParametros().get("temperatura");
         return valor instanceof Number numero ? numero.doubleValue() : TEMPERATURA_POR_DEFECTO;

@@ -19,6 +19,13 @@ public interface Guionista {
      */
     RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson);
 
+    /**
+     * RF-11, "Probar conexión": verifica la credencial y el modelo con una llamada sin costo (o casi).
+     *
+     * @throws ErrorDeProveedor si no funciona; el mensaje dice por qué y nunca incluye la credencial.
+     */
+    void probar(ModeloIA modelo, String credencial);
+
     /** @param problema motivo por el que no hay texto utilizable; vacío si la respuesta es normal. */
     record RespuestaDelModelo(String texto, String problema) {
 

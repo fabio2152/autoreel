@@ -90,6 +90,15 @@ public class GoogleCloud {
         }
     }
 
+    /**
+     * Lee la cuenta de servicio y pide un token: si Google lo entrega, la credencial sirve.
+     *
+     * @throws ErrorDeProveedor si la credencial no es válida o Google no responde.
+     */
+    public void verificarCredencial(String credencial) {
+        tokens.token(tokens.cuenta(credencial));
+    }
+
     /** Un parámetro del modelo como texto, o el valor por defecto. */
     static String parametro(ModeloIA modelo, String nombre, String porDefecto) {
         Object valor = modelo.getParametros() == null ? null : modelo.getParametros().get(nombre);
