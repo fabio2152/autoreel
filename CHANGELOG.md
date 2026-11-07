@@ -2,6 +2,16 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Documentación al día] - 2026-11-06
+
+### Cambiado
+
+- **README:** el estado del proyecto, la clave de AI Studio (sin ella no se crean videos; también se puede pegar en el panel), las funciones del administrador y el número de pruebas.
+- **`.env.example`:** el comentario de `GEMINI_API_KEY` ya no menciona el respaldo con FFmpeg.
+- **Panel:** el detalle del negocio ya no muestra "Planos con respaldo" (`planosConRespaldo`), que siempre valía 0 en los videos nuevos (ADR 0020).
+- **Chat:** los ejemplos de la primera pregunta y de "¿Algo más?" ya no hablan de fechas especiales ni usan frases prohibidas.
+- **Código:** se corrigieron comentarios desactualizados y la versión de OpenAPI pasa a `fase-7`.
+
 ## [Revisión del flujo del negocio] - 2026-11-06
 
 Cambios pedidos por el usuario al probar el flujo del negocio desde el primer ingreso.

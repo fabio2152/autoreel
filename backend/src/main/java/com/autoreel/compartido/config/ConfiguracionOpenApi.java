@@ -12,7 +12,7 @@ public class ConfiguracionOpenApi {
     OpenAPI documentacionApi() {
         return new OpenAPI().info(new Info()
                 .title("AutoReel API")
-                .version("fase-2")
+                .version("fase-7")
                 .description("API REST de AutoReel. La sesión viaja en la cookie HttpOnly autoreel_sesion; "
                         + "las operaciones que modifican datos requieren la cabecera X-XSRF-TOKEN."));
     }

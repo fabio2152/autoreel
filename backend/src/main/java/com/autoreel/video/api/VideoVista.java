@@ -31,7 +31,7 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
      * Planos con foto (1 a 3).
      *
      * @param estado       el clip: vacío en el storyboard; PENDIENTE, GENERANDO, LISTO o RESPALDO después.
-     * @param usoRespaldo  el plano usa el acercamiento hecho por el sistema en lugar del clip de IA (8.5).
+     * @param usoRespaldo  solo en videos creados antes del 2026-11-06: el plano usó el acercamiento de FFmpeg (ADR 0020).
      */
     public record PlanoVista(int orden, String nombre, int segundos, FotoVista foto, MovimientoVista movimiento,
             String texto, int maxPalabras, EstadoPlano estado, boolean usoRespaldo) {

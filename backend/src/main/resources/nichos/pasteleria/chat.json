@@ -46,7 +46,7 @@
           "texto": "Recién salido del horno"
         }
       ],
-      "ejemplo": "O escríbelo: \"Video para el Día de la Madre con nuestras tortas de fresa\".",
+      "ejemplo": "O escríbelo: \"Quiero mostrar la torta de fresa que más nos piden\".",
       "opcionLibre": "PRODUCTO_ESTRELLA"
     },
     {
@@ -81,7 +81,7 @@
       "texto": "¿Algo más que quieras que se diga?",
       "obligatoria": false,
       "omitible": true,
-      "ejemplo": "Ej.: \"Hacemos delivery gratis en Miraflores\"."
+      "ejemplo": "Ej.: \"Atendemos pedidos hasta las 8 p. m.\"."
     }
   ]
 }

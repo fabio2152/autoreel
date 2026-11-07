@@ -250,7 +250,6 @@ function VideosDelNegocio({ videos, costo }: { videos: NegocioDetalle['videos'];
                 <th className="py-2 pr-4">Estado</th>
                 <th className="py-2 pr-4">Modelo de video</th>
                 <th className="py-2 pr-4">Costo</th>
-                <th className="py-2 pr-4">Planos con respaldo</th>
                 <th className="py-2">Detalle</th>
               </tr>
             </thead>
@@ -261,7 +260,6 @@ function VideosDelNegocio({ videos, costo }: { videos: NegocioDetalle['videos'];
                   <td className="py-2 pr-4">{ESTADOS_DEL_VIDEO[video.estado] ?? video.estado}</td>
                   <td className="py-2 pr-4 whitespace-nowrap">{video.modeloVideo}</td>
                   <td className="py-2 pr-4 whitespace-nowrap">{formatearCosto(video.costoEstimado)}</td>
-                  <td className="py-2 pr-4">{video.planosConRespaldo}</td>
                   <td className="py-2 text-stone-500">{video.motivoError ?? '—'}</td>
                 </tr>
               ))}

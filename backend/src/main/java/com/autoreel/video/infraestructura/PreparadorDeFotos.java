@@ -34,8 +34,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Deja una foto lista para el video: aplica la orientación de la cámara (EXIF), la recorta al centro en vertical
- * 9:16 y la guarda como JPEG de 1080×1920 sin metadatos. La misma foto va al modelo de video y al respaldo de FFmpeg,
- * así no depende de cómo cada versión de FFmpeg trate el EXIF.
+ * 9:16 y la guarda como JPEG de 1080×1920 sin metadatos, antes de enviarla al modelo de video. Así el proveedor recibe
+ * siempre la foto bien orientada y sin datos de la cámara.
  */
 @Component
 public class PreparadorDeFotos {

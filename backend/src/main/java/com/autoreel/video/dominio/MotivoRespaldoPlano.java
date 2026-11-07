@@ -1,6 +1,9 @@
 package com.autoreel.video.dominio;
 
-/** Por qué un plano usa el acercamiento de FFmpeg en lugar del clip de IA (sección 8.5). */
+/**
+ * Por qué un plano se quedó sin clip de IA (sección 8.5). Desde el 2026-11-06 no hay respaldo sin IA (ADR 0020): se usa
+ * en el registro de la aplicación y en los videos creados antes, que guardaban el motivo del acercamiento de FFmpeg.
+ */
 public enum MotivoRespaldoPlano {
     /** El secreto del modelo de video no está configurado. */
     SIN_CREDENCIAL,

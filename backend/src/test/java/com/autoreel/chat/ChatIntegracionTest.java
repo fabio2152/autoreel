@@ -146,11 +146,11 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paso.id").value("tipoVideo"))
                 .andExpect(jsonPath("$.paso.admiteTexto").value(true));
-        responder(negocio, id, Map.of("paso", "tipoVideo", "texto", "Video para el Día de la Madre"))
+        responder(negocio, id, Map.of("paso", "tipoVideo", "texto", "Quiero mostrar la torta de fresa que más nos piden"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paso.id").value("producto"))
                 .andExpect(jsonPath("$.respuestas.tipoVideo").value("PRODUCTO_ESTRELLA"))
-                .andExpect(jsonPath("$.respuestas.tipoVideoLibre").value("Video para el Día de la Madre"));
+                .andExpect(jsonPath("$.respuestas.tipoVideoLibre").value("Quiero mostrar la torta de fresa que más nos piden"));
     }
 
     @Test

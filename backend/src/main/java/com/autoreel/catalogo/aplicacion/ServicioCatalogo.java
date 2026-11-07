@@ -107,7 +107,7 @@ public class ServicioCatalogo {
 
     /**
      * Producto subido desde el chat (RF-20): exige las tres fotos para usarse en el video y, si el usuario no aceptó
-     * guardarlo, queda fuera del catálogo (RN-14). Su temporada es "Todo el año"; puede cambiarse en el catálogo.
+     * guardarlo, queda fuera del catálogo (RN-14). Su temporada es "Todo el año" (no se piden en el MVP).
      */
     @Transactional
     public Producto crearDesdeChat(Long negocioId, String nombre, String descripcion, Map<TipoFoto, String> fotos,

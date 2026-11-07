@@ -39,10 +39,9 @@ public record NegocioDetalle(Long id, String nombre, String nicho, String nombre
     }
 
     /**
-     * Un video, para dar soporte: su estado, el modelo de video con el que se creó, su costo, cuántos planos usaron
-     * el respaldo y, si falló, el motivo.
+     * Un video, para dar soporte: su estado, el modelo de video con el que se creó, su costo y, si falló, el motivo.
      */
     public record VideoDelNegocio(Long id, String tipoVideo, EstadoVideo estado, Instant fechaCreacion,
-            String modeloVideo, BigDecimal costoEstimado, long planosConRespaldo, String motivoError) {
+            String modeloVideo, BigDecimal costoEstimado, String motivoError) {
     }
 }
