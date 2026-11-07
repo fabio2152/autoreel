@@ -188,13 +188,20 @@ function Storyboard({ video }: { video: Video }) {
       {video.estado === 'STORYBOARD' && (
         <div className="space-y-2 pb-4">
           {crear.isError && <Aviso tipo="error">{mensajeDeError(crear.error)}</Aviso>}
-          <Boton className="w-full" cargando={crear.isPending} disabled={!videosHoy.puedeAprobar} onClick={() => crear.mutate()}>
+          <Boton
+            className="w-full"
+            cargando={crear.isPending}
+            disabled={!videosHoy.puedeAprobar || !video.generacion.iaDisponible}
+            onClick={() => crear.mutate()}
+          >
             Crear mi video
           </Boton>
           <p className="text-center text-xs text-stone-500">
-            {videosHoy.puedeAprobar
-              ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
-              : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
+            {!video.generacion.iaDisponible
+              ? 'Por ahora no podemos crear clips con IA. Inténtalo en un rato: tu propuesta queda guardada.'
+              : videosHoy.puedeAprobar
+                ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
+                : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
           </p>
           <Boton variante="texto" className="w-full" onClick={() => setConfirmarDescarte(true)}>
             Descartar propuesta
@@ -288,11 +295,9 @@ function TarjetaPlano({
   const regenerar = useMutation({ mutationFn: () => regenerarPlano(video.id, plano.orden), onSuccess: onGuardado })
   const restantes = video.plan.regeneracionesPorVideo - video.generacion.regeneracionesUsadas
   const conIa = enRevision && video.generacion.iaDisponible
-  // En la revisión, una foto nueva crea un clip nuevo: sin regeneraciones, no se ofrece.
-  const sinFotoNueva = conIa && restantes <= 0
-  const etiquetaRegenerar =
-    (plano.usoRespaldo ? 'Reintentar con IA' : 'Regenerar este plano') +
-    (restantes > 0 ? ` (te quedan ${restantes})` : ' (ya no quedan)')
+  // En la revisión, una foto nueva crea un clip nuevo de IA: sin IA o sin regeneraciones, no se ofrece.
+  const sinFotoNueva = enRevision && (!video.generacion.iaDisponible || restantes <= 0)
+  const etiquetaRegenerar = 'Regenerar este plano' + (restantes > 0 ? ` (te quedan ${restantes})` : ' (ya no quedan)')
   const [texto, setTexto] = useState<string | null>(null)
   const [eligiendoFoto, setEligiendoFoto] = useState(false)
   // Texto y foto se guardan por separado: el error o el éxito de uno no cierra ni borra el otro.
@@ -349,11 +354,6 @@ function TarjetaPlano({
                 >
                   Editar texto
                 </button>
-              )}
-              {enRevision && plano.usoRespaldo && (
-                <p className="mt-1 text-xs text-stone-500">
-                  Este momento usa un acercamiento suave a tu foto: no pudimos crear el clip con IA.
-                </p>
               )}
               {conIa && (
                 <div className="mt-1">

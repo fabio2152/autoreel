@@ -172,11 +172,15 @@ public class ServicioChat {
     }
 
     private void escribir(Conversacion conversacion, GuionChat guion, PasoChat paso, String texto, Instant ahora) {
-        exigirTipo(paso, TipoPaso.TEXTO);
         String limpio = texto.strip();
         if (limpio.isEmpty()) {
             throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Escribe tu respuesta antes de enviarla.");
         }
+        if (paso.tipo() == TipoPaso.BOTONES && paso.opcionLibre() != null) {
+            escribirEnBotones(conversacion, guion, paso, limpio, ahora);
+            return;
+        }
+        exigirTipo(paso, TipoPaso.TEXTO);
         if (limpio.length() > guion.maximoCaracteres()) {
             throw new ExcepcionDeNegocio("RESPUESTA_MUY_LARGA", guion.mensajes().muyLarga());
         }
@@ -186,6 +190,29 @@ public class ServicioChat {
             throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "CONVERSACION_CERRADA", "Esta conversación ya terminó.");
         }
         conversacion.escribirUsuario(limpio, ahora);
+    }
+
+    /**
+     * El usuario escribió en lugar de tocar un botón (2026-11-06): se revisa como cualquier texto (RN-18), se guarda
+     * aparte y se sigue con la opción libre del paso. No se agrupa: es una sola respuesta.
+     */
+    private void escribirEnBotones(Conversacion conversacion, GuionChat guion, PasoChat paso, String texto,
+            Instant ahora) {
+        conversacion.decirUsuario(texto, ahora);
+        switch (EvaluadorDeRespuesta.evaluar(guion, paso, conversacion.getRespuestas(), texto)) {
+            case Aceptada aceptada when aceptada.valor() != null -> {
+                conversacion.responder(paso.claveLibre(), aceptada.valor());
+                aceptar(conversacion, guion, paso, paso.opcionLibre(), ahora);
+            }
+            case Aceptada sinTexto -> {
+                conversacion.decirSistema(guion.mensajes().muyCorta(), ahora);
+                conversacion.decirSistema(paso.texto(), ahora);
+            }
+            case Rechazada rechazada -> {
+                conversacion.decirSistema(rechazada.mensaje(), ahora);
+                conversacion.decirSistema(paso.texto(), ahora);
+            }
+        }
     }
 
     private void procesarPendientes(Conversacion conversacion, GuionChat guion, Instant ahora) {
@@ -264,7 +291,8 @@ public class ServicioChat {
             PasoChat actual = guion.paso(conversacion.getPasoActual());
             boolean obligatoria = actual.esObligatoria(respuestas);
             paso = new ConversacionVista.Paso(actual.id(), actual.tipo(), actual.texto(), actual.opciones(),
-                    obligatoria, actual.omitible() && !obligatoria, sugerencia(conversacion, actual, guion));
+                    obligatoria, actual.omitible() && !obligatoria, sugerencia(conversacion, actual, guion),
+                    actual.ejemplo(), actual.admiteTexto());
             if (actual.tipo() == TipoPaso.PRODUCTO) {
                 Carrusel carrusel = catalogo.carrusel(negocioId);
                 productos = carrusel.productos().stream().map(this::paraCarrusel).toList();
@@ -308,7 +336,8 @@ public class ServicioChat {
         for (PasoChat paso : guion.pasos()) {
             Object valor = conversacion.getRespuestas().get(paso.id());
             String texto = switch (paso.tipo()) {
-                case BOTONES -> valor == null ? "—"
+                case BOTONES -> conversacion.getRespuestas().get(paso.claveLibre()) instanceof String libre ? libre
+                        : valor == null ? "—"
                         : paso.opcion(String.valueOf(valor)).map(Opcion::texto).orElse(String.valueOf(valor));
                 case PRODUCTO -> productoElegido(conversacion, guion).map(Producto::getNombre).orElse("—");
                 case TEXTO -> valor == null ? "—" : String.valueOf(valor);

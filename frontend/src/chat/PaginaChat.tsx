@@ -163,7 +163,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
 
   const enviarTexto = (evento: FormEvent) => {
     evento.preventDefault()
-    if (ocupado || !paso || paso.tipo !== 'TEXTO' || !texto.trim() || restantes < 0) return
+    if (ocupado || !paso || !paso.admiteTexto || !texto.trim() || restantes < 0) return
     enviar.mutate({ paso: paso.id, texto: texto.trim() })
   }
 
@@ -174,11 +174,8 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
 
   return (
     <div className="-mx-4 -my-6 flex h-[calc(100dvh-3.5rem-4rem-var(--alto-aviso,0px))] flex-col md:h-[calc(100dvh-3.5rem-var(--alto-aviso,0px))] md:flex-row">
-      <aside className="hidden w-64 shrink-0 border-r border-stone-200 p-5 text-sm text-stone-500 md:block">
-        {conversacion.aviso}
-      </aside>
-
-      <div className="flex min-h-0 flex-1 flex-col">
+      {/* El chat va centrado; el aviso está en el botón "?" junto a la respuesta. */}
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
         <div role="log" aria-live="off" aria-label="Conversación" className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
           {conversacion.mensajes.map((mensaje) => (
             <Burbuja key={mensaje.id} mensaje={mensaje} />
@@ -252,8 +249,8 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
               />
             )}
 
-            {paso.tipo === 'TEXTO' && (
-              <form onSubmit={enviarTexto} className="space-y-2">
+            {paso.admiteTexto && (
+              <form onSubmit={enviarTexto} className={`space-y-2 ${paso.tipo === 'BOTONES' ? 'mt-3' : ''}`}>
                 {(paso.sugerencia || paso.omitible) && (
                   <div className="flex flex-wrap gap-2">
                     {paso.sugerencia && (
@@ -278,6 +275,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
                   </div>
                 )}
                 <div className="flex items-end gap-2">
+                  <AyudaDelChat aviso={conversacion.aviso} />
                   <label htmlFor="respuesta" className="sr-only">
                     Tu respuesta
                   </label>
@@ -290,21 +288,26 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) enviarTexto(e)
                     }}
-                    placeholder="Escribe tu respuesta…"
+                    placeholder={paso.tipo === 'BOTONES' ? 'O escríbelo con tus palabras…' : 'Escribe tu respuesta…'}
                     className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border-0 bg-stone-100 px-4 py-2.5 text-base focus:ring-2 focus:ring-marca-600 sm:text-sm"
                   />
                   <Boton type="submit" disabled={!texto.trim() || restantes < 0} cargando={enviar.isPending}>
                     Enviar
                   </Boton>
                 </div>
-                <p className={`text-right text-xs tabular-nums ${restantes < 0 ? 'text-red-700' : 'text-stone-400'}`}>
-                  {restantes < 0 ? 'Es demasiado largo: resúmelo un poco' : `${restantes} caracteres`}
-                </p>
+                <div className="flex items-start justify-between gap-3 text-xs">
+                  <p className="text-stone-500">{paso.ejemplo}</p>
+                  <p className={`shrink-0 tabular-nums ${restantes < 0 ? 'text-red-700' : 'text-stone-400'}`}>
+                    {restantes < 0 ? 'Es demasiado largo: resúmelo un poco' : `${restantes} caracteres`}
+                  </p>
+                </div>
               </form>
             )}
 
-            {paso.tipo !== 'TEXTO' && (
-              <p className="mt-2 text-xs text-stone-400 md:hidden">{conversacion.aviso}</p>
+            {!paso.admiteTexto && (
+              <div className="mt-2 flex justify-end">
+                <AyudaDelChat aviso={conversacion.aviso} />
+              </div>
             )}
           </div>
         )}
@@ -321,6 +324,32 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
         }}
         onUsar={(producto: ProductoNuevo) => paso && enviar.mutate({ paso: paso.id, productoNuevo: producto })}
       />
+    </div>
+  )
+}
+
+/** El aviso del chat, desplegable desde un "?" junto a la respuesta (pedido del usuario, 2026-11-06). */
+function AyudaDelChat({ aviso }: { aviso: string }) {
+  const [abierta, setAbierta] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setAbierta((actual) => !actual)}
+        aria-expanded={abierta}
+        aria-label="Cómo funciona este chat"
+        className="flex size-11 items-center justify-center rounded-full bg-stone-100 text-base font-semibold text-stone-600 hover:bg-stone-200"
+      >
+        ?
+      </button>
+      {abierta && (
+        <p
+          role="note"
+          className="absolute bottom-full left-0 z-10 mb-2 w-64 rounded-xl bg-stone-900 px-3 py-2 text-xs text-white shadow-lg"
+        >
+          {aviso}
+        </p>
+      )}
     </div>
   )
 }

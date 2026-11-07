@@ -1,6 +1,7 @@
 import { esObligatoria, type Pregunta, type Respuestas } from '../api/negocio'
 import { Campo } from './Campo'
 import { Chips } from './Chips'
+import { SeleccionConOtros } from './SeleccionConOtros'
 
 interface Props {
   pregunta: Pregunta
@@ -16,6 +17,17 @@ export function CampoPregunta({ pregunta, respuestas, onCambiar }: Props) {
   const obligatoria = esObligatoria(pregunta, respuestas)
   const etiqueta = obligatoria ? pregunta.texto : `${pregunta.texto} (opcional)`
   const valor = respuestas[pregunta.id]
+
+  if (pregunta.tipo === 'SELECCION_MULTIPLE' && pregunta.maxOtro) {
+    return (
+      <SeleccionConOtros
+        pregunta={pregunta}
+        etiqueta={etiqueta}
+        seleccionados={Array.isArray(valor) ? valor : []}
+        onCambiar={(actualizar) => onCambiar(pregunta.id, actualizar)}
+      />
+    )
+  }
 
   if (pregunta.tipo === 'SELECCION_MULTIPLE') {
     return (

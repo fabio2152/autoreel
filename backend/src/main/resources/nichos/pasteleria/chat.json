@@ -1,7 +1,17 @@
 {
   "minimoCaracteres": 3,
   "maximoCaracteres": 500,
-  "respuestasNegativas": ["no", "nop", "ninguno", "ninguna", "nada", "no hay", "sin precio", "no gracias", "-"],
+  "respuestasNegativas": [
+    "no",
+    "nop",
+    "ninguno",
+    "ninguna",
+    "nada",
+    "no hay",
+    "sin precio",
+    "no gracias",
+    "-"
+  ],
   "mensajes": {
     "pregunta": "Soy un asistente para reunir información, no puedo responder preguntas. Cuéntame todo lo que se te ocurra sobre tu producto y yo me encargo del resto.",
     "muyCorta": "Cuéntame un poco más, con unas palabras basta.",
@@ -10,7 +20,7 @@
     "productoNoDisponible": "Ese producto ya no está disponible. Elige otro o sube uno nuevo.",
     "catalogoVacio": "Todavía no tienes productos con sus tres fotos. Súbelo ahora mismo.",
     "cierre": "¡Listo! Estoy preparando tu propuesta…",
-    "aviso": "Este chat no es una IA para conversar. Responde cada pregunta con todo lo que se te ocurra; nosotros organizamos la información."
+    "aviso": "Este chat está diseñado para recibir respuestas, no para recibir preguntas."
   },
   "pasos": [
     {
@@ -19,11 +29,25 @@
       "texto": "¡Hola! ¿Qué video quieres crear hoy?",
       "obligatoria": true,
       "opciones": [
-        { "valor": "PRODUCTO_ESTRELLA", "texto": "Producto estrella" },
-        { "valor": "PROMOCION", "texto": "Promoción" },
-        { "valor": "TORTAS_POR_ENCARGO", "texto": "Tortas por encargo" },
-        { "valor": "RECIEN_HORNEADO", "texto": "Recién salido del horno" }
-      ]
+        {
+          "valor": "PRODUCTO_ESTRELLA",
+          "texto": "Producto estrella"
+        },
+        {
+          "valor": "PROMOCION",
+          "texto": "Promoción"
+        },
+        {
+          "valor": "TORTAS_POR_ENCARGO",
+          "texto": "Tortas por encargo"
+        },
+        {
+          "valor": "RECIEN_HORNEADO",
+          "texto": "Recién salido del horno"
+        }
+      ],
+      "ejemplo": "O escríbelo: \"Video para el Día de la Madre con nuestras tortas de fresa\".",
+      "opcionLibre": "PRODUCTO_ESTRELLA"
     },
     {
       "id": "producto",
@@ -36,7 +60,8 @@
       "tipo": "TEXTO",
       "texto": "¿Qué lo hace especial hoy?",
       "obligatoria": true,
-      "sugerencia": "DESCRIPCION_PRODUCTO"
+      "sugerencia": "DESCRIPCION_PRODUCTO",
+      "ejemplo": "Ej.: \"Bizcocho de vainilla con fresas frescas, recién hecho esta mañana\"."
     },
     {
       "id": "precio",
@@ -44,14 +69,19 @@
       "texto": "¿Hay precio o promoción que quieras mencionar?",
       "obligatoria": false,
       "omitible": true,
-      "obligatoriaSi": { "paso": "tipoVideo", "valor": "PROMOCION" }
+      "obligatoriaSi": {
+        "paso": "tipoVideo",
+        "valor": "PROMOCION"
+      },
+      "ejemplo": "Ej.: \"S/ 65\" o \"2x1 hasta el domingo\"."
     },
     {
       "id": "extra",
       "tipo": "TEXTO",
       "texto": "¿Algo más que quieras que se diga?",
       "obligatoria": false,
-      "omitible": true
+      "omitible": true,
+      "ejemplo": "Ej.: \"Hacemos delivery gratis en Miraflores\"."
     }
   ]
 }

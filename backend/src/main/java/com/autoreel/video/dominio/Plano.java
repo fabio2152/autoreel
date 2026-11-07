@@ -173,38 +173,19 @@ public class Plano {
     }
 
     /**
-     * El clip no se pudo generar. Si era una regeneración y había un clip anterior, se conserva ese clip; si no, el
-     * plano usa el acercamiento de FFmpeg.
+     * El clip nuevo no se pudo generar. Si era una regeneración, el plano conserva su clip anterior. No hay respaldo
+     * sin IA (decisión del usuario, 2026-11-06): un plano sin ningún clip deja al video sin poder armarse.
      *
-     * @return si había una regeneración en curso (se devuelve: una regeneración que falla no se cobra).
+     * @return si conservó el clip anterior.
      */
-    public boolean usarRespaldo(MotivoRespaldoPlano motivo) {
-        boolean eraRegeneracion = regeneracionEnCurso;
+    public boolean conservarClipAnterior() {
+        if (!regeneracionEnCurso || claveClip == null) {
+            return false;
+        }
         this.regeneracionEnCurso = false;
         this.idTareaProveedor = null;
-        if (eraRegeneracion && claveClip != null) {
-            this.estado = EstadoPlano.LISTO;
-            return true;
-        }
-        this.estado = EstadoPlano.RESPALDO;
-        this.usoRespaldo = true;
-        this.motivoRespaldo = motivo;
-        return eraRegeneracion;
-    }
-
-    /**
-     * Sin IA disponible: la foto nueva se anima con el acercamiento del sistema.
-     *
-     * @return la clave del clip descartado, para borrarlo; vacía si no había.
-     */
-    public String usarFotoSinIa(MotivoRespaldoPlano motivo) {
-        String descartado = this.claveClip;
-        this.claveClip = null;
-        this.estado = EstadoPlano.RESPALDO;
-        this.usoRespaldo = true;
-        this.motivoRespaldo = motivo;
-        this.regeneracionEnCurso = false;
-        return descartado;
+        this.estado = EstadoPlano.LISTO;
+        return true;
     }
 
     public boolean terminado() {

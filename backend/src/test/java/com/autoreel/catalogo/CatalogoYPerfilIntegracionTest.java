@@ -68,10 +68,10 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
-    void v12UnaFotoDe800PixelesSeRechaza() throws Exception {
+    void v12UnaFotoDeMenosDe720PixelesSeRechaza() throws Exception {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
         Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
-        fotos.put("DETALLE", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(800, 1200), "image/jpeg"));
+        fotos.put("DETALLE", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(700, 1200), "image/jpeg"));
 
         mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))

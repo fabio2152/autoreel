@@ -44,7 +44,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Genera los clips de un video (sección 8.2) y aplica el plan de respaldo (sección 8.5, RN-30). Las llamadas al
+ * Genera los clips de un video (sección 8.2). Un plano tiene dos intentos (RN-30); si no consigue su clip, no hay
+ * respaldo sin IA (decisión del usuario, 2026-11-06): una regeneración conserva el clip anterior y un video sin todos
+ * sus clips pasa a ERROR con el video del día devuelto (RN-27). Las llamadas al
  * proveedor van fuera de toda transacción; cada cambio de un plano se guarda en su propia transacción corta, así un
  * corte nunca deja una tarea enviada sin registrar ni un plano reenviado sin límite.
  */
@@ -55,14 +57,18 @@ public class ServicioGeneracion {
 
     /** Tiempo que el procesador tiene tomado un video. */
     static final Duration RECLAMO = Duration.ofMinutes(5);
-    /** Sin el clip a los 10 minutos de enviarlo, el plano usa el respaldo (8.5). */
+    /** Sin el clip a los 10 minutos de enviarlo, el intento se da por perdido. */
     static final Duration ESPERA_POR_CLIP = Duration.ofMinutes(10);
     /** Red de seguridad para un plano que quedó pendiente después de un envío. */
     static final Duration PLAZO_TOTAL = Duration.ofMinutes(20);
-    /** RN-30: un plano que falla dos veces usa el respaldo. */
+    /** RN-30: un plano tiene dos intentos. */
     static final int INTENTOS_POR_CLIP = 2;
     private static final int SEGUNDOS_POR_DEFECTO = 4;
     private static final long TAMANO_MAXIMO = 200L * 1024 * 1024;
+    public static final String MOTIVO_SIN_CLIPS =
+            "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato.";
+    public static final String AVISO_REGENERACION =
+            "No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.";
 
     private record Trabajo(Long videoId, Long negocioId, ModeloIA modelo, Movimientos movimientos,
             List<PlanoATrabajar> planos) {
@@ -81,14 +87,15 @@ public class ServicioGeneracion {
     private final ServicioCostos costos;
     private final AlmacenDeArchivos almacen;
     private final PreparadorDeFotos preparador;
+    private final ServicioConsumo consumo;
     private final Clock reloj;
     private final TransactionTemplate transaccion;
     private final TransactionTemplate lectura;
 
     public ServicioGeneracion(VideoRepositorio videos, NegocioRepositorio negocios, RegistroDeNichos nichos,
             FabricaDeProveedores proveedores, ProveedorDeSecretos secretos, AvisoDeIntegracion aviso,
-            ServicioCostos costos, AlmacenDeArchivos almacen, PreparadorDeFotos preparador, Clock reloj,
-            PlatformTransactionManager transacciones) {
+            ServicioCostos costos, AlmacenDeArchivos almacen, PreparadorDeFotos preparador, ServicioConsumo consumo,
+            Clock reloj, PlatformTransactionManager transacciones) {
         this.videos = videos;
         this.negocios = negocios;
         this.nichos = nichos;
@@ -98,6 +105,7 @@ public class ServicioGeneracion {
         this.costos = costos;
         this.almacen = almacen;
         this.preparador = preparador;
+        this.consumo = consumo;
         this.reloj = reloj;
         this.transaccion = new TransactionTemplate(transacciones);
         this.lectura = new TransactionTemplate(transacciones);
@@ -109,7 +117,7 @@ public class ServicioGeneracion {
         return lectura.execute(estado -> videos.enProceso(EstadoVideo.GENERANDO, reloj.instant(), Limit.of(maximo)));
     }
 
-    /** Una pasada sobre los planos del video: envía, consulta o usa el respaldo; con todos listos, a componer. */
+    /** Una pasada sobre los planos del video: envía o consulta; con todos listos, a componer. */
     public void procesar(Long videoId) {
         Instant ahora = reloj.instant();
         Boolean obtenido = transaccion.execute(estado ->
@@ -126,9 +134,14 @@ public class ServicioGeneracion {
                 if (plano.estado() == EstadoPlano.LISTO || plano.estado() == EstadoPlano.RESPALDO) {
                     continue;
                 }
+                // Si otro plano ya dejó el video en ERROR, no se piden más clips (costarían sin servir).
+                if (!Boolean.TRUE.equals(lectura.execute(estado -> videos.findById(videoId)
+                        .map(video -> video.getEstado() == EstadoVideo.GENERANDO).orElse(false)))) {
+                    break;
+                }
                 try {
                     if (plazoVencido(plano)) {
-                        respaldo(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, false);
+                        sinClip(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, false);
                     } else if (generador.isEmpty() || credencial.isEmpty()) {
                         MotivoRespaldoPlano motivo = generador.isEmpty() ? MotivoRespaldoPlano.MODELO_INACTIVO
                                 : MotivoRespaldoPlano.SIN_CREDENCIAL;
@@ -138,7 +151,7 @@ public class ServicioGeneracion {
                                             : "No hay credencial configurada para " + trabajo.modelo().getNombreSecreto());
                             avisado = true;
                         }
-                        respaldo(trabajo, plano, motivo, plano.estado() == EstadoPlano.GENERANDO);
+                        sinClip(trabajo, plano, motivo, plano.estado() == EstadoPlano.GENERANDO);
                     } else if (plano.estado() == EstadoPlano.PENDIENTE) {
                         avisado |= enviar(trabajo, plano, generador.get(), credencial.get());
                     } else {
@@ -161,7 +174,7 @@ public class ServicioGeneracion {
 
     /**
      * Red de seguridad para un plano que ya se intentó enviar y quedó pendiente: pasado el plazo total desde su último
-     * envío, usa el respaldo. No cuenta la espera en la cola (con un proveedor síncrono, un video puede esperar a que
+     * envío, el plano se queda sin clip. No cuenta la espera en la cola (con un proveedor síncrono, un video puede esperar a que
      * terminen otros) ni los planos enviados: esos se consultan primero y tienen su propia espera de 10 minutos.
      */
     private boolean plazoVencido(PlanoATrabajar plano) {
@@ -172,7 +185,7 @@ public class ServicioGeneracion {
     /** @return si se avisó al administrador. */
     private boolean enviar(Trabajo trabajo, PlanoATrabajar plano, GeneradorDeClips generador, String credencial) {
         if (plano.intentos() >= INTENTOS_POR_CLIP) {
-            respaldo(trabajo, plano, MotivoRespaldoPlano.CLIP_FALLIDO, false);
+            sinClip(trabajo, plano, MotivoRespaldoPlano.CLIP_FALLIDO, false);
             return false;
         }
         byte[] foto = preparador.vertical(leerArchivo(plano.claveFoto()));
@@ -189,15 +202,15 @@ public class ServicioGeneracion {
         } catch (ErrorDeProveedor e) {
             aviso.avisar(trabajo.modelo(), e.getTipo(), e.getMessage());
             if (e.getTipo() == ErrorDeProveedor.Tipo.NO_DISPONIBLE) {
-                // Cuenta como intento: con dos, respaldo.
+                // Cuenta como intento: con dos, el plano se queda sin clip.
                 conPlano(trabajo, plano.orden(), (video, entidad) -> {
                     entidad.reintentar();
                     if (entidad.getIntentos() >= INTENTOS_POR_CLIP) {
-                        usarRespaldo(video, entidad, MotivoRespaldoPlano.PROVEEDOR_NO_DISPONIBLE);
+                        sinClip(trabajo, video, entidad, MotivoRespaldoPlano.PROVEEDOR_NO_DISPONIBLE);
                     }
                 });
             } else {
-                respaldo(trabajo, plano, motivo(e.getTipo()), false);
+                sinClip(trabajo, plano, motivo(e.getTipo()), false);
             }
             return true;
         }
@@ -213,12 +226,12 @@ public class ServicioGeneracion {
         } catch (ErrorDeProveedor e) {
             if (e.getTipo() != ErrorDeProveedor.Tipo.NO_DISPONIBLE) {
                 aviso.avisar(trabajo.modelo(), e.getTipo(), e.getMessage());
-                respaldo(trabajo, plano, motivo(e.getTipo()), true);
+                sinClip(trabajo, plano, motivo(e.getTipo()), true);
                 return true;
             }
             // Pasajero: la tarea sigue en curso en el proveedor; se vuelve a consultar hasta los 10 minutos.
             if (sinTiempo) {
-                respaldo(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, true);
+                sinClip(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, true);
             }
             return false;
         }
@@ -227,7 +240,7 @@ public class ServicioGeneracion {
             case EnCurso enCurso -> {
                 if (sinTiempo) {
                     // La tarea ya se envió: el proveedor la cobra aunque no se use (RN-32).
-                    respaldo(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, true);
+                    sinClip(trabajo, plano, MotivoRespaldoPlano.TIEMPO_AGOTADO, true);
                 }
             }
             case Fallido fallido -> {
@@ -236,7 +249,7 @@ public class ServicioGeneracion {
                 conPlano(trabajo, plano.orden(), (video, entidad) -> {
                     entidad.reintentar();
                     if (entidad.getIntentos() >= INTENTOS_POR_CLIP) {
-                        usarRespaldo(video, entidad, MotivoRespaldoPlano.CLIP_FALLIDO);
+                        sinClip(trabajo, video, entidad, MotivoRespaldoPlano.CLIP_FALLIDO);
                     }
                 });
             }
@@ -257,12 +270,12 @@ public class ServicioGeneracion {
     /**
      * @param cobrar si la tarea ya estaba enviada: el proveedor la cobra aunque el clip no se use (RN-32).
      */
-    private void respaldo(Trabajo trabajo, PlanoATrabajar plano, MotivoRespaldoPlano motivo, boolean cobrar) {
+    private void sinClip(Trabajo trabajo, PlanoATrabajar plano, MotivoRespaldoPlano motivo, boolean cobrar) {
         conPlano(trabajo, plano.orden(), (video, entidad) -> {
             if (cobrar) {
                 registrarCosto(trabajo, video);
             }
-            usarRespaldo(video, entidad, motivo);
+            sinClip(trabajo, video, entidad, motivo);
         });
     }
 
@@ -279,7 +292,7 @@ public class ServicioGeneracion {
                 }
                 entidad.reintentar();
                 if (entidad.getIntentos() >= INTENTOS_POR_CLIP) {
-                    usarRespaldo(video, entidad, MotivoRespaldoPlano.CLIP_FALLIDO);
+                    sinClip(trabajo, video, entidad, MotivoRespaldoPlano.CLIP_FALLIDO);
                 }
             });
         } catch (RuntimeException e) {
@@ -287,10 +300,25 @@ public class ServicioGeneracion {
         }
     }
 
-    private static void usarRespaldo(Video video, Plano plano, MotivoRespaldoPlano motivo) {
-        if (plano.usarRespaldo(motivo)) {
-            // Una regeneración que termina en respaldo no se cobra (decisión del usuario).
-            video.devolverRegeneracion();
+    /**
+     * El plano no consiguió su clip. Si era una regeneración, conserva el clip anterior y la regeneración no se cobra.
+     * Si no, el video no se puede armar: pasa a ERROR, los clips ya pedidos se cobran (RN-32) y se devuelve el video
+     * del día (RN-27).
+     */
+    private void sinClip(Trabajo trabajo, Video video, Plano plano, MotivoRespaldoPlano motivo) {
+        log.info("El plano {} del video {} se quedó sin clip: {}", plano.getOrden(), video.getId(), motivo);
+        if (plano.conservarClipAnterior()) {
+            video.regeneracionFallida(AVISO_REGENERACION);
+            return;
+        }
+        for (Plano otro : video.planosConFoto()) {
+            if (otro != plano && otro.getEstado() == EstadoPlano.GENERANDO) {
+                registrarCosto(trabajo, video);
+            }
+        }
+        video.marcarError(MOTIVO_SIN_CLIPS, reloj.instant());
+        if (video.devolverConsumo()) {
+            consumo.devolver(video.getNegocioId());
         }
     }
 

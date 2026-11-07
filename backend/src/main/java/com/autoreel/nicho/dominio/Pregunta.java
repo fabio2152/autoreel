@@ -7,9 +7,11 @@ import java.util.List;
  *
  * @param paso          paso del asistente en que aparece (2 o 3; el paso 1, la marca, es común a todos los nichos).
  * @param obligatoriaSi la pregunta pasa a ser obligatoria si otra respuesta de selección contiene un valor.
+ * @param maxOtro       en una selección, admite además una opción "Otros" escrita por el negocio, de hasta estos
+ *                      caracteres (una característica, no una oración). Vacío si no la admite (2026-11-06).
  */
 public record Pregunta(String id, int paso, String texto, String ayuda, TipoPregunta tipo, boolean obligatoria,
-        Integer maxLongitud, List<Opcion> opciones, Condicion obligatoriaSi) {
+        Integer maxLongitud, List<Opcion> opciones, Condicion obligatoriaSi, Integer maxOtro) {
 
     public enum TipoPregunta {
         TEXTO,
@@ -27,5 +29,9 @@ public record Pregunta(String id, int paso, String texto, String ayuda, TipoPreg
 
     public boolean admiteValor(String valor) {
         return opciones.stream().anyMatch(opcion -> opcion.valor().equals(valor));
+    }
+
+    public boolean admiteOtro() {
+        return maxOtro != null && maxOtro > 0;
     }
 }

@@ -15,6 +15,10 @@ export interface PasoChat {
   omitible: boolean
   /** Punto de partida que se ofrece (la descripción del producto). */
   sugerencia: string | null
+  /** Ejemplo corto de respuesta, bajo la caja de texto. */
+  ejemplo: string | null
+  /** Se puede responder escribiendo (en la primera pregunta, además de los botones). */
+  admiteTexto: boolean
 }
 
 export interface MensajeChat {

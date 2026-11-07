@@ -67,7 +67,7 @@ class PaquetePasteleriaTest {
         GuionChat valido = paquete.guionDelChat();
         PasoChat precio = valido.paso("precio");
         PasoChat conCondicionRota = new PasoChat(precio.id(), precio.tipo(), precio.texto(), false, List.of(),
-                new GuionChat.Condicion("tipoVideo", "NO_EXISTE"), true, null);
+                new GuionChat.Condicion("tipoVideo", "NO_EXISTE"), true, null, null, null);
         List<PasoChat> pasos = valido.pasos().stream().map(p -> p.id().equals("precio") ? conCondicionRota : p).toList();
         GuionChat roto = new GuionChat(valido.minimoCaracteres(), valido.maximoCaracteres(),
                 valido.respuestasNegativas(), valido.mensajes(), pasos);
@@ -97,13 +97,30 @@ class PaquetePasteleriaTest {
                 .doesNotContainKey("distintivo");
     }
 
+    /** Pedido del usuario (2026-11-06): especialidad, clientes y canales admiten "Otros" con texto corto. */
+    @Test
+    void aceptaUnaOpcionEscritaEnOtros() {
+        Map<String, Object> limpias = ValidadorDeRespuestas.normalizar(paquete.preguntasOnboarding(),
+                Map.of("especialidad", List.of("TORTAS_PERSONALIZADAS", "  Cupcakes   veganos "),
+                        "publico", List.of("Oficinas del centro")));
+
+        assertThat(limpias).containsEntry("especialidad", List.of("TORTAS_PERSONALIZADAS", "Cupcakes veganos"))
+                .containsEntry("publico", List.of("Oficinas del centro"));
+        assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(paquete.preguntasOnboarding(),
+                Map.of("ciudad", List.of("Lima")))).extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
+    }
+
     @Test
     void rechazaRespuestasInvalidas() {
         var preguntas = paquete.preguntasOnboarding();
         assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas, Map.of("whatsapp", "12345")))
                 .extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
-        assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas, Map.of("canales", List.of("FAX"))))
-                .extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
+        // "Otros" admite una sola opción escrita, de hasta 40 caracteres.
+        assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas,
+                Map.of("canales", List.of("Por Facebook", "Por teléfono")))).extracting("codigo")
+                .isEqualTo("RESPUESTA_INVALIDA");
+        assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas,
+                Map.of("especialidad", List.of("x".repeat(41))))).extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
         assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas, Map.of("distintivo", "x".repeat(81))))
                 .extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
         assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas, Map.of("inventada", "hola")))

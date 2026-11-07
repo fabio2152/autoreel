@@ -2,6 +2,33 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Revisión del flujo del negocio] - 2026-11-06
+
+Cambios pedidos por el usuario al probar el flujo del negocio desde el primer ingreso.
+
+### Agregado
+
+- **Onboarding:** especialidad, clientes principales y "¿Cómo te piden?" tienen un chip **"Otros"**. Abre un campo para escribir la opción del negocio, de hasta 40 caracteres (una característica, no una oración). El texto se guarda entre los valores, llega al guion y se ve en el panel.
+- **Chat:**
+  - La caja de texto aparece también en la primera pregunta. Si el negocio escribe en lugar de tocar un botón, su texto se guarda (`tipoVideoLibre`) y llega al guion como contexto, con la forma de "Producto estrella".
+  - Cada pregunta muestra un ejemplo corto de respuesta.
+
+### Cambiado
+
+- **Sin respaldo sin IA para los clips** (sección 8.5):
+  - Si un clip falla dos veces, una regeneración conserva el clip anterior, no descuenta la regeneración y avisa.
+  - Un video nuevo pasa a error y devuelve el video del día.
+  - Sin el modelo de video disponible, "Crear mi video" y el cambio de foto en la revisión se desactivan.
+- **Fotos:** el mínimo baja a **720 px** en el lado menor (RN-11), lo que pide el clip de IA en 720p.
+- **Chat:**
+  - Va centrado.
+  - El aviso dice "Este chat está diseñado para recibir respuestas, no para recibir preguntas" y se abre con un botón "?" junto a la respuesta.
+- La pregunta "¿Qué te hace distinto?" pasa a "¿Qué te diferencia?".
+
+### Quitado
+
+- **Temporadas en el catálogo:** no se piden ni se muestran. Un producto nuevo queda como "Todo el año" y el dato se conserva para retomarlas.
+
 ## [Fase 7 — Facturación] - 2026-11-06
 
 Se adelantó a la fase 6 (Instagram sigue en pausa), a pedido del usuario tras revisar el panel.

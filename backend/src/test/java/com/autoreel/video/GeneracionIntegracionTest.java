@@ -206,8 +206,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("VIDEO_NO_EDITABLE"));
     }
 
+    /** V24 sin respaldo sin IA (decisión del usuario, 2026-11-06): el video pasa a ERROR y devuelve el del día. */
     @Test
-    void v24UnClipQueFallaDosVecesUsaElAcercamientoYElVideoSeEntrega() throws Exception {
+    void v24UnClipQueFallaDosVecesDejaElVideoEnErrorYDevuelveElVideoDelDia() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long id = storyboard(negocio);
         aprobar(negocio, id);
@@ -219,17 +220,14 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         OMNI.crearFallida();
         generacion.procesar(id);
         generacion.procesar(id);
-        composicion.procesar(id);
+        generacion.procesar(id);
 
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
-                .andExpect(jsonPath("$.estado").value("LISTO"))
-                .andExpect(jsonPath("$.planos[0].estado").value("RESPALDO"))
-                .andExpect(jsonPath("$.planos[0].usoRespaldo").value(true))
-                .andExpect(jsonPath("$.planos[1].usoRespaldo").value(false));
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.generacion.motivoError").value(ServicioGeneracion.MOTIVO_SIN_CLIPS))
+                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0));
         assertThat(OMNI.creacionesRecibidas()).hasSize(4);
-        var plano1 = componedor.ultima.planos().stream().filter(p -> p.orden() == 1).findFirst().orElseThrow();
-        assertThat(plano1.clip()).isNull();
-        assertThat(plano1.foto()).isNotEmpty();
+        assertThat(componedor.ultima == null || !componedor.ultima.planos().isEmpty()).isTrue();
     }
 
     @Test
@@ -281,7 +279,8 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.estado").value("LISTO"))
                 .andExpect(jsonPath("$.planos[0].estado").value("LISTO"))
                 .andExpect(jsonPath("$.planos[0].usoRespaldo").value(false))
-                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(0));
+                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(0))
+                .andExpect(jsonPath("$.generacion.avisoRevision").value(ServicioGeneracion.AVISO_REGENERACION));
     }
 
     @Test
@@ -325,36 +324,33 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.generacion.videosHoy.usados").value(1));
     }
 
+    /** Sin respaldo sin IA (2026-11-06): sin el modelo de video no se crea el video ni se cambian fotos. */
     @Test
-    void sinCredencialTodosLosPlanosUsanElAcercamientoYNoSeOfreceRegenerar() throws Exception {
-        secretos.conClave = false;
+    void sinCredencialNoSeCreaElVideoNiSeRegeneraPeroSePuedenEditarTextos() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long listo = videoListo(negocio);
+        secretos.conClave = false;
         long id = storyboard(negocio);
-        aprobar(negocio, id);
 
-        generacion.procesar(id);
-        composicion.procesar(id);
-
-        mvc.perform(get("/api/videos/" + id).cookie(negocio))
-                .andExpect(jsonPath("$.estado").value("LISTO"))
-                .andExpect(jsonPath("$.planos[*].usoRespaldo").value(org.hamcrest.Matchers.everyItem(
-                        org.hamcrest.Matchers.is(true))))
-                .andExpect(jsonPath("$.generacion.iaDisponible").value(false));
-        assertThat(OMNI.peticiones()).isEmpty();
-        assertThat(costos.findByVideoIdOrderById(id)).noneMatch(costo -> costo.getConcepto() == ConceptoCosto.CLIP);
-        regenerar(negocio, id, 1)
+        aprobar(negocio, id)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("IA_NO_DISPONIBLE"));
-        // La foto nueva se usa con el acercamiento, sin gastar regeneraciones.
-        editar(negocio, id, 1, Map.of("foto", Map.of("tipo", "ENTERO")))
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.generacion.iaDisponible").value(false));
+        regenerar(negocio, listo, 1)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("IA_NO_DISPONIBLE"));
+        editar(negocio, listo, 1, Map.of("foto", Map.of("tipo", "ENTERO")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("IA_NO_DISPONIBLE"));
+        editar(negocio, listo, 1, Map.of("texto", "Solo cambio el texto"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("COMPONIENDO"))
-                .andExpect(jsonPath("$.planos[0].foto.tipo").value("ENTERO"))
-                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(0));
+                .andExpect(jsonPath("$.estado").value("COMPONIENDO"));
     }
 
     @Test
-    void sinClipALosDiezMinutosElPlanoUsaElAcercamientoYSeRegistraSuCosto() throws Exception {
+    void sinClipALosDiezMinutosElVideoQuedaEnErrorYSeRegistranLosClipsPedidos() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long id = storyboard(negocio);
         aprobar(negocio, id);
@@ -370,10 +366,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         generacion.procesar(id);
 
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
-                .andExpect(jsonPath("$.estado").value("COMPONIENDO"))
-                .andExpect(jsonPath("$.planos[*].estado").value(org.hamcrest.Matchers.everyItem(
-                        org.hamcrest.Matchers.is("RESPALDO"))));
-        // La tarea ya se había enviado: el proveedor la cobra (RN-32).
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0));
+        // Las tareas ya se habían enviado: el proveedor las cobra (RN-32).
         assertThat(costos.findByVideoIdOrderById(id)).filteredOn(costo -> costo.getConcepto() == ConceptoCosto.CLIP)
                 .hasSize(3);
     }
