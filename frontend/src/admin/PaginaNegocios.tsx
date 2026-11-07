@@ -97,6 +97,7 @@ export function PaginaNegocios() {
                   </div>
                   <p className="mt-2 text-sm text-stone-600">
                     Pago: {formatearFecha(negocio.proximaFechaPago)} · Plan {negocio.plan}
+                    {negocio.conBeneficio && ' (beneficio)'} · {negocio.modeloVideo}
                     {negocio.estado === 'SUSPENDIDO' && <span className="ml-2 font-medium text-red-700">Suspendido</span>}
                   </p>
                 </Link>
@@ -128,7 +129,11 @@ export function PaginaNegocios() {
                       <p className="text-stone-500">{negocio.correo}</p>
                     </td>
                     <td className="px-4 py-3 text-stone-700">{negocio.nicho === 'PASTELERIA' ? 'Pastelería' : negocio.nicho}</td>
-                    <td className="px-4 py-3 text-stone-700">{negocio.plan}</td>
+                    <td className="px-4 py-3 text-stone-700">
+                      {negocio.plan}
+                      {negocio.conBeneficio && <span className="ml-1 text-xs text-emerald-700">(beneficio)</span>}
+                      <p className="text-xs text-stone-500">{negocio.modeloVideo}</p>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1">
                         <span>{formatearFecha(negocio.proximaFechaPago)}</span>

@@ -1,6 +1,7 @@
 package com.autoreel.compartido.seguridad;
 
 import com.autoreel.auth.infraestructura.UsuarioRepositorio;
+import com.autoreel.negocio.infraestructura.NegocioRepositorio;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +23,8 @@ public class ConfiguracionSeguridad {
 
     @Bean
     SecurityFilterChain cadenaDeSeguridad(HttpSecurity http, ServicioJwt servicioJwt, CookieDeSesion cookieDeSesion,
-            UsuarioRepositorio usuarios, RespuestasDeSeguridad respuestas) throws Exception {
+            UsuarioRepositorio usuarios, NegocioRepositorio negocios, RespuestasDeSeguridad respuestas)
+            throws Exception {
         http
                 .csrf(csrf -> csrf.spa())
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -34,7 +36,8 @@ public class ConfiguracionSeguridad {
                         .authenticationEntryPoint(respuestas)
                         .accessDeniedHandler(respuestas))
                 .addFilterAfter(new FiltroCookieCsrf(), CsrfFilter.class)
-                .addFilterBefore(new FiltroJwtCookie(servicioJwt, cookieDeSesion, usuarios), AuthorizationFilter.class)
+                .addFilterBefore(new FiltroJwtCookie(servicioJwt, cookieDeSesion, usuarios, negocios),
+                        AuthorizationFilter.class)
                 .authorizeHttpRequests(acceso -> acceso
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/logout", "/actuator/health").permitAll()
@@ -42,6 +45,8 @@ public class ConfiguracionSeguridad {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Con contraseña temporal solo se puede consultar la sesión y cambiarla (RN-03).
                         .requestMatchers("/api/auth/yo", "/api/auth/cambiar-contrasena").authenticated()
+                        // Solo para el administrador que entró como un negocio (lo verifica el controlador).
+                        .requestMatchers("/api/auth/volver-al-panel").hasRole("NEGOCIO")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasRole("NEGOCIO")
                         .anyRequest().denyAll());

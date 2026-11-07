@@ -72,6 +72,9 @@ autoreel:
   # Secretos que van en un archivo: el JSON de la cuenta de servicio de Google Cloud (Veo y Gemini en Vertex AI).
   secretos-en-archivo:
     "[autoreel/google-cloud]": ${GOOGLE_CLOUD_CREDENCIAL_ARCHIVO:${VEO_CREDENCIAL_ARCHIVO:}}
+  # Credenciales pegadas en Ajustes → Integraciones (ADR 0018): un JSON fuera del repositorio, ignorado por git.
+  # Tienen prioridad sobre las de arriba. En AWS se reemplaza por Secrets Manager (fase 8).
+  archivo-secretos-panel: ${SECRETOS_PANEL_ARCHIVO:../credenciales/secretos-del-panel.json}
   ia:
     gemini:
       url: ${GEMINI_URL:https://generativelanguage.googleapis.com}

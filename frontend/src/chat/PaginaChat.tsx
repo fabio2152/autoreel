@@ -173,7 +173,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
       : (errorAlEmpezar ?? cerrarGrupo.error?.message ?? null)
 
   return (
-    <div className="-mx-4 -my-6 flex h-[calc(100dvh-3.5rem-4rem)] flex-col md:h-[calc(100dvh-3.5rem)] md:flex-row">
+    <div className="-mx-4 -my-6 flex h-[calc(100dvh-3.5rem-4rem-var(--alto-aviso,0px))] flex-col md:h-[calc(100dvh-3.5rem-var(--alto-aviso,0px))] md:flex-row">
       <aside className="hidden w-64 shrink-0 border-r border-stone-200 p-5 text-sm text-stone-500 md:block">
         {conversacion.aviso}
       </aside>

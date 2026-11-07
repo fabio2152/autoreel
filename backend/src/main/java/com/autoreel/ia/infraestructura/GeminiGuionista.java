@@ -80,6 +80,21 @@ public class GeminiGuionista implements Guionista {
         return RespuestaGemini.leer(respuesta, "Gemini");
     }
 
+    /** Consulta la ficha del modelo ({@code GET /v1beta/models/{modelo}}): no genera nada y no tiene costo. */
+    @Override
+    public void probar(ModeloIA modelo, String credencial) {
+        try {
+            cliente.get().uri("/v1beta/models/{modelo}", modelo.getIdentificadorModelo())
+                    .header("x-goog-api-key", credencial)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw clasificar(e.getStatusCode(), e);
+        } catch (ResourceAccessException e) {
+            throw new ErrorDeProveedor(Tipo.NO_DISPONIBLE, "Gemini no respondió a tiempo o no se pudo conectar", e);
+        }
+    }
+
     private static ErrorDeProveedor clasificar(HttpStatusCode estado, Exception causa) {
         int codigo = estado.value();
         if (codigo == 401 || codigo == 403) {

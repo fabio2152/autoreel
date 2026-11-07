@@ -58,7 +58,35 @@ public class Plan {
     @Column(nullable = false)
     private boolean activo;
 
+    /**
+     * Opciones de producción del MVP (sección 8.6), las mismas para todo plan: la plantilla del video es fija y sin
+     * personas.
+     */
+    public static final Map<String, Object> OPCIONES_DEL_MVP = Map.of("musica", true, "textoEnPantalla", "COMPLETO",
+            "vozEnOff", false, "escenas", "SOLO_PRODUCTO", "personas", "NINGUNA");
+
     protected Plan() {
+    }
+
+    /** RF-10: un plan nuevo, creado desde el panel sin programar. */
+    public Plan(String nombre, String descripcion, int videosPorDia, int regeneracionesPorVideo, ModeloIA modeloTexto,
+            ModeloIA modeloVideo, BigDecimal precioReferencial, boolean activo) {
+        this.opcionesProduccionPermitidas = OPCIONES_DEL_MVP;
+        this.permitePersonas = false;
+        actualizar(nombre, descripcion, videosPorDia, regeneracionesPorVideo, modeloTexto, modeloVideo,
+                precioReferencial, activo);
+    }
+
+    public void actualizar(String nombre, String descripcion, int videosPorDia, int regeneracionesPorVideo,
+            ModeloIA modeloTexto, ModeloIA modeloVideo, BigDecimal precioReferencial, boolean activo) {
+        this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.videosPorDia = videosPorDia;
+        this.regeneracionesPorVideo = regeneracionesPorVideo;
+        this.modeloTexto = modeloTexto;
+        this.modeloVideo = modeloVideo;
+        this.precioReferencial = precioReferencial;
+        this.activo = activo;
     }
 
     public Long getId() {

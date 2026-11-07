@@ -24,6 +24,8 @@ autoreel:
     "[autoreel/gemini]": ""
   secretos-en-archivo:
     "[autoreel/google-cloud]": ""
+  # Las pruebas que guardan credenciales desde el panel lo borran al terminar.
+  archivo-secretos-panel: target/secretos-del-panel-prueba.json
   ia:
     gemini:
       url: http://127.0.0.1:9

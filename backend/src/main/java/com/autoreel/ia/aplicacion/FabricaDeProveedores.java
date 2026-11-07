@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.autoreel.ia.dominio.EstadoModelo;
 import com.autoreel.ia.dominio.GeneradorDeClips;
@@ -63,6 +65,33 @@ public class FabricaDeProveedores {
     /** Si el modelo de video puede usarse ahora: adaptador existente, activo y con su credencial configurada. */
     public boolean videoDisponible(ModeloIA modelo) {
         return generadorDeClips(modelo).isPresent() && secretos.obtener(modelo.getNombreSecreto()).isPresent();
+    }
+
+    /** RN-56: los adaptadores que existen en el código para un tipo de modelo. */
+    public Set<String> adaptadores(TipoModelo tipo) {
+        return new TreeSet<>(tipo == TipoModelo.TEXTO ? guionistas.keySet() : generadores.keySet());
+    }
+
+    /**
+     * RF-11: prueba la conexión del modelo con su adaptador, esté activo o no.
+     *
+     * @throws IllegalArgumentException si el adaptador no existe en el código.
+     * @throws com.autoreel.ia.dominio.ErrorDeProveedor si la credencial o el modelo no funcionan.
+     */
+    public void probar(ModeloIA modelo, String credencial) {
+        if (modelo.getTipo() == TipoModelo.TEXTO) {
+            Guionista guionista = guionistas.get(modelo.getAdaptador());
+            if (guionista == null) {
+                throw new IllegalArgumentException("No existe el adaptador de texto " + modelo.getAdaptador());
+            }
+            guionista.probar(modelo, credencial);
+        } else {
+            GeneradorDeClips generador = generadores.get(modelo.getAdaptador());
+            if (generador == null) {
+                throw new IllegalArgumentException("No existe el adaptador de video " + modelo.getAdaptador());
+            }
+            generador.probar(modelo, credencial);
+        }
     }
 
     private static boolean utilizable(ModeloIA modelo, TipoModelo tipo, UnidadCosto unidad) {

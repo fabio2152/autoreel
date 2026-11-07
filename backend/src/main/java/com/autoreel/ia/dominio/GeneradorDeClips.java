@@ -21,6 +21,14 @@ public interface GeneradorDeClips {
     EstadoDeClip consultar(ModeloIA modelo, String credencial, String idTarea);
 
     /**
+     * RF-11, "Probar conexión": verifica la credencial (y el modelo, si el proveedor lo permite) sin generar un clip,
+     * que costaría.
+     *
+     * @throws ErrorDeProveedor si no funciona; el mensaje dice por qué y nunca incluye la credencial.
+     */
+    void probar(ModeloIA modelo, String credencial);
+
+    /**
      * @param foto         la foto ya normalizada (JPEG vertical 9:16, sin metadatos).
      * @param instruccion  el movimiento, en inglés (de {@code movimientos.json}).
      * @param prohibiciones lo que nunca debe aparecer; va como instrucción negativa si el proveedor la admite.

@@ -88,6 +88,12 @@ public class VeoGeneradorDeClips implements GeneradorDeClips {
         return new Listo(Base64.getDecoder().decode(base64), video.path("mimeType").asString("video/mp4"), null);
     }
 
+    /** Pide un token con la cuenta de servicio: verifica la credencial sin crear un clip, que costaría. */
+    @Override
+    public void probar(ModeloIA modelo, String credencial) {
+        googleCloud.verificarCredencial(credencial);
+    }
+
     private static String region(ModeloIA modelo) {
         return GoogleCloud.parametro(modelo, "region", REGION_POR_DEFECTO);
     }

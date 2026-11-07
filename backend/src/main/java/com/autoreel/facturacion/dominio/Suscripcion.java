@@ -48,6 +48,10 @@ public class Suscripcion {
     @Column(nullable = false)
     private int diasAviso;
 
+    /** RN-42: día del mes en que se paga (el del primer pago); se conserva al avanzar la fecha. */
+    @Column(nullable = false)
+    private int diaPago;
+
     protected Suscripcion() {
     }
 
@@ -59,6 +63,24 @@ public class Suscripcion {
         this.fechaInicio = fechaInicio;
         this.proximaFechaPago = fechaPrimerPago;
         this.diasAviso = DIAS_AVISO_POR_DEFECTO;
+        this.diaPago = fechaPrimerPago.getDayOfMonth();
+    }
+
+    /**
+     * RF-08 y RN-42: el pago cubre la fecha de pago actual y la próxima avanza un mes.
+     *
+     * @return la fecha de pago que cubrió.
+     */
+    public LocalDate avanzarFechaPago() {
+        LocalDate cubierta = proximaFechaPago;
+        proximaFechaPago = CalculadoraFechaPago.siguiente(cubierta, diaPago);
+        return cubierta;
+    }
+
+    /** RN-49: el plan nuevo rige para los videos que se creen desde ahora. */
+    public void cambiarPlan(Plan plan, BigDecimal montoMensual) {
+        this.plan = plan;
+        this.montoMensual = montoMensual;
     }
 
     public EstadoPago estadoPago(LocalDate hoy) {
@@ -91,5 +113,9 @@ public class Suscripcion {
 
     public int getDiasAviso() {
         return diasAviso;
+    }
+
+    public int getDiaPago() {
+        return diaPago;
     }
 }

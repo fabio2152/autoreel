@@ -11,6 +11,8 @@
 *.key
 # Credenciales de Google Cloud (cuenta de servicio de Veo)
 /credenciales/
+# Credenciales pegadas en Ajustes del panel (ADR 0018), donde sea que se guarden.
+secretos-del-panel*.json
 *service-account*.json
 *.p12
 *.jks

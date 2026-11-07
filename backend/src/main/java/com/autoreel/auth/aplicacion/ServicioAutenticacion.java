@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ServicioAutenticacion {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ServicioAutenticacion.class);
+
     private final UsuarioRepositorio usuarios;
     private final IntentosDeCorreosDesconocidos correosDesconocidos;
     private final PasswordEncoder codificador;
@@ -105,6 +107,27 @@ public class ServicioAutenticacion {
     public Usuario buscar(Long idUsuario) {
         return usuarios.buscarConNegocio(idUsuario)
                 .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos tu cuenta."));
+    }
+
+    @Transactional(readOnly = true)
+    public Usuario usuarioDelNegocio(Long negocioId) {
+        return usuarios.buscarPorNegocio(negocioId)
+                .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos ese negocio."));
+    }
+
+    /**
+     * El administrador entra como un negocio (decisión del 2026-11-06): ve y hace lo mismo que su usuario, sin
+     * conocer su contraseña. Queda en el registro de la aplicación.
+     *
+     * @return el administrador, para emitir su sesión como el negocio.
+     */
+    @Transactional(readOnly = true)
+    public Usuario entrarComoNegocio(Long administradorId, Long negocioId) {
+        Usuario administrador = buscar(administradorId);
+        Usuario delNegocio = usuarioDelNegocio(negocioId);
+        log.info("El administrador {} entró como el negocio {} ({})", administrador.getId(), negocioId,
+                delNegocio.getNegocio().getNombre());
+        return administrador;
     }
 
     private static ExcepcionDeNegocio cuentaBloqueada() {

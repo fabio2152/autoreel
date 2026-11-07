@@ -11,6 +11,8 @@ export interface Sesion {
   debeCambiarContrasena: boolean
   /** RF-16: el negocio pasa por el onboarding antes de usar el resto. Siempre true para el administrador. */
   onboardingCompleto: boolean
+  /** Correo del administrador que entró como este negocio; null en una sesión normal. */
+  administrador: string | null
 }
 
 /** Devuelve la sesión actual, o null si no hay una activa. */
@@ -39,4 +41,9 @@ export function cambiarContrasena(datos: {
   confirmacion: string
 }): Promise<Sesion> {
   return pedir<Sesion>('/api/auth/cambiar-contrasena', 'POST', datos)
+}
+
+/** El administrador que entró como un negocio vuelve a su panel. */
+export function volverAlPanel(): Promise<Sesion> {
+  return pedir<Sesion>('/api/auth/volver-al-panel', 'POST')
 }

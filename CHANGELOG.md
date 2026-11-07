@@ -2,6 +2,43 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fase 7 — Facturación] - 2026-11-06
+
+Se adelantó a la fase 6 (Instagram sigue en pausa), a pedido del usuario tras revisar el panel.
+
+### Agregado
+
+- **Pagos** (RF-08, RN-42, V35): "Registrar pago" con fecha, monto, medio (transferencia, Yape, Plin, efectivo u otro) y nota, más el historial en el detalle.
+  - El pago cubre la próxima fecha de pago, que avanza un mes conservando el día; si el mes no lo tiene, se usa el último día.
+  - No se acepta una fecha futura.
+- **Notificaciones** (RF-09, RN-44, RN-45, RN-57, V34, V36): campana con contador en el panel.
+  - Una tarea diaria (00:10 de Lima, y también al arrancar) crea avisos de pago por vencer, que vence hoy y vencido, y una sugerencia de suspender a los 7 días de vencido. El negocio nunca se suspende solo.
+  - Las fallas de un proveedor de IA crean un aviso por modelo y por día.
+  - Ningún aviso se repite. Registrar el pago atiende los avisos de esa fecha.
+  - Desde la campana se va directo a "Registrar pago".
+- **Planes** (RF-10, RN-47): Ajustes → Planes para crear y editar planes, con sus videos por día, regeneraciones, modelos de texto y de video y precio de referencia, sin programar.
+- **Cambiar plan** de un negocio (RN-49), con su monto mensual. Rige para los videos nuevos.
+- **Integraciones y claves** (RF-11, RN-48, RN-56, V37, V38):
+  - Modelos de IA con su estado, costo, clave y planes que los usan.
+  - "Probar conexión" sin costo, activar y desactivar. No se desactiva un modelo que usa un plan activo o con negocios.
+  - Agregar y editar modelos de adaptadores existentes.
+- **Claves pegadas en Ajustes** (ADR 0018): el administrador pega o reemplaza la clave de AI Studio o el JSON de Google Cloud.
+  - Se guardan fuera de la base de datos, en `credenciales/secretos-del-panel.json` (ignorado por git), y tienen prioridad sobre el `.env`.
+  - Nunca se vuelven a mostrar: solo los últimos 4 caracteres o el correo de la cuenta de servicio.
+- **Beneficios temporales** (RF-12, RN-50 a RN-53, V40, V41): otro plan durante un período de hasta 30 días, con motivo y sin cruzarse con otro beneficio. Al terminar, el negocio vuelve solo a su plan. Se puede terminar antes.
+- **Costos** (RF-07, V32):
+  - Nueva página Costos, con el costo estimado de IA por negocio y por mes (clips y guiones).
+  - En el detalle del negocio, el costo del mes y el modelo y el costo de cada video.
+- **Modelo de IA a la vista** (pedido del usuario): la lista y el detalle del negocio muestran el plan que rige hoy con sus modelos de video y de texto.
+- **Entrar como el negocio** (ADR 0019): el administrador ve AutoReel tal como lo ve el negocio, con acceso completo salvo cambiar su contraseña.
+  - Una franja fija lo indica, con "Volver al panel".
+- **Migración `V8`:** `pago`, `beneficio_temporal`, `notificacion_admin`, el día de pago de la suscripción y el resultado de la última prueba de cada modelo.
+- **Pruebas** (251 en total): fecha de pago, notificaciones, pagos, planes, integraciones, claves, beneficios, costos y entrar como el negocio.
+
+### Cambiado
+
+- RN-55 permite pegar las claves en el panel (ADR 0018). Se agrega RN-58 (entrar como el negocio).
+
 ## [Proveedores de Google] - 2026-11-05
 
 ### Agregado

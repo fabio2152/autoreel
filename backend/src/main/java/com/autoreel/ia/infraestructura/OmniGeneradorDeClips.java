@@ -124,6 +124,15 @@ public class OmniGeneradorDeClips implements GeneradorDeClips {
         return leer(respuesta, modelo);
     }
 
+    /** Consulta la ficha del modelo ({@code GET /v1beta/models/{modelo}}) con la clave: no genera ningún clip. */
+    @Override
+    public void probar(ModeloIA modelo, String credencial) {
+        llamar(() -> cliente.get().uri("/v1beta/models/{modelo}", modelo.getIdentificadorModelo())
+                .header("x-goog-api-key", credencial)
+                .retrieve()
+                .body(JsonNode.class));
+    }
+
     private EstadoDeClip leer(JsonNode respuesta, ModeloIA modelo) {
         if (respuesta == null) {
             return new EnCurso();

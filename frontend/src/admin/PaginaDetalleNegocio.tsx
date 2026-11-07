@@ -1,29 +1,47 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
+  entrarComoNegocio,
+  listarBeneficios,
+  listarPagos,
   listarProductosDeNegocio,
   obtenerNegocio,
   reactivarNegocio,
   reiniciarContrasena,
   suspenderNegocio,
+  terminarBeneficio,
   type ContrasenaTemporal,
   type NegocioDetalle,
 } from '../api/admin'
+import { CLAVE_SESION } from '../auth/useSesion'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Cargando } from '../componentes/Cargando'
 import { EtiquetaEstadoPago } from '../componentes/EtiquetaEstadoPago'
-import { formatearFecha, formatearFechaHora, formatearMonto } from '../componentes/formato'
+import { formatearCosto, formatearFecha, formatearFechaHora, formatearMonto } from '../componentes/formato'
 import { ImagenRemota } from '../componentes/ImagenRemota'
 import { ModalContrasenaTemporal } from './ModalContrasenaTemporal'
+import { TEXTO_MEDIO } from './medios'
+import { ModalCambiarPlan, ModalOtorgarBeneficio, ModalRegistrarPago } from './ModalesSuscripcion'
 
-/** RF-05: detalle del negocio. Los pagos y los costos llegan en la fase 7. */
+type Ventana = 'pago' | 'plan' | 'beneficio' | null
+
+/** RF-05: detalle del negocio, con su suscripción, pagos, beneficios, costos, videos, perfil y catálogo. */
 export function PaginaDetalleNegocio() {
   const id = Number(useParams().id)
   const clienteConsultas = useQueryClient()
+  const navegar = useNavigate()
+  const [parametros, setParametros] = useSearchParams()
   const [credenciales, setCredenciales] = useState<ContrasenaTemporal | null>(null)
+  // Desde la notificación "Registrar pago" se llega con ?registrarPago=1.
+  const [ventana, setVentana] = useState<Ventana>(() => (parametros.get('registrarPago') ? 'pago' : null))
   const negocio = useQuery({ queryKey: ['negocios', 'detalle', id], queryFn: () => obtenerNegocio(id) })
+
+  const cerrarVentana = () => {
+    setVentana(null)
+    if (parametros.has('registrarPago')) setParametros({}, { replace: true })
+  }
 
   const actualizar = () => clienteConsultas.invalidateQueries({ queryKey: ['negocios'] })
 
@@ -36,13 +54,21 @@ export function PaginaDetalleNegocio() {
   })
   const suspender = useMutation({ mutationFn: () => suspenderNegocio(id), onSuccess: actualizar })
   const reactivar = useMutation({ mutationFn: () => reactivarNegocio(id), onSuccess: actualizar })
+  const entrar = useMutation({
+    mutationFn: () => entrarComoNegocio(id),
+    onSuccess: (sesion) => {
+      clienteConsultas.clear()
+      clienteConsultas.setQueryData(CLAVE_SESION, sesion)
+      navegar('/', { replace: true })
+    },
+  })
 
   if (negocio.isPending) return <Cargando />
   if (negocio.error) return <Aviso tipo="error">{negocio.error.message}</Aviso>
 
   const { data } = negocio
   const suspendido = data.estado === 'SUSPENDIDO'
-  const errorAccion = reiniciar.error ?? suspender.error ?? reactivar.error
+  const errorAccion = reiniciar.error ?? suspender.error ?? reactivar.error ?? entrar.error
 
   const confirmarReinicio = () => {
     if (window.confirm(`Se generará una nueva contraseña temporal para ${data.nombre}. La actual dejará de funcionar y se cerrará su sesión. ¿Continuar?`)) {
@@ -69,6 +95,9 @@ export function PaginaDetalleNegocio() {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <Boton onClick={() => entrar.mutate()} cargando={entrar.isPending} title="Ver AutoReel tal como lo ve este negocio">
+              Entrar como el negocio
+            </Boton>
             <Boton variante="secundario" onClick={confirmarReinicio} cargando={reiniciar.isPending}>
               Reiniciar contraseña
             </Boton>
@@ -105,8 +134,31 @@ export function PaginaDetalleNegocio() {
           )}
         </Tarjeta>
 
-        <Tarjeta titulo="Suscripción">
-          <Dato nombre="Plan">{data.suscripcion.plan}</Dato>
+        <Tarjeta
+          titulo="Suscripción"
+          acciones={
+            <>
+              <Boton variante="secundario" onClick={() => setVentana('plan')}>
+                Cambiar plan
+              </Boton>
+              <Boton onClick={() => setVentana('pago')}>Registrar pago</Boton>
+            </>
+          }
+        >
+          <Dato nombre="Plan">
+            {data.suscripcion.plan}
+            {data.planEfectivo.beneficioHasta && (
+              <span className="block text-xs font-normal text-emerald-700">
+                Hoy usa {data.planEfectivo.plan} por un beneficio hasta {formatearFechaHora(data.planEfectivo.beneficioHasta)}
+              </span>
+            )}
+          </Dato>
+          <Dato nombre="Modelo de video">{data.planEfectivo.modeloVideo}</Dato>
+          <Dato nombre="Modelo de texto">{data.planEfectivo.modeloTexto}</Dato>
+          <Dato nombre="Límites">
+            {data.planEfectivo.videosPorDia === 1 ? '1 video' : `${data.planEfectivo.videosPorDia} videos`} por día ·{' '}
+            {data.planEfectivo.regeneracionesPorVideo} regeneraciones por video
+          </Dato>
           <Dato nombre="Monto mensual">{formatearMonto(data.suscripcion.montoMensual)}</Dato>
           <Dato nombre="Inicio">{formatearFecha(data.suscripcion.fechaInicio)}</Dato>
           <Dato nombre="Próximo pago">
@@ -119,15 +171,19 @@ export function PaginaDetalleNegocio() {
         </Tarjeta>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PagosDelNegocio negocioId={id} />
+        <BeneficiosDelNegocio negocioId={id} onOtorgar={() => setVentana('beneficio')} />
+      </div>
+
+      <VideosDelNegocio videos={data.videos} costo={data.costoDelMes} />
+
       <PerfilDelNegocio perfil={data.perfil} />
       <CatalogoDelNegocio negocioId={id} />
 
-      <VideosDelNegocio videos={data.videos} />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Pendiente titulo="Pagos" fase={7} />
-        <Pendiente titulo="Costos" fase={7} />
-      </div>
+      {ventana === 'pago' && <ModalRegistrarPago negocio={data} abierto onCerrar={cerrarVentana} />}
+      {ventana === 'plan' && <ModalCambiarPlan negocio={data} abierto onCerrar={cerrarVentana} />}
+      {ventana === 'beneficio' && <ModalOtorgarBeneficio negocio={data} abierto onCerrar={cerrarVentana} />}
 
       <ModalContrasenaTemporal
         titulo="Nueva contraseña temporal"
@@ -138,10 +194,13 @@ export function PaginaDetalleNegocio() {
   )
 }
 
-function Tarjeta({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Tarjeta({ titulo, acciones, children }: { titulo: string; acciones?: ReactNode; children: ReactNode }) {
   return (
     <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
-      <h2 className="mb-3 font-semibold">{titulo}</h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">{titulo}</h2>
+        {acciones && <div className="flex flex-wrap gap-2">{acciones}</div>}
+      </div>
       <dl className="divide-y divide-stone-100 text-sm">{children}</dl>
     </section>
   )
@@ -169,14 +228,17 @@ const ESTADOS_DEL_VIDEO: Record<string, string> = {
   DESCARTADO: 'Descartado',
 }
 
-/** RF-05: consumo del mes y últimos videos, para dar soporte. */
-function VideosDelNegocio({ videos }: { videos: NegocioDetalle['videos'] }) {
+/** RF-05, RF-07 y V32: consumo y costo del mes, y últimos videos con su modelo y su costo. */
+function VideosDelNegocio({ videos, costo }: { videos: NegocioDetalle['videos']; costo: NegocioDetalle['costoDelMes'] }) {
   return (
     <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
-      <h2 className="font-semibold">Videos</h2>
-      <p className="mt-1 text-sm text-stone-600">
-        {videos.delMes === 1 ? '1 video generado' : `${videos.delMes} videos generados`} este mes.
-      </p>
+      <h2 className="font-semibold">Videos y costos</h2>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Cifra nombre="Videos este mes" valor={String(videos.delMes)} />
+        <Cifra nombre="Costo de IA del mes" valor={formatearCosto(costo.total)} />
+        <Cifra nombre="Clips" valor={formatearCosto(costo.clips)} />
+        <Cifra nombre="Guiones" valor={formatearCosto(costo.guion)} />
+      </div>
       {videos.recientes.length === 0 ? (
         <p className="mt-3 text-sm text-stone-500">Todavía no tiene videos.</p>
       ) : (
@@ -186,6 +248,8 @@ function VideosDelNegocio({ videos }: { videos: NegocioDetalle['videos'] }) {
               <tr>
                 <th className="py-2 pr-4">Fecha</th>
                 <th className="py-2 pr-4">Estado</th>
+                <th className="py-2 pr-4">Modelo de video</th>
+                <th className="py-2 pr-4">Costo</th>
                 <th className="py-2 pr-4">Planos con respaldo</th>
                 <th className="py-2">Detalle</th>
               </tr>
@@ -195,6 +259,8 @@ function VideosDelNegocio({ videos }: { videos: NegocioDetalle['videos'] }) {
                 <tr key={video.id}>
                   <td className="py-2 pr-4 whitespace-nowrap">{formatearFechaHora(video.fechaCreacion)}</td>
                   <td className="py-2 pr-4">{ESTADOS_DEL_VIDEO[video.estado] ?? video.estado}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap">{video.modeloVideo}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap">{formatearCosto(video.costoEstimado)}</td>
                   <td className="py-2 pr-4">{video.planosConRespaldo}</td>
                   <td className="py-2 text-stone-500">{video.motivoError ?? '—'}</td>
                 </tr>
@@ -207,11 +273,106 @@ function VideosDelNegocio({ videos }: { videos: NegocioDetalle['videos'] }) {
   )
 }
 
-function Pendiente({ titulo, fase }: { titulo: string; fase: number }) {
+function Cifra({ nombre, valor }: { nombre: string; valor: string }) {
   return (
-    <section className="rounded-xl border border-dashed border-stone-300 p-4">
-      <h2 className="font-medium text-stone-700">{titulo}</h2>
-      <p className="mt-1 text-sm text-stone-500">Disponible en la fase {fase}.</p>
+    <div className="rounded-lg bg-stone-50 px-3 py-2">
+      <p className="text-xs text-stone-500">{nombre}</p>
+      <p className="font-semibold text-stone-900">{valor}</p>
+    </div>
+  )
+}
+
+/** RF-08: historial de pagos registrados. */
+function PagosDelNegocio({ negocioId }: { negocioId: number }) {
+  const pagos = useQuery({ queryKey: ['negocios', 'pagos', negocioId], queryFn: () => listarPagos(negocioId) })
+  return (
+    <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
+      <h2 className="mb-3 font-semibold">Pagos</h2>
+      {pagos.isPending && <Cargando />}
+      {pagos.error && <Aviso tipo="error">{pagos.error.message}</Aviso>}
+      {pagos.data?.length === 0 && <p className="text-sm text-stone-500">Todavía no hay pagos registrados.</p>}
+      {pagos.data && pagos.data.length > 0 && (
+        <ul className="divide-y divide-stone-100 text-sm">
+          {pagos.data.map((pago) => (
+            <li key={pago.id} className="flex items-start justify-between gap-3 py-2">
+              <div>
+                <p className="font-medium">{formatearMonto(pago.monto)} · {TEXTO_MEDIO[pago.medio]}</p>
+                <p className="text-stone-500">
+                  Pagó el {formatearFecha(pago.fechaPago)} · cubre el {formatearFecha(pago.periodoCubierto)}
+                </p>
+                {pago.nota && <p className="text-stone-500">{pago.nota}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+const ESTADO_BENEFICIO = {
+  PROGRAMADO: { texto: 'Programado', estilo: 'bg-sky-50 text-sky-800' },
+  VIGENTE: { texto: 'Vigente', estilo: 'bg-emerald-50 text-emerald-800' },
+  TERMINADO: { texto: 'Terminado', estilo: 'bg-stone-100 text-stone-600' },
+}
+
+/** RF-12: beneficios temporales del negocio. */
+function BeneficiosDelNegocio({ negocioId, onOtorgar }: { negocioId: number; onOtorgar: () => void }) {
+  const clienteConsultas = useQueryClient()
+  const beneficios = useQuery({
+    queryKey: ['negocios', 'beneficios', negocioId],
+    queryFn: () => listarBeneficios(negocioId),
+  })
+  const terminar = useMutation({
+    mutationFn: (beneficioId: number) => terminarBeneficio(negocioId, beneficioId),
+    onSuccess: () => clienteConsultas.invalidateQueries({ queryKey: ['negocios'] }),
+  })
+  return (
+    <section className="rounded-xl bg-white p-5 ring-1 ring-stone-200">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Beneficios</h2>
+        <Boton variante="secundario" onClick={onOtorgar}>
+          Otorgar beneficio
+        </Boton>
+      </div>
+      {beneficios.isPending && <Cargando />}
+      {(beneficios.error ?? terminar.error) && (
+        <Aviso tipo="error">{(beneficios.error ?? terminar.error)?.message}</Aviso>
+      )}
+      {beneficios.data?.length === 0 && (
+        <p className="text-sm text-stone-500">
+          Sin beneficios. Un beneficio da otro plan por un tiempo, como cortesía o por un inconveniente.
+        </p>
+      )}
+      <ul className="divide-y divide-stone-100 text-sm">
+        {beneficios.data?.map((beneficio) => (
+          <li key={beneficio.id} className="flex items-start justify-between gap-3 py-2">
+            <div>
+              <p className="font-medium">
+                {beneficio.plan} · {beneficio.modeloVideo}{' '}
+                <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${ESTADO_BENEFICIO[beneficio.estado].estilo}`}>
+                  {ESTADO_BENEFICIO[beneficio.estado].texto}
+                </span>
+              </p>
+              <p className="text-stone-500">
+                {formatearFechaHora(beneficio.desde)} → {formatearFechaHora(beneficio.hasta)}
+              </p>
+              <p className="text-stone-500">{beneficio.motivo}</p>
+            </div>
+            {beneficio.estado !== 'TERMINADO' && (
+              <Boton
+                variante="texto"
+                cargando={terminar.isPending && terminar.variables === beneficio.id}
+                onClick={() => {
+                  if (window.confirm('¿Terminar este beneficio ahora? El negocio vuelve a su plan.')) terminar.mutate(beneficio.id)
+                }}
+              >
+                Terminar
+              </Boton>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

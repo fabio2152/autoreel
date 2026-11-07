@@ -19,9 +19,13 @@ import com.autoreel.auth.dominio.Usuario;
 import com.autoreel.auth.infraestructura.UsuarioRepositorio;
 import com.autoreel.compartido.config.PropiedadesAplicacion;
 import com.autoreel.compartido.error.ExcepcionDeNegocio;
+import com.autoreel.costos.aplicacion.ServicioCostos;
+import com.autoreel.facturacion.aplicacion.ResolutorDePlanEfectivo;
+import com.autoreel.facturacion.dominio.BeneficioTemporal;
 import com.autoreel.facturacion.dominio.EstadoPago;
 import com.autoreel.facturacion.dominio.Plan;
 import com.autoreel.facturacion.dominio.Suscripcion;
+import com.autoreel.facturacion.infraestructura.BeneficioRepositorio;
 import com.autoreel.facturacion.infraestructura.PlanRepositorio;
 import com.autoreel.facturacion.infraestructura.SuscripcionRepositorio;
 import com.autoreel.negocio.dominio.Negocio;
@@ -56,12 +60,17 @@ public class ServicioGestionNegocios {
     private final ServicioPerfil perfiles;
     private final ServicioConsumo consumo;
     private final VideoRepositorio videos;
+    private final ResolutorDePlanEfectivo planesEfectivos;
+    private final BeneficioRepositorio beneficios;
+    private final ServicioCostos costos;
     private final Clock reloj;
 
     public ServicioGestionNegocios(NegocioRepositorio negocios, UsuarioRepositorio usuarios,
             SuscripcionRepositorio suscripciones, PlanRepositorio planes, RegistroDeNichos nichos,
             GeneradorDeContrasenaTemporal generador, PasswordEncoder codificador, PropiedadesAplicacion propiedades,
-            ServicioPerfil perfiles, ServicioConsumo consumo, VideoRepositorio videos, Clock reloj) {
+            ServicioPerfil perfiles, ServicioConsumo consumo, VideoRepositorio videos,
+            ResolutorDePlanEfectivo planesEfectivos, BeneficioRepositorio beneficios, ServicioCostos costos,
+            Clock reloj) {
         this.negocios = negocios;
         this.usuarios = usuarios;
         this.suscripciones = suscripciones;
@@ -73,6 +82,9 @@ public class ServicioGestionNegocios {
         this.perfiles = perfiles;
         this.consumo = consumo;
         this.videos = videos;
+        this.planesEfectivos = planesEfectivos;
+        this.beneficios = beneficios;
+        this.costos = costos;
         this.reloj = reloj;
     }
 
@@ -81,9 +93,13 @@ public class ServicioGestionNegocios {
         LocalDate hoy = LocalDate.now(reloj);
         Map<Long, Usuario> usuariosPorNegocio = usuarios.listarUsuariosDeNegocio().stream()
                 .collect(Collectors.toMap(usuario -> usuario.getNegocio().getId(), Function.identity()));
+        Map<Long, Plan> conBeneficio = beneficios.vigentes(reloj.instant()).stream()
+                .collect(Collectors.toMap(BeneficioTemporal::getNegocioId, BeneficioTemporal::getPlan,
+                        (primero, segundo) -> primero));
         String texto = busqueda == null ? "" : busqueda.trim().toLowerCase(Locale.ROOT);
         return suscripciones.listarConNegocioYPlan().stream()
-                .map(suscripcion -> resumen(suscripcion, usuariosPorNegocio.get(suscripcion.getNegocio().getId()), hoy))
+                .map(suscripcion -> resumen(suscripcion, usuariosPorNegocio.get(suscripcion.getNegocio().getId()),
+                        conBeneficio.get(suscripcion.getNegocio().getId()), hoy))
                 .filter(fila -> texto.isEmpty() || fila.nombre().toLowerCase(Locale.ROOT).contains(texto)
                         || (fila.correo() != null && fila.correo().contains(texto)))
                 .filter(fila -> estadoPago == null || fila.estadoPago() == estadoPago)
@@ -120,6 +136,8 @@ public class ServicioGestionNegocios {
         Usuario usuario = usuarioDe(negocioId);
         Instant ahora = reloj.instant();
         String nombreNicho = nichos.buscar(negocio.getNicho()).map(PaqueteNicho::nombre).orElse(negocio.getNicho());
+        ResolutorDePlanEfectivo.PlanEfectivo efectivo = planesEfectivos.resolver(negocioId);
+        Plan plan = efectivo.plan();
         return new NegocioDetalle(negocio.getId(), negocio.getNombre(), negocio.getNicho(), nombreNicho,
                 negocio.getEstado(), negocio.isOnboardingCompleto(), negocio.getFechaCreacion(),
                 new NegocioDetalle.Usuario(usuario.getCorreo(), usuario.getUltimoAcceso(),
@@ -127,13 +145,18 @@ public class ServicioGestionNegocios {
                         usuario.estaBloqueado(ahora)),
                 new NegocioDetalle.Suscripcion(suscripcion.getPlan().getId(), suscripcion.getPlan().getNombre(),
                         suscripcion.getMontoMensual(), suscripcion.getFechaInicio(),
-                        suscripcion.getProximaFechaPago(), suscripcion.getDiasAviso(),
+                        suscripcion.getProximaFechaPago(), suscripcion.getDiaPago(), suscripcion.getDiasAviso(),
                         suscripcion.estadoPago(LocalDate.now(reloj))),
+                new NegocioDetalle.PlanEfectivo(plan.getId(), plan.getNombre(), plan.getModeloTexto().getNombre(),
+                        plan.getModeloVideo().getNombre(), plan.getVideosPorDia(), plan.getRegeneracionesPorVideo(),
+                        efectivo.beneficio() == null ? null : efectivo.beneficio().getHasta()),
+                costos.deNegocio(negocioId, costos.mesActual()),
                 perfiles.paraAdmin(negocioId),
                 new NegocioDetalle.Videos(consumo.delMes(negocioId),
                         videos.listarDeNegocio(negocioId, Limit.of(20)).stream()
                                 .map(video -> new NegocioDetalle.VideoDelNegocio(video.getId(), video.getTipoVideo(),
                                         video.getEstado(), video.getFechaCreacion(),
+                                        video.getModeloVideoUsado().getNombre(), video.getCostoEstimado(),
                                         video.planosConFoto().stream().filter(Plano::isUsoRespaldo).count(),
                                         video.getMotivoError()))
                                 .toList()));
@@ -161,10 +184,12 @@ public class ServicioGestionNegocios {
         usuarioDe(negocioId).getNegocio().reactivar();
     }
 
-    private NegocioResumen resumen(Suscripcion suscripcion, Usuario usuario, LocalDate hoy) {
+    private NegocioResumen resumen(Suscripcion suscripcion, Usuario usuario, Plan beneficio, LocalDate hoy) {
         Negocio negocio = suscripcion.getNegocio();
+        Plan plan = beneficio != null ? beneficio : suscripcion.getPlan();
         return new NegocioResumen(negocio.getId(), negocio.getNombre(), usuario == null ? null : usuario.getCorreo(),
-                negocio.getNicho(), suscripcion.getPlan().getNombre(), suscripcion.getProximaFechaPago(),
+                negocio.getNicho(), plan.getNombre(), plan.getModeloVideo().getNombre(), beneficio != null,
+                suscripcion.getProximaFechaPago(),
                 suscripcion.estadoPago(hoy), (int) consumo.delMes(negocio.getId()), negocio.getEstado(),
                 usuario == null ? null : usuario.getUltimoAcceso());
     }

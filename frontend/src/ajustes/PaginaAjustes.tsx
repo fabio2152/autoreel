@@ -10,7 +10,7 @@ import {
   type ConfiguracionNicho,
   type Perfil,
 } from '../api/negocio'
-import { CLAVE_SESION, useCerrarSesion } from '../auth/useSesion'
+import { CLAVE_SESION, useCerrarSesion, useSesion } from '../auth/useSesion'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Campo } from '../componentes/Campo'
@@ -34,6 +34,7 @@ export function PaginaAjustes() {
     refetchOnWindowFocus: true,
   })
   const salir = useCerrarSesion()
+  const { data: sesion } = useSesion()
 
   return (
     <div className="mx-auto max-w-xl space-y-8">
@@ -46,7 +47,14 @@ export function PaginaAjustes() {
         <FormularioPerfil configuracion={configuracion.data} perfil={perfil.data} />
       )}
       <Seccion titulo="Contraseña">
-        <FormularioContrasena />
+        {sesion?.administrador ? (
+          <p className="text-sm text-stone-600">
+            Como administrador no puedes cambiar la contraseña del negocio. Si la olvidó, usa "Reiniciar contraseña" en
+            el panel.
+          </p>
+        ) : (
+          <FormularioContrasena />
+        )}
       </Seccion>
       <Seccion titulo="Instagram">
         <p className="text-sm text-stone-600">Podrás conectar tu cuenta profesional de Instagram muy pronto.</p>
