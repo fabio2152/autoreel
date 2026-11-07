@@ -18,6 +18,8 @@ export interface Pregunta {
   maxLongitud: number | null
   opciones: Opcion[]
   obligatoriaSi: { pregunta: string; contiene: string } | null
+  /** Si la selección admite "Otros": máximo de caracteres del texto libre. */
+  maxOtro: number | null
 }
 
 export interface ConfiguracionNicho {

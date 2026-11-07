@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Opcion } from '../api/negocio'
 
 interface Props {
@@ -9,10 +10,13 @@ interface Props {
   onCambiar: (actualizar: (anteriores: string[]) => string[]) => void
   /** Selección única: al tocar una opción se reemplaza la anterior. */
   unica?: boolean
+  /** Otro botón al final de la fila (por ejemplo, "Otros") y lo que se muestra debajo. */
+  extra?: ReactNode
+  debajo?: ReactNode
 }
 
 /** Botones de selección grandes y fáciles de tocar en el celular. */
-export function Chips({ etiqueta, ayuda, opciones, seleccionados, onCambiar, unica = false }: Props) {
+export function Chips({ etiqueta, ayuda, opciones, seleccionados, onCambiar, unica = false, extra, debajo }: Props) {
   const alternar = (valor: string) =>
     onCambiar((anteriores) =>
       unica ? [valor] : anteriores.includes(valor) ? anteriores.filter((v) => v !== valor) : [...anteriores, valor],
@@ -39,7 +43,9 @@ export function Chips({ etiqueta, ayuda, opciones, seleccionados, onCambiar, uni
             </button>
           )
         })}
+        {extra}
       </div>
+      {debajo}
     </fieldset>
   )
 }

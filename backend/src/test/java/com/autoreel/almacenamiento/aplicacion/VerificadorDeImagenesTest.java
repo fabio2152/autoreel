@@ -21,11 +21,14 @@ class VerificadorDeImagenesTest {
         assertThat(imagen.horizontal()).isFalse();
     }
 
+    /** V12 con el mínimo de 720 px en el lado menor (decisión del usuario, 2026-11-06). */
     @Test
-    void v12RechazaUnaFotoDe800PixelesEnSuLadoMenor() {
-        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(800, 1400), PropositoArchivo.FOTO_PRODUCTO,
+    void v12RechazaUnaFotoDeMenosDe720PixelesEnSuLadoMenor() {
+        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(719, 1280), PropositoArchivo.FOTO_PRODUCTO,
                 "image/jpeg"))
                 .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
+        assertThat(verificador.verificar(Imagenes.jpg(720, 1280), PropositoArchivo.FOTO_PRODUCTO, "image/jpeg")
+                .ancho()).isEqualTo(720);
     }
 
     @Test

@@ -48,8 +48,12 @@ class LectorDeDatosDelVideo {
         Producto producto = catalogo.elegidoParaVideo(video.getNegocioId(), video.getProductoId()).orElseThrow();
         Map<String, Object> chat = conversacion.getRespuestas();
         Map<String, Object> onboarding = perfil.getRespuestas();
-        String tipoVideoTexto = paquete.guionDelChat().paso(RespuestasDelChat.TIPO_VIDEO).opcion(video.getTipoVideo())
-                .map(Opcion::texto).orElse(video.getTipoVideo());
+        var pasoTipo = paquete.guionDelChat().paso(RespuestasDelChat.TIPO_VIDEO);
+        // Si escribió el tipo de video en lugar de elegir un botón, el guion recibe sus palabras como contexto.
+        String tipoVideoTexto = chat.get(pasoTipo.claveLibre()) instanceof String libre
+                ? pasoTipo.opcion(video.getTipoVideo()).map(Opcion::texto).orElse(video.getTipoVideo())
+                        + ". Lo que pidió el negocio: " + libre
+                : pasoTipo.opcion(video.getTipoVideo()).map(Opcion::texto).orElse(video.getTipoVideo());
         String estiloTexto = paquete.estilos().stream().filter(opcion -> opcion.valor().equals(perfil.getEstilo()))
                 .map(Opcion::texto).findFirst().orElse(perfil.getEstilo());
         DatosDelGuion datos = new DatosDelGuion(video.getTipoVideo(), tipoVideoTexto, producto.getNombre(),

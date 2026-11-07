@@ -136,6 +136,23 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
         procesarDespues(negocio, id).andExpect(jsonPath("$.respuestas.precio").value("S/ 65"));
     }
 
+    /** Pedido del usuario (2026-11-06): en la primera pregunta también se puede escribir. */
+    @Test
+    void enLaPrimeraPreguntaSePuedeEscribirElTipoDeVideo() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = iniciar(negocio).get("id").asLong();
+
+        responder(negocio, id, Map.of("paso", "tipoVideo", "texto", "¿Qué pongo?"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paso.id").value("tipoVideo"))
+                .andExpect(jsonPath("$.paso.admiteTexto").value(true));
+        responder(negocio, id, Map.of("paso", "tipoVideo", "texto", "Video para el Día de la Madre"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paso.id").value("producto"))
+                .andExpect(jsonPath("$.respuestas.tipoVideo").value("PRODUCTO_ESTRELLA"))
+                .andExpect(jsonPath("$.respuestas.tipoVideoLibre").value("Video para el Día de la Madre"));
+    }
+
     @Test
     void v16UnaPreguntaRecibeElMensajeFijoYLaMismaPregunta() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());

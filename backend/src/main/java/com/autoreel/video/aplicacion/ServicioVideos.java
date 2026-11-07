@@ -104,8 +104,11 @@ public class ServicioVideos {
     public VideoVista editarPlano(Long negocioId, Long videoId, int orden, SolicitudPlano solicitud) {
         Video video = editable(negocioId, videoId);
         boolean enRevision = video.getEstado() == EstadoVideo.LISTO;
-        boolean conIa = enRevision && solicitud.foto() != null && proveedores.videoDisponible(
-                video.getModeloVideoUsado());
+        // En la revisión, una foto nueva necesita un clip nuevo de IA: no hay respaldo sin IA.
+        boolean conIa = enRevision && solicitud.foto() != null;
+        if (conIa && !proveedores.videoDisponible(video.getModeloVideoUsado())) {
+            throw iaNoDisponible();
+        }
         if (conIa && video.getRegeneracionesUsadas() >= video.getPlanAplicado().getRegeneracionesPorVideo()) {
             throw sinRegeneraciones(video.getPlanAplicado());
         }
@@ -128,13 +131,10 @@ public class ServicioVideos {
         }
         if (enRevision) {
             if (conIa) {
-                borrarAlConfirmar(video.regenerarPlano(orden, video.getPlanAplicado().getRegeneracionesPorVideo(),
-                        false, reloj.instant()));
+                // El clip anterior se conserva hasta que llegue el nuevo: si el nuevo falla, el video sigue armado.
+                video.regenerarPlano(orden, video.getPlanAplicado().getRegeneracionesPorVideo(), true,
+                        reloj.instant());
             } else {
-                if (solicitud.foto() != null) {
-                    // Sin IA disponible, la foto nueva se usa con el acercamiento del sistema.
-                    borrarAlConfirmar(plano.usarFotoSinIa(MotivoRespaldoPlano.SIN_CREDENCIAL));
-                }
                 video.recomponer(reloj.instant());
             }
         }
@@ -146,6 +146,10 @@ public class ServicioVideos {
     @Transactional
     public VideoVista aprobarStoryboard(Long negocioId, Long videoId) {
         Video video = conEstado(negocioId, videoId, EstadoVideo.STORYBOARD);
+        // Sin el modelo de video disponible no se puede crear el video: no hay respaldo sin IA (2026-11-06).
+        if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
+            throw iaNoDisponible();
+        }
         java.time.LocalDate dia = consumo.consumir(negocioId, video.getPlanAplicado().getVideosPorDia());
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
         Long pista = musica.elegir(datos.paquete().id(), datos.perfil().getEstilo(), video.getId())
@@ -159,8 +163,7 @@ public class ServicioVideos {
     public VideoVista regenerar(Long negocioId, Long videoId, int orden) {
         Video video = conEstado(negocioId, videoId, EstadoVideo.LISTO);
         if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
-            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "IA_NO_DISPONIBLE",
-                    "Por ahora no podemos crear clips nuevos. Puedes editar los textos o aprobar tu video.");
+            throw iaNoDisponible();
         }
         if (video.getRegeneracionesUsadas() >= video.getPlanAplicado().getRegeneracionesPorVideo()) {
             throw sinRegeneraciones(video.getPlanAplicado());
@@ -221,6 +224,11 @@ public class ServicioVideos {
                         }
                     }
                 });
+    }
+
+    private static ExcepcionDeNegocio iaNoDisponible() {
+        return new ExcepcionDeNegocio(HttpStatus.CONFLICT, "IA_NO_DISPONIBLE",
+                "Por ahora no podemos crear clips con IA. Inténtalo en un rato; mientras tanto puedes editar los textos.");
     }
 
     private static ExcepcionDeNegocio sinRegeneraciones(Plan plan) {

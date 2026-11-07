@@ -37,10 +37,13 @@ public record GuionChat(int minimoCaracteres, int maximoCaracteres, List<String>
     }
 
     /**
-     * @param omitible se puede responder "No, gracias" sin escribir (solo si no es obligatoria en ese momento).
+     * @param omitible    se puede responder "No, gracias" sin escribir (solo si no es obligatoria en ese momento).
+     * @param ejemplo     ejemplo corto de respuesta que se muestra bajo la caja de texto (2026-11-06).
+     * @param opcionLibre en un paso de botones, la opción que se usa si el usuario escribe en lugar de tocar un botón:
+     *                    su texto se guarda aparte ({@code <id>Libre}) y llega al guion como contexto (2026-11-06).
      */
     public record PasoChat(String id, TipoPaso tipo, String texto, boolean obligatoria, List<Opcion> opciones,
-            Condicion obligatoriaSi, boolean omitible, Sugerencia sugerencia) {
+            Condicion obligatoriaSi, boolean omitible, Sugerencia sugerencia, String ejemplo, String opcionLibre) {
 
         public PasoChat {
             opciones = opciones == null ? List.of() : List.copyOf(opciones);
@@ -53,6 +56,15 @@ public record GuionChat(int minimoCaracteres, int maximoCaracteres, List<String>
 
         public Optional<Opcion> opcion(String valor) {
             return opciones.stream().filter(opcion -> opcion.valor().equals(valor)).findFirst();
+        }
+
+        /** Clave de la respuesta escrita en un paso de botones. */
+        public String claveLibre() {
+            return id + "Libre";
+        }
+
+        public boolean admiteTexto() {
+            return tipo == TipoPaso.TEXTO || (tipo == TipoPaso.BOTONES && opcionLibre != null);
         }
     }
 
@@ -107,6 +119,9 @@ public record GuionChat(int minimoCaracteres, int maximoCaracteres, List<String>
             exigir(paso.sugerencia() == null || paso.tipo() == TipoPaso.TEXTO,
                     "la sugerencia de " + paso.id() + " solo vale en pasos de texto");
             exigir(!paso.omitible() || paso.tipo() == TipoPaso.TEXTO, paso.id() + ": solo un texto puede omitirse");
+            exigir(paso.opcionLibre() == null
+                    || (paso.tipo() == TipoPaso.BOTONES && paso.opcion(paso.opcionLibre()).isPresent()),
+                    "la opción libre de " + paso.id() + " debe ser una de sus opciones");
             if (paso.obligatoriaSi() != null) {
                 var anterior = pasos.subList(0, posicion).stream()
                         .filter(p -> p.id().equals(paso.obligatoriaSi().paso())).findFirst();

@@ -3,7 +3,8 @@
  * respuesta rápida y sube archivos más livianos.
  */
 
-export const LADO_MENOR_FOTO = 1080
+/** RN-11: 720 px en el lado menor, lo que pide el clip de IA (720p). */
+export const LADO_MENOR_FOTO = 720
 const LADO_MAYOR_NORMALIZADO = 2560
 const CALIDAD_JPEG = 0.88
 const MB = 1024 * 1024
@@ -26,7 +27,7 @@ async function abrir(archivo: Blob): Promise<ImageBitmap> {
 
 /**
  * Foto de producto o del local: aplica la orientación de la cámara, reduce el lado mayor a 2560 px (sin bajar el
- * lado menor de 1080), la exporta como JPEG y, al redibujarla, le quita los metadatos (incluida la ubicación GPS).
+ * lado menor de 720), la exporta como JPEG y, al redibujarla, le quita los metadatos (incluida la ubicación GPS).
  */
 export async function normalizarFoto(archivo: File): Promise<{ foto: Blob; horizontal: boolean }> {
   if (esHeic(archivo)) {

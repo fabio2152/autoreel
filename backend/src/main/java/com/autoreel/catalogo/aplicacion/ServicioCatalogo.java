@@ -195,9 +195,13 @@ public class ServicioCatalogo {
         return descripcion;
     }
 
+    /**
+     * Las temporadas no se piden en el MVP (decisión del usuario, 2026-11-06; ADR 0013): si no vienen, el producto es
+     * de "Todo el año". El dato se conserva para retomarlas después sin migrar.
+     */
     private static List<String> temporadas(PaqueteNicho paquete, SolicitudProducto solicitud) {
         if (solicitud.temporadas() == null || solicitud.temporadas().isEmpty()) {
-            throw new ExcepcionDeNegocio("PRODUCTO_SIN_TEMPORADA", "Elige al menos una temporada.");
+            return List.of(TEMPORADA_POR_DEFECTO);
         }
         LinkedHashSet<String> elegidas = new LinkedHashSet<>(solicitud.temporadas());
         elegidas.stream().filter(id -> !paquete.admiteTemporada(id)).findFirst().ifPresent(id -> {

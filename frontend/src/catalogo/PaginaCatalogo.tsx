@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { CLAVE_PRODUCTOS, fotoDe, listarProductos, type EstadoProducto } from '../api/catalogo'
-import { CLAVE_CONFIGURACION, obtenerConfiguracion } from '../api/negocio'
 import { Aviso } from '../componentes/Aviso'
 import { Cargando } from '../componentes/Cargando'
 import { ImagenRemota } from '../componentes/ImagenRemota'
@@ -19,8 +18,6 @@ export function PaginaCatalogo() {
     refetchInterval: 45 * 60_000,
     refetchOnWindowFocus: true,
   })
-  const configuracion = useQuery({ queryKey: CLAVE_CONFIGURACION, queryFn: obtenerConfiguracion })
-  const nombreTemporada = (id: string) => configuracion.data?.temporadas.find((t) => t.id === id)?.nombre ?? id
 
   return (
     <div className="space-y-5">
@@ -91,9 +88,6 @@ export function PaginaCatalogo() {
                 </div>
                 <div className="p-3">
                   <p className="line-clamp-2 text-sm font-medium">{producto.nombre}</p>
-                  <p className="mt-1 truncate text-xs text-stone-500">
-                    {producto.temporadas.map(nombreTemporada).join(' · ')}
-                  </p>
                 </div>
               </Link>
             </li>

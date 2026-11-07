@@ -12,7 +12,8 @@ import com.autoreel.compartido.error.ExcepcionDeNegocio;
 
 /**
  * Valida las respuestas del onboarding contra las preguntas del paquete de nicho. Las respuestas se guardan como
- * JSON: texto para TEXTO y TELEFONO, lista de valores para SELECCION_MULTIPLE.
+ * JSON: texto para TEXTO y TELEFONO, lista de valores para SELECCION_MULTIPLE. Si la pregunta admite "Otros", la lista
+ * puede llevar además un texto libre corto, que se guarda tal cual entre los valores.
  */
 public final class ValidadorDeRespuestas {
 
@@ -99,11 +100,31 @@ public final class ValidadorDeRespuestas {
             throw invalida("La respuesta a \"" + pregunta.texto() + "\" debe ser una lista de opciones.");
         }
         LinkedHashSet<String> elegidos = new LinkedHashSet<>();
+        boolean conOtro = false;
         for (Object elegido : valores) {
-            if (!(elegido instanceof String opcion) || !pregunta.admiteValor(opcion)) {
+            if (!(elegido instanceof String opcion)) {
                 throw invalida("Elegiste una opción que no existe en \"" + pregunta.texto() + "\".");
             }
-            elegidos.add(opcion);
+            if (pregunta.admiteValor(opcion)) {
+                elegidos.add(opcion);
+                continue;
+            }
+            String otro = opcion.strip().replaceAll("\s+", " ");
+            if (!pregunta.admiteOtro()) {
+                throw invalida("Elegiste una opción que no existe en \"" + pregunta.texto() + "\".");
+            }
+            if (otro.isEmpty()) {
+                continue;
+            }
+            if (conOtro) {
+                throw invalida("En \"" + pregunta.texto() + "\" puedes escribir una sola opción en \"Otros\".");
+            }
+            if (otro.length() > pregunta.maxOtro()) {
+                throw invalida("En \"" + pregunta.texto() + "\", \"Otros\" puede tener como máximo "
+                        + pregunta.maxOtro() + " caracteres: escribe una característica, no una oración.");
+            }
+            conOtro = true;
+            elegidos.add(otro);
         }
         return elegidos.isEmpty() ? null : new ArrayList<>(elegidos);
     }

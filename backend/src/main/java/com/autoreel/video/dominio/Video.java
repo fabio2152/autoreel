@@ -246,14 +246,15 @@ public class Video {
         return descartado;
     }
 
-    /** Una regeneración que terminó en respaldo no se cobra (decisión del usuario). */
-    public void devolverRegeneracion() {
+    /** Una regeneración que no produjo clip no se cobra (decisión del usuario) y se avisa en la revisión. */
+    public void regeneracionFallida(String aviso) {
         if (regeneracionesUsadas > 0) {
             regeneracionesUsadas--;
         }
+        this.avisoRevision = aviso;
     }
 
-    /** Si todos los planos con IA tienen su clip o su respaldo. */
+    /** Si todos los planos con IA tienen su clip. */
     public boolean clipsTerminados() {
         return planosConFoto().stream().allMatch(Plano::terminado);
     }

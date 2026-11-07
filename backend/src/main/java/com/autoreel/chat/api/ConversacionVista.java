@@ -29,7 +29,7 @@ public record ConversacionVista(Long id, EstadoConversacion estado, Paso paso, L
      * @param sugerencia  texto que se ofrece como punto de partida (la descripción del producto).
      */
     public record Paso(String id, TipoPaso tipo, String texto, List<Opcion> opciones, boolean obligatoria,
-            boolean omitible, String sugerencia) {
+            boolean omitible, String sugerencia, String ejemplo, boolean admiteTexto) {
     }
 
     /** @param pendiente texto del usuario que todavía puede agruparse con el siguiente. */

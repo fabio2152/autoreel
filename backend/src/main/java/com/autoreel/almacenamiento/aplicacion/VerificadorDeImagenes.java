@@ -33,8 +33,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class VerificadorDeImagenes {
 
-    /** RN-11: el lado menor de las fotos debe tener al menos 1080 px. */
-    public static final int LADO_MENOR_FOTO = 1080;
+    /** RN-11: el lado menor de las fotos debe tener al menos 720 px, lo que pide el clip de IA en 720p (2026-11-06). */
+    public static final int LADO_MENOR_FOTO = 720;
     /** Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse. */
     static final int LADO_MAYOR_MAXIMO = 8000;
     static final long PIXELES_MAXIMOS = 40_000_000L;

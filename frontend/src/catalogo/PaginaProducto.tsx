@@ -19,7 +19,6 @@ import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Campo } from '../componentes/Campo'
 import { Cargando } from '../componentes/Cargando'
-import { Chips } from '../componentes/Chips'
 import { SubidorDeImagen } from '../componentes/SubidorDeImagen'
 import { GuiaDeFoto } from './GuiaDeFoto'
 
@@ -44,23 +43,17 @@ export function PaginaProducto() {
     <FormularioProducto
       key={productoId ?? 'nuevo'}
       producto={producto.data ?? null}
-      temporadas={configuracion.data.temporadas.map((t) => ({ valor: t.id, texto: t.nombre }))}
     />
   )
 }
 
-function FormularioProducto({
-  producto,
-  temporadas,
-}: {
-  producto: Producto | null
-  temporadas: { valor: string; texto: string }[]
-}) {
+function FormularioProducto({ producto }: { producto: Producto | null }) {
   const clienteConsultas = useQueryClient()
   const navegar = useNavigate()
   const [nombre, setNombre] = useState(producto?.nombre ?? '')
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? '')
-  const [elegidas, setElegidas] = useState<string[]>(producto?.temporadas ?? ['TODO_EL_ANIO'])
+  // Las temporadas no se piden en el MVP (2026-11-06): se conservan las que ya tenía el producto.
+  const elegidas = producto?.temporadas ?? []
   const [fotos, setFotos] = useState<Partial<Record<TipoFoto, string>>>(() =>
     Object.fromEntries(TIPOS_FOTO.flatMap((tipo) => {
       const foto = producto && fotoDe(producto, tipo)
@@ -68,7 +61,6 @@ function FormularioProducto({
     })),
   )
   const [subiendo, setSubiendo] = useState(0)
-  const [faltante, setFaltante] = useState<string | null>(null)
 
   const alTerminar = () => {
     clienteConsultas.invalidateQueries({ queryKey: CLAVE_PRODUCTOS })
@@ -90,10 +82,6 @@ function FormularioProducto({
 
   const enviar = (evento: FormEvent) => {
     evento.preventDefault()
-    if (elegidas.length === 0) {
-      setFaltante('Elige al menos una temporada.')
-      return
-    }
     guardar.mutate()
   }
 
@@ -143,17 +131,6 @@ function FormularioProducto({
         </p>
       </div>
 
-      <Chips
-        etiqueta="Temporada"
-        ayuda="En su temporada, el producto aparece primero al crear tus videos."
-        opciones={temporadas}
-        seleccionados={elegidas}
-        onCambiar={(actualizar) => {
-          setFaltante(null)
-          setElegidas(actualizar)
-        }}
-      />
-
       <section className="space-y-5">
         <div>
           <h2 className="font-semibold">Fotos</h2>
@@ -187,8 +164,8 @@ function FormularioProducto({
 
       <div className="fixed inset-x-0 bottom-16 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0">
         <div className="mx-auto flex max-w-xl flex-col gap-2">
-          {(faltante || guardar.error || archivar.error) && (
-            <Aviso tipo="error">{faltante ?? guardar.error?.message ?? archivar.error?.message}</Aviso>
+          {(guardar.error || archivar.error) && (
+            <Aviso tipo="error">{guardar.error?.message ?? archivar.error?.message}</Aviso>
           )}
           <div className="flex gap-3">
             {producto && (
