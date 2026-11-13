@@ -225,9 +225,19 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("ERROR"))
                 .andExpect(jsonPath("$.generacion.motivoError").value(ServicioGeneracion.MOTIVO_SIN_CLIPS))
-                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0));
+                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0))
+                .andExpect(jsonPath("$.generacion.puedeReintentar").value(true));
         assertThat(OMNI.creacionesRecibidas()).hasSize(4);
         assertThat(componedor.ultima == null || !componedor.ultima.planos().isEmpty()).isTrue();
+
+        // Reintentar: vuelve a generar y a usar el video del día.
+        mvc.perform(post("/api/videos/" + id + "/reintentar").with(csrf()).cookie(negocio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("GENERANDO"))
+                .andExpect(jsonPath("$.generacion.motivoError").doesNotExist())
+                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(1));
+        mvc.perform(post("/api/videos/" + id + "/reintentar").with(csrf()).cookie(negocio))
+                .andExpect(status().isConflict());
     }
 
     @Test

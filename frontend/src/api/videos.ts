@@ -78,6 +78,8 @@ export interface Video {
     iaDisponible: boolean
     avisoRevision: string | null
     motivoError: string | null
+    /** Si el video falló al generarse y se puede volver a intentar (vuelve a usar el video del día). */
+    puedeReintentar: boolean
   }
 }
 
@@ -109,6 +111,9 @@ export const descartarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/de
 
 /** "Crear mi video": consume el video del día y empieza la generación. */
 export const aprobarStoryboard = (id: number) => pedir<Video>(`/api/videos/${id}/aprobar-storyboard`, 'POST')
+
+/** Reintentar un video que falló al generarse. */
+export const reintentarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/reintentar`, 'POST')
 
 export const regenerarPlano = (id: number, orden: number) =>
   pedir<Video>(`/api/videos/${id}/planos/${orden}/regenerar`, 'POST')

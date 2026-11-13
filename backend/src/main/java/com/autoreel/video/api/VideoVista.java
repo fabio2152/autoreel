@@ -63,9 +63,10 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
      * @param iaDisponible          si el modelo de video se puede usar ahora; si no, no se ofrece regenerar.
      * @param avisoRevision         por ejemplo, que no se pudo aplicar un cambio.
      * @param motivoError           si el video terminó en ERROR, en palabras simples.
+     * @param puedeReintentar       si el video falló al generarse y se puede volver a intentar.
      */
     public record GeneracionVista(ConsumoVista videosHoy, String urlVideo, int regeneracionesUsadas,
-            boolean iaDisponible, String avisoRevision, String motivoError) {
+            boolean iaDisponible, String avisoRevision, String motivoError, boolean puedeReintentar) {
     }
 
     public record ConsumoVista(int usados, int porDia, boolean puedeAprobar) {

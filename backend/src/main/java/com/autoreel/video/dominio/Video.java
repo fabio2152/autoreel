@@ -223,6 +223,30 @@ public class Video {
         this.fechaActualizacion = ahora;
     }
 
+    /** Si el video falló después de aprobar el storyboard (sin clips o sin composición) y se puede reintentar. */
+    public boolean reintentable() {
+        return estado == EstadoVideo.ERROR && consumoFecha != null && !planosConFoto().isEmpty();
+    }
+
+    /**
+     * Reintentar un video que falló al generarse: vuelve a consumir el video del día y pide solo los clips que
+     * faltan; los que ya llegaron se conservan (no se vuelven a pagar).
+     */
+    public void reintentar(LocalDate dia, Instant ahora) {
+        if (!reintentable()) {
+            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_REINTENTABLE",
+                    "Este video no se puede reintentar. Crea otro desde el inicio.");
+        }
+        this.consumoFecha = dia;
+        this.consumoDevuelto = false;
+        this.motivoError = null;
+        this.avisoRevision = null;
+        this.generacionIniciadaEn = ahora;
+        this.estado = EstadoVideo.GENERANDO;
+        planosConFoto().stream().filter(plano -> !plano.terminado()).forEach(Plano::pendiente);
+        this.fechaActualizacion = ahora;
+    }
+
     /**
      * RN-28: pedir otro clip para un plano. Es la única forma de regenerar (botón o cambio de foto en la revisión).
      *
