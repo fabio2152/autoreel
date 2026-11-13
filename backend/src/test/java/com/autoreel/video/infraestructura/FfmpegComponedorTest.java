@@ -68,8 +68,8 @@ class FfmpegComponedorTest {
                 new PlanoAComponer(2, 4, clip, null, TEXTO_DIFICIL),
                 new PlanoAComponer(3, 4, null, fotos.vertical(foto(1600, 1200)),
                         "Cada porción con fresas de Huaral y crema batida")),
-                new CierreAComponer(4, fotos.vertical(foto(1920, 1080)), true, logo(), "S/ 65 la torta entera",
-                        "Te esperamos en San Isidro", "San Isidro", "+51 987 654 321"),
+                new CierreAComponer(4, fotos.vertical(foto(1920, 1080)), logo(), "S/ 65 la torta entera",
+                        "Te esperamos en San Isidro", "San Isidro", "+51 987 654 321", "#be123c"),
                 paquete.leerPista(paquete.pistas().getFirst()), paquete.tipografia("CASERO"));
 
         JsonNode info = sondear(componedor.componer(composicion));
@@ -84,14 +84,13 @@ class FfmpegComponedorTest {
     }
 
     @Test
-    void todoConRespaldoSinMusicaSinLogoYConDegradado() throws Exception {
+    void todoConRespaldoSinMusicaSinLogoNiFotoDelLocal() throws Exception {
         byte[] foto = fotos.vertical(foto(1080, 1920));
         Composicion composicion = new Composicion(List.of(
                 new PlanoAComponer(1, 3, null, foto, "Recién salido del horno"),
                 new PlanoAComponer(2, 4, null, foto, "Alfajores de Maicena"),
                 new PlanoAComponer(3, 4, null, foto, "Rellenos de manjar")),
-                new CierreAComponer(4, fotos.degradado("#be123c", "#fde68a"), false, null, null,
-                        "Pide por WhatsApp", "Miraflores", null),
+                new CierreAComponer(4, null, null, null, "Pide por WhatsApp", "Miraflores", null, "#fde68a"),
                 null, paquete.tipografia("ELEGANTE"));
 
         JsonNode info = sondear(componedor.componer(composicion));
@@ -100,13 +99,60 @@ class FfmpegComponedorTest {
         assertThat(flujo(info, "audio").path("codec_name").asString()).isEqualTo("aac");
     }
 
+    /**
+     * Tres clips con fundidos entre planos, sin foto del local (el fondo del cierre es el último clip desenfocado) y
+     * con la frase de la IA en grande. El total sigue en 15 s exactos: 450 cuadros. Con {@code AUTOREEL_MUESTRA}
+     * definido, deja ahí el MP4 para revisarlo a ojo.
+     */
+    @Test
+    void losFundidosEntrePlanosMantienenLosQuinceSegundos() throws Exception {
+        Composicion composicion = new Composicion(List.of(
+                new PlanoAComponer(1, 3, clip, null, "Un antojo que se derrite en tu boca"),
+                new PlanoAComponer(2, 4, clip, null, "Cheesecake de maracuyá"),
+                new PlanoAComponer(3, 4, clip, null, "Cremosa, fresca y hecha hoy con piña y ñame")),
+                new CierreAComponer(4, null, logo(), "Recién salidas del horno", "Pide por WhatsApp",
+                        "Plaza Lima Sur, Chorrillos", "+51 987 654 321", "#be123c"),
+                paquete.leerPista(paquete.pistas().getFirst()), paquete.tipografia("ELEGANTE"));
+
+        byte[] mp4 = componedor.componer(composicion);
+        String muestra = System.getenv("AUTOREEL_MUESTRA");
+        if (muestra != null && !muestra.isBlank()) {
+            Files.write(Path.of(muestra), mp4);
+        }
+        JsonNode info = sondear(mp4);
+
+        assertThat(info.at("/format/duration").asDouble()).isCloseTo(15.0, within(0.05));
+        assertThat(flujo(info, "video").path("nb_read_frames").asInt()).isEqualTo(450);
+    }
+
+    /**
+     * Los clips de IA miden lo mismo que su plano (4 s): los fundidos no deben alargar los planos, porque el tramo
+     * extra sería el último cuadro congelado justo durante la transición. El cierre absorbe las transiciones.
+     */
+    @Test
+    void losFundidosNoAlarganLosPlanosConClip() throws Exception {
+        Composicion composicion = new Composicion(List.of(
+                new PlanoAComponer(1, 3, clip, null, "Uno"),
+                new PlanoAComponer(2, 4, clip, null, "Dos"),
+                new PlanoAComponer(3, 4, clip, null, "Tres")),
+                new CierreAComponer(4, null, null, "Recién salidas del horno", "Pide por WhatsApp", null, null,
+                        "#be123c"),
+                null, paquete.tipografia("CASERO"));
+
+        String filtro = String.join(" ", componedor.preparar(carpeta, composicion));
+
+        assertThat(filtro).contains("trim=duration=3.00", "trim=duration=4.00", "trim=duration=4.90")
+                .doesNotContain("trim=duration=3.30", "trim=duration=4.30")
+                .contains("offset=2.70", "offset=6.40", "offset=10.10");
+    }
+
     @Test
     void unFfmpegInexistenteEsUnErrorDeComposicion() {
         FfmpegComponedor sinFfmpeg = new FfmpegComponedor(
                 new FfmpegComponedor.PropiedadesFfmpeg("no-existe-ffmpeg", Duration.ofSeconds(5), 1));
         byte[] foto = fotos.vertical(foto(1080, 1920));
         Composicion composicion = new Composicion(List.of(new PlanoAComponer(1, 3, null, foto, "Hola")),
-                new CierreAComponer(4, foto, true, null, null, null, null, null), null, paquete.tipografia("CASERO"));
+                new CierreAComponer(4, foto, null, null, null, null, null, null), null, paquete.tipografia("CASERO"));
 
         assertThatThrownBy(() -> sinFfmpeg.componer(composicion)).isInstanceOf(ErrorDeComposicion.class);
     }
@@ -123,8 +169,8 @@ class FfmpegComponedorTest {
     private JsonNode sondear(byte[] mp4) throws Exception {
         Path archivo = carpeta.resolve("final.mp4");
         Files.write(archivo, mp4);
-        String salida = ejecutar(FFPROBE, "-v", "error", "-show_format", "-show_streams", "-of", "json",
-                archivo.toString());
+        String salida = ejecutar(FFPROBE, "-v", "error", "-count_frames", "-show_format", "-show_streams",
+                "-of", "json", archivo.toString());
         return JsonMapper.builder().build().readTree(salida);
     }
 

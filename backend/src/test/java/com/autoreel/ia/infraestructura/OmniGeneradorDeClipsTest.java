@@ -31,7 +31,7 @@ import tools.jackson.databind.json.JsonMapper;
 class OmniGeneradorDeClipsTest {
 
     private static final SolicitudDeClip SOLICITUD = new SolicitudDeClip(new byte[] {1, 2, 3}, "image/jpeg",
-            "Slow push-in on the cake", "people, hands, text", 4);
+            "Slow push-in on the cake.", "people, hands, text", 4);
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final ServidorOmniSimulado servidor = new ServidorOmniSimulado();
@@ -55,8 +55,8 @@ class OmniGeneradorDeClipsTest {
         assertThat(cuerpo.at("/input/0/type").asString()).isEqualTo("image");
         assertThat(cuerpo.at("/input/0/data").asString()).isEqualTo("AQID");
         assertThat(cuerpo.at("/input/0/mime_type").asString()).isEqualTo("image/jpeg");
-        assertThat(cuerpo.at("/input/1/text").asString()).contains("Slow push-in on the cake",
-                "Never show: people, hands, text");
+        assertThat(cuerpo.at("/input/1/text").asString())
+                .isEqualTo("Slow push-in on the cake. Avoid: people, hands, text.");
         assertThat(cuerpo.at("/response_format/type").asString()).isEqualTo("video");
         assertThat(cuerpo.at("/response_format/aspect_ratio").asString()).isEqualTo("9:16");
         assertThat(cuerpo.at("/response_format/resolution").asString()).isEqualTo("720p");

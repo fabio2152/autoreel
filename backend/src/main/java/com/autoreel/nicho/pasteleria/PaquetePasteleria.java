@@ -3,7 +3,6 @@ package com.autoreel.nicho.pasteleria;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -121,7 +120,7 @@ public class PaquetePasteleria implements PaqueteNicho {
     private void validarVideo() {
         List<Opcion> canales = preguntas.stream().filter(p -> p.id().equals("canales")).findFirst()
                 .map(Pregunta::opciones).orElseThrow(() -> new IllegalStateException("Falta la pregunta canales"));
-        plantillaVideo.validar(canales, guionDelChat.paso("tipoVideo").opciones(), estilos);
+        plantillaVideo.validar(canales, estilos);
         for (Opcion estilo : estilos) {
             exigir(pistas.stream().anyMatch(pista -> pista.estilo().equals(estilo.valor())),
                     "falta una pista de música del estilo " + estilo.valor());
@@ -131,24 +130,44 @@ public class PaquetePasteleria implements PaqueteNicho {
                     "no existe la pista " + pista.archivo());
             exigir(pista.duracionSegundos() >= 15, "la pista " + pista.archivo() + " dura menos de 15 segundos");
         }
+        validarMovimientos();
+        exigir(movimientos.minimoPlanosCamara3d() <= plantillaVideo.planosConIa().size(),
+                "el mínimo de planos con cámara 3D pasa del número de planos con IA");
+        exigir(movimientos.minimoPlanosCamara3d() == 0 || movimientos.movimientos().stream()
+                        .anyMatch(movimiento -> movimiento.camara3d() && movimiento.soloTiposVideo().isEmpty()),
+                "falta un movimiento de cámara 3D que sirva para todos los tipos de video");
         for (var plano : plantillaVideo.planosConIa()) {
             exigir(movimientos.buscar(plano.movimientoDeRespaldo()).isPresent(),
                     "el movimiento de respaldo del plano " + plano.orden() + " no existe");
         }
-        // Los textos fijos del respaldo deben cumplir el propio vocabulario del nicho.
-        List<String> fijos = new ArrayList<>(plantillaVideo.ganchosDeRespaldo().values());
-        plantillaVideo.planosConIa().forEach(plano -> fijos.add(plano.textoDeRespaldo()));
-        fijos.add(plantillaVideo.descripcionFijaDeRespaldo());
-        fijos.addAll(plantillaVideo.llamados().values());
-        for (String texto : fijos) {
+        // Los llamados fijos del cierre deben cumplir el propio vocabulario del nicho.
+        for (String texto : plantillaVideo.llamados().values()) {
             for (String frase : vocabulario.prohibidas()) {
-                exigir(!Texto.contieneFrase(texto, frase), "el texto de respaldo \"" + texto + "\" usa \"" + frase + "\"");
+                exigir(!Texto.contieneFrase(texto, frase), "el llamado \"" + texto + "\" usa \"" + frase + "\"");
             }
             for (String frase : vocabulario.prohibidasSalvoQueLasDeclareElProducto()) {
-                exigir(!Texto.contieneFrase(texto, frase), "el texto de respaldo \"" + texto + "\" usa \"" + frase + "\"");
+                exigir(!Texto.contieneFrase(texto, frase), "el llamado \"" + texto + "\" usa \"" + frase + "\"");
             }
         }
         exigir(!instruccionesGuion.isBlank(), "faltan las instrucciones del guion");
+    }
+
+    private void validarMovimientos() {
+        exigir(movimientos.plantillaDeToma() != null
+                        && movimientos.plantillaDeToma().contains(Movimientos.MARCA_INSTRUCCION),
+                "la plantilla de toma debe contener " + Movimientos.MARCA_INSTRUCCION);
+        exigir(movimientos.prohibiciones() != null && !movimientos.prohibiciones().isBlank(),
+                "faltan las prohibiciones de los movimientos");
+        exigir(movimientos.negativos() != null && !movimientos.negativos().isBlank(),
+                "faltan los negativos de los movimientos");
+        exigir(!movimientos.movimientos().isEmpty(), "no hay movimientos");
+        Set<String> ids = new HashSet<>();
+        for (var movimiento : movimientos.movimientos()) {
+            exigir(ids.add(movimiento.id()), "movimiento repetido: " + movimiento.id());
+            exigir(movimiento.descripcion() != null && !movimiento.descripcion().isBlank()
+                            && movimiento.instruccion() != null && !movimiento.instruccion().isBlank(),
+                    "al movimiento " + movimiento.id() + " le falta la descripción o la instrucción");
+        }
     }
 
     private static byte[] leerBytes(String archivo) {

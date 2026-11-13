@@ -1,6 +1,6 @@
 # AutoReel — Plan de desarrollo
 
-> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
+> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Después de la pausa se hicieron los proveedores de Google, la fase 7, la revisión del flujo del negocio, "Reintentar" y, el 2026-11-12, la mejora de la calidad del video (sección 9, ADR 0021). Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
 
 ## 1. Cómo se trabaja
 
@@ -570,6 +570,20 @@ Todo lo de esta tabla se usó en la fase 5 (ver 7.2), salvo lo que se indica par
 >
 > Sigue en pausa la fase 6 (Instagram), y faltan la 8 y la 9.
 
+> **Actualización del 2026-11-12.** Después de la documentación al día (PR #10) y de pasar `docs/` al repositorio (PR #11), llegaron:
+>
+> - **PR #12, reintentar un video** que falló al generarse. Vuelve a consumir el video del día y pide solo los clips que faltan.
+> - **Rama `mejora-calidad-video`, calidad del video** (ADR 0021, CHANGELOG "Calidad del video"). La pidió el usuario al revisar un video real:
+>   - Guion publicitario en `guion.md`, que interpreta las respuestas del negocio sin copiarlas.
+>   - **Cierre escrito por la IA:** precio real o frase gancho, y ubicación más precisa.
+>   - **Sin guion de respaldo:** reintentos automáticos durante 5 minutos y luego `ERROR`. "Reintentar" en la etapa del guion no usa el video del día.
+>   - **Movimientos de cámara 3D,** con el prompt completo (`plantillaDeToma`, `prohibiciones`, `negativos`) en `movimientos.json`. El mismo prompt va a Omni y a Veo.
+>   - **Composición con fundidos de 0,3 s,** textos animados en el tercio inferior y un cierre nuevo.
+>   - Migración `V9`.
+>   - 244 pruebas del backend.
+>
+> **Falta:** probar con 2 o 3 videos reales de Gemini Omni Flash que los arcos de cámara no deformen el producto, y tener activa la facturación de Google AI Studio, porque sin Gemini ya no hay propuesta.
+
 Al terminar la fase 5, el usuario decidió **parar antes de crear la conexión con Meta**: con las fases 1 a 5 el MVP ya cumple su objetivo (crear, revisar y descargar el video), y la publicación en Instagram y el resto quedan para después. La rama `fase-6-publicacion` se creó y se borró sin cambios; `main` tiene todo lo terminado.
 
 ### 9.1 Fase 6 Publicación (pendiente)
@@ -630,14 +644,14 @@ Al revisar el panel de administración en local, el usuario pidió terminar pago
 
 ### 9.4 Pendientes que no son de una fase
 
-- **Credenciales de IA reales:** desde el 2026-11-05 (ADR 0017, rama `proveedores-google`) basta **una clave de Google AI Studio** (`GEMINI_API_KEY`) para el guion (Gemini) y los clips (Gemini Omni Flash), en un proyecto con facturación activa. La alternativa de Google Cloud (Gemini y Veo con la cuenta de servicio, `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`) queda lista e inactiva. Sin credenciales, la propuesta usa el guion de respaldo, pero no se pueden crear videos: desde el 2026-11-06 no hay clips sin IA (ADR 0020). Las claves también se pueden pegar en el panel (ADR 0018).
+- **Credenciales de IA reales:** desde el 2026-11-05 (ADR 0017, rama `proveedores-google`) basta **una clave de Google AI Studio** (`GEMINI_API_KEY`) para el guion (Gemini) y los clips (Gemini Omni Flash), en un proyecto con facturación activa. La alternativa de Google Cloud (Gemini y Veo con la cuenta de servicio, `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`) queda lista e inactiva. Sin credenciales no se pueden crear videos: desde el 2026-11-06 no hay clips sin IA (ADR 0020) y, desde el 2026-11-12, tampoco guion sin IA (ADR 0021). La propuesta se reintenta durante 5 minutos y luego queda en error, y el negocio la puede reintentar sin gastar su video del día. Las claves también se pueden pegar en el panel (ADR 0018).
 - **Revisar después (encontrado al documentar, 2026-11-06):**
   - Editar un modelo activo cambia también lo que usan los videos en proceso, porque guardan su id: conviene crear un modelo nuevo en lugar de editar uno en uso.
   - "Probar conexión" de Veo solo verifica la cuenta de servicio, no el identificador ni la región del modelo.
   - Si un negocio marca solo "Otros" en "¿Cómo te piden?", el cierre del video queda sin llamado.
   - La ruta por defecto del archivo de claves es relativa (`../credenciales/...`): solo coincide con la raíz si el backend arranca desde `backend/`.
   - En AWS con varias instancias: la tarea diaria corre en todas, y un clip síncrono de Omni puede tardar más que el reclamo de 5 minutos. Además, falta decidir qué hacen `borrar` y `origen` de `AlmacenDeSecretos` con Secrets Manager. Ver `despliegue-aws.md`.
-  - `plano.uso_respaldo`, `motivo_respaldo` y `EstadoPlano.RESPALDO` quedan solo para videos viejos (ADR 0020).
+  - `plano.uso_respaldo`, `motivo_respaldo` y `EstadoPlano.RESPALDO` quedan solo para videos viejos (ADR 0020). Lo mismo `video.guion_de_respaldo` y `video.motivo_respaldo`, que la entidad ya no mapea (ADR 0021).
 - **P-02:** fuente de la música con licencia comercial (hoy, tres pistas de relleno).
 - **P-04:** precio del plan Lite. **P-01:** nombre y dominio definitivos.
 - **Confirmar el precio por segundo de Veo 3.1 Lite** en la página oficial de Google Cloud (hoy 0,05 USD, como dato editable).

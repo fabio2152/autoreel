@@ -1,43 +1,86 @@
 {
+  "plantillaDeToma": "Use the photo as the exact first frame. A single continuous shot from a premium cinematic dessert commercial, 24fps film look, warm soft light. {instruccion} The product itself keeps exactly its shape, colors, frosting and decorations from the photo while the camera moves through the real 3D space around it. The camera movement is clearly visible, smooth and steady from start to end; this is a moving shot, not a still photo.",
+  "prohibiciones": "Do not add hands, people, faces, knives, utensils, text, letters, logos, props or decorations that are not in the photo; the only additions allowed are the ones the shot above describes. Do not morph, melt, redecorate or duplicate the product. No digital zoom: the camera physically moves. No lens flares. No dialogue and no voice-over.",
+  "negativos": "hands, fingers, people, faces, knife, utensils, text, letters, subtitles, watermark, logo, extra props, duplicate product, extra decorations, morphing, melting, warped product, color shift, digital zoom, scene cut, flicker, lens flare",
+  "minimoPlanosCamara3d": 2,
   "movimientos": [
     {
+      "id": "ORBITA_FRONTAL",
+      "descripcion": "La cámara gira alrededor del producto en un arco suave",
+      "camara3d": true,
+      "instruccion": "The camera performs a slow, smooth 60-degree arc shot around the front of the product at table height, keeping it centered, 85mm lens, shallow depth of field, the background shifting with natural parallax and creamy bokeh."
+    },
+    {
+      "id": "ARCO_HEROICO",
+      "descripcion": "Toma desde abajo que rodea el producto y lo hace ver imponente",
+      "camara3d": true,
+      "instruccion": "Low-angle hero shot that slowly arcs about 45 degrees around the product, the product towering against a softly blurred bakery background, warm rim light outlining its silhouette, gimbal-smooth motion."
+    },
+    {
+      "id": "MACRO_DETALLE",
+      "descripcion": "La cámara entra hasta un primer plano de la textura y la decoración",
+      "camara3d": true,
+      "instruccion": "The camera dollies slowly forward while arcing about 20 degrees around the product, ending in a macro close-up of the frosting texture and decorations, 100mm macro lens, razor-thin focus with a gentle rack focus onto the glossy details, the edges of the frame drifting with natural parallax."
+    },
+    {
+      "id": "GRUA_REVELADO",
+      "descripcion": "La cámara sube desde la base y revela la decoración de arriba",
+      "camara3d": true,
+      "instruccion": "A smooth crane shot that begins low and close on the base of the product and rises while tilting down to reveal the top decoration, soft diffused light, elegant pacing."
+    },
+    {
+      "id": "PARALAJE_LATERAL",
+      "descripcion": "La cámara se desplaza de lado mientras rodea el producto, con profundidad",
+      "camara3d": true,
+      "instruccion": "The camera trucks slowly to the side while arcing about 45 degrees around the product, keeping it centered, foreground and background separating with real parallax, 85mm lens."
+    },
+    {
+      "id": "DIAGONAL_ENFOQUE",
+      "descripcion": "La cámara pasa en diagonal y el enfoque va de lo más cercano al fondo",
+      "camara3d": true,
+      "instruccion": "The camera glides diagonally past the nearest part of the product toward the back, rack focus shifting from the front to the back, glossy highlights moving across the surface as the angle changes."
+    },
+    {
       "id": "ACERCAMIENTO_LENTO",
-      "descripcion": "La cámara se acerca muy despacio",
-      "instruccion": "Very slow, smooth camera push-in toward the product."
+      "descripcion": "La cámara avanza hacia el producto y se siente la profundidad",
+      "instruccion": "The camera dollies forward steadily toward the product at table height, a physical camera move and not a zoom, foreground and background separating with real parallax, 50mm lens, shallow depth of field."
     },
     {
       "id": "ALEJAMIENTO_LENTO",
-      "descripcion": "La cámara se aleja muy despacio",
-      "instruccion": "Very slow, smooth camera pull-back from the product."
+      "descripcion": "La cámara retrocede desde cerca y revela el producto completo",
+      "instruccion": "The camera dollies back steadily from a close view to reveal the whole product, a physical camera move and not a zoom, natural parallax, 50mm lens, shallow depth of field."
     },
     {
       "id": "DESPLAZAMIENTO_LATERAL",
-      "descripcion": "La cámara se desliza un poco hacia un lado",
-      "instruccion": "Gentle lateral camera slide of a few centimeters, product stays centered."
+      "descripcion": "La cámara se desliza de lado frente al producto, con profundidad",
+      "instruccion": "Smooth lateral slider move across the front of the product, keeping it centered, strong foreground and background parallax, 85mm lens."
     },
     {
       "id": "BRILLO_GLASEADO",
-      "descripcion": "Destellos suaves sobre el glaseado",
-      "instruccion": "Subtle glints of light moving across the glaze or syrup."
+      "descripcion": "La cámara rodea el producto y los brillos recorren el glaseado",
+      "camara3d": true,
+      "instruccion": "The camera slowly arcs about 30 degrees around the product, and the changing angle makes soft natural highlights glide across the glaze or syrup, 85mm lens, shallow depth of field."
     },
     {
       "id": "AZUCAR_CAYENDO",
-      "descripcion": "Azúcar impalpable cayendo suavemente",
-      "instruccion": "Fine powdered sugar gently falling onto the product."
+      "descripcion": "Azúcar impalpable cayendo mientras la cámara rodea el producto",
+      "camara3d": true,
+      "instruccion": "Fine powdered sugar drifts gently down onto the product in the warm backlight while the camera slowly arcs about 30 degrees around it, the falling sugar catching the light."
     },
     {
       "id": "VAPOR_SUAVE",
-      "descripcion": "Vapor tenue (solo horneados o bebidas calientes)",
-      "instruccion": "Faint wisps of steam rising from the product.",
+      "descripcion": "Vapor tenue mientras la cámara rodea el producto (solo recién horneados)",
+      "camara3d": true,
+      "instruccion": "Faint wisps of steam rise from the freshly baked product while the camera slowly arcs about 30 degrees around it at table height, the steam glowing in the warm backlight.",
       "soloTiposVideo": [
         "RECIEN_HORNEADO"
       ]
     },
     {
       "id": "LUZ_CALIDA",
-      "descripcion": "La luz cálida cambia lentamente",
-      "instruccion": "Warm window light slowly shifting across the scene."
+      "descripcion": "La luz cálida recorre la escena mientras la cámara rodea el producto",
+      "camara3d": true,
+      "instruccion": "Warm window light slowly sweeps across the scene while the camera arcs about 30 degrees around the product, the shadows shifting to reveal the texture of the product."
     }
-  ],
-  "prohibiciones": "No people, no hands, no faces, no knives or moving utensils, no text, letters or logos, do not change the product's shape, color or decoration, do not rotate the product more than 15 degrees, no new objects that are not in the photo, no camera cuts."
+  ]
 }

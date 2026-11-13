@@ -29,8 +29,8 @@ import tools.jackson.databind.ObjectMapper;
  * <li>Por defecto, la generación es síncrona (lo que documenta Google para Omni): la creación devuelve el video y se
  * guarda hasta la siguiente consulta. Con {@code segundoPlano: true} en los parámetros del modelo se usa
  * {@code background} y se consulta con {@code GET /v1beta/interactions/{id}}.</li>
- * <li>Omni no admite prompt negativo: las prohibiciones van en el mismo texto. Siempre genera audio, que la composición
- * descarta.</li>
+ * <li>El prompt llega completo desde el paquete de nicho. Omni no admite prompt negativo: los negativos van al final del
+ * mismo texto ({@code Avoid: ...}). Siempre genera audio, que la composición descarta.</li>
  * <li>El costo usa los tokens de video de la respuesta ({@code usage.output_tokens_by_modality}) si vienen.</li>
  * </ul>
  */
@@ -173,11 +173,12 @@ public class OmniGeneradorDeClips implements GeneradorDeClips {
         return null;
     }
 
-    /** El movimiento y, como Omni no admite prompt negativo, lo prohibido en el mismo texto. */
+    /** El prompt tal cual y, como Omni no admite prompt negativo, los negativos al final del mismo texto. */
     private static String instruccion(SolicitudDeClip solicitud) {
-        return "Animate this exact photo as the first frame. " + solicitud.instruccion()
-                + " Keep the product identical to the photo. No dialogue and no voice-over."
-                + " Never show: " + solicitud.prohibiciones() + ".";
+        if (solicitud.negativos() == null || solicitud.negativos().isBlank()) {
+            return solicitud.prompt();
+        }
+        return solicitud.prompt() + " Avoid: " + solicitud.negativos().strip() + ".";
     }
 
     private JsonNode llamar(java.util.function.Supplier<JsonNode> llamada) {

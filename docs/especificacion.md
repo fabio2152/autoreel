@@ -128,7 +128,7 @@ Prioridad: **M** = imprescindible para el MVP, **S** = importante, **C** = desea
 - **RNF-06, privacidad.** Los datos personales se tratan conforme a la Ley 29733 de Protección de Datos Personales.
 - **RNF-07, intercambiabilidad.** Cambiar de proveedor de video o de modelo de lenguaje solo requiere un adaptador nuevo.
 - **RNF-08, trazabilidad de costos.** Cada llamada a un proveedor de IA registra su costo estimado.
-- **RNF-09, robustez.** Si la IA falla, el sistema no pierde el video del día ni cobra regeneraciones fallidas (sección 8.5). *Cambio del 2026-11-06:* ya no se entrega un video con planos sin IA.
+- **RNF-09, robustez.** Si la IA falla, el sistema no pierde el video del día ni cobra regeneraciones fallidas (sección 8.5). *Cambio del 2026-11-06:* ya no se entrega un video con planos sin IA. *Cambio del 2026-11-12 (ADR 0021):* tampoco hay guion sin IA. Si el modelo de texto falla, el guion se reintenta solo durante unos minutos y, si sigue fallando, el video queda en error y el usuario lo puede reintentar sin gastar su video del día (sección 8.1).
 
 ---
 
@@ -204,7 +204,7 @@ La interfaz `PaqueteNicho` expone: el identificador y el nombre del nicho, las p
 9. **Lo que te hace distinto**, en una frase de hasta 80 caracteres.
 10. **Palabras o temas que nunca quieres** en tus videos.
 
-**Foto del local (opcional):** una foto de la vitrina o la fachada, que se usa como fondo del plano de cierre. Si no existe, el cierre usa los colores de marca.
+**Foto del local (opcional):** una foto de la vitrina o la fachada, que se usa como fondo del plano de cierre. Si no existe, el cierre usa los colores de marca. *Cambio del 2026-11-12 (ADR 0021):* sin foto del local, el fondo del cierre es el último cuadro del plano 3, desenfocado y oscurecido; el color primario de la marca se usa en el llamado.
 
 ### 7.2 Catálogo de productos
 
@@ -256,26 +256,60 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
 1. **Gancho** (0 a 3 s), con IA, a partir de la foto **Detalle**. Texto: una frase de antojo de hasta 6 palabras.
 2. **Producto** (3 a 7 s), con IA, a partir de la foto **Entero**. Texto: el nombre del producto, hasta 5 palabras.
 3. **Relleno** (7 a 11 s), con IA, a partir de la foto **Porción**. Texto: lo que lo hace especial, hasta 7 palabras.
-4. **Cierre** (11 a 15 s), **sin IA**. Fondo: la foto del local con un zoom suave hecho por el sistema, o los colores de marca. Contenido: el precio o la promoción (solo si el usuario los escribió), el llamado a la acción ("Pide por WhatsApp", "Te esperamos en [distrito]"), el WhatsApp y el logo.
+4. **Cierre** (11 a 15 s), **sin clip de IA**. Fondo: la foto del local con un zoom suave hecho por el sistema, o los colores de marca. Contenido: el precio o la promoción (solo si el usuario los escribió), el llamado a la acción ("Pide por WhatsApp", "Te esperamos en [distrito]"), el WhatsApp y el logo.
 
-- **Transiciones:** corte directo entre los planos 1, 2 y 3, y un fundido corto hacia el cierre.
-- **Textos:** en la mitad inferior, dentro de la zona segura de Instagram (sin tapar los botones laterales ni la descripción), con la tipografía del estilo y los colores de marca, con sombra o fondo para garantizar la lectura.
+   *Cambio del 2026-11-12 (ADR 0021):* **los textos del cierre los propone el modelo de texto** (sección 8.1), y el sistema arma el plano:
+   - **Texto principal, en grande:** el **precio**, si el negocio escribió un precio o una promoción real, resumido con sus mismos números y moneda ("S/ 65 la torta entera"). Si no, una **frase** gancho de hasta 6 palabras ("Recién salidas del horno"). Una instrucción del negocio ("no menciones precio") nunca se muestra.
+   - **Ubicación:** un lugar más preciso que el distrito si el negocio lo mencionó ("Plaza Lima Sur, Chorrillos"); si no, el distrito.
+   - **Llamado a la acción:** lo sigue poniendo el sistema según los canales del negocio.
+   - **Fondo:** la foto del local con un zoom suave o, si no existe, el último cuadro del plano 3 desenfocado y oscurecido.
+   - **Logo:** en una insignia redonda.
+   - **Llamado:** en una píldora del color primario de la marca.
+   - **Ubicación y WhatsApp:** más chicos.
+
+- **Transiciones:** corte directo entre los planos 1, 2 y 3, y un fundido corto hacia el cierre. *Cambio del 2026-11-12 (ADR 0021):* **fundido cruzado de 0,3 s entre todos los planos**. El cierre, que es un fondo fijo, absorbe la duración de los fundidos, así que los planos con clip duran sus segundos y el video sigue durando 15 s exactos.
+- **Textos:** en la mitad inferior, dentro de la zona segura de Instagram (sin tapar los botones laterales ni la descripción), con la tipografía del estilo y los colores de marca, con sombra o fondo para garantizar la lectura. *Cambio del 2026-11-12:* van en el **tercio inferior**, sobre una franja oscura degradada (sin caja), para no tapar el producto. Entran con un fundido y una subida corta, línea por línea, y se desvanecen antes del siguiente fundido. Los textos del cierre también entran escalonados.
 - **Música:** una pista de la biblioteca del estilo elegido, con fundido al final. El audio que genere el modelo de video se descarta.
 - **Sin voz en off** en esta versión.
 
 ### 7.5 Movimientos permitidos
 
-Cada plano usa un movimiento de esta lista cerrada. El modelo de lenguaje solo puede elegir entre ellos:
+*Cambio del 2026-11-12 (ADR 0021):* la lista sigue siendo **cerrada**, pero ahora es un catálogo de **movimientos de cámara 3D**. La cámara se mueve por el espacio alrededor del producto, con paralaje y profundidad de campo, en lugar de solo acercarse o alejarse. Se quitaron el límite de 15 grados y la prohibición de los "cortes de cámara", que ya cubre "una sola toma continua". La versión anterior era: ACERCAMIENTO_LENTO, ALEJAMIENTO_LENTO, DESPLAZAMIENTO_LATERAL (unos centímetros), BRILLO_GLASEADO, AZUCAR_CAYENDO, VAPOR_SUAVE y LUZ_CALIDA, con "giros del producto de más de 15 grados" y "cortes de cámara" entre lo prohibido.
 
-- **ACERCAMIENTO_LENTO:** la cámara se acerca muy despacio al producto.
-- **ALEJAMIENTO_LENTO:** la cámara se aleja muy despacio.
-- **DESPLAZAMIENTO_LATERAL:** la cámara se desplaza unos centímetros hacia un lado.
-- **BRILLO_GLASEADO:** destellos sutiles de luz sobre el glaseado o el almíbar.
-- **AZUCAR_CAYENDO:** azúcar impalpable cayendo suavemente sobre el producto.
-- **VAPOR_SUAVE:** vapor tenue saliendo del producto (solo horneados o bebidas calientes).
-- **LUZ_CALIDA:** la luz cálida cambia lentamente, como luz de ventana.
+Cada plano usa un movimiento de esta lista. El modelo de lenguaje solo puede elegir entre ellos.
 
-**Siempre prohibido**, y se agrega a cada instrucción enviada al modelo de video: personas, manos, caras, cuchillos o utensilios en movimiento, texto, letras o logotipos, cambios en la forma, el color o la decoración del producto, giros del producto de más de 15 grados, objetos nuevos que no estén en la foto y cortes de cámara.
+**Movimientos de cámara 3D** (la cámara rodea, sube o cruza el producto):
+
+- **ORBITA_FRONTAL:** la cámara gira alrededor del frente del producto en un arco suave de unos 60 grados.
+- **ARCO_HEROICO:** toma desde abajo que rodea el producto unos 45 grados y lo hace ver imponente.
+- **MACRO_DETALLE:** la cámara entra, con un arco de unos 20 grados, hasta un primer plano de la textura y la decoración.
+- **GRUA_REVELADO:** la cámara sube desde la base y revela la decoración de arriba.
+- **PARALAJE_LATERAL:** la cámara se desplaza de lado mientras rodea el producto unos 45 grados.
+- **DIAGONAL_ENFOQUE:** la cámara pasa en diagonal y el enfoque va de lo más cercano al fondo.
+- **BRILLO_GLASEADO:** la cámara rodea el producto unos 30 grados y los brillos recorren el glaseado.
+- **AZUCAR_CAYENDO:** azúcar impalpable cayendo mientras la cámara rodea el producto unos 30 grados.
+- **VAPOR_SUAVE:** vapor tenue mientras la cámara rodea el producto (solo en "Recién salido del horno").
+- **LUZ_CALIDA:** la luz cálida recorre la escena mientras la cámara rodea el producto unos 30 grados.
+
+**Movimientos simples** (sin rodear el producto, y con un movimiento real de la cámara, no un zoom):
+
+- **ACERCAMIENTO_LENTO:** la cámara avanza hacia el producto.
+- **ALEJAMIENTO_LENTO:** la cámara retrocede desde cerca y revela el producto completo.
+- **DESPLAZAMIENTO_LATERAL:** la cámara se desliza de lado frente al producto.
+
+**Reglas de la elección:**
+
+- Al menos **2 de los 3 planos** usan un movimiento de cámara 3D.
+- Los tres planos no pueden usar el mismo movimiento.
+- Ningún arco pasa de unos 60 grados: con una sola foto, una vuelta completa obliga al modelo de video a inventar el lado oculto y deforma el producto.
+
+**El prompt del modelo de video** se arma con el paquete de nicho, en inglés:
+
+- Una **plantilla de toma**: comercial de postres, una sola toma continua, la foto como primer cuadro y el producto idéntico mientras la cámara se mueve.
+- La **instrucción del movimiento**.
+- Las **prohibiciones**, en frases.
+
+**Siempre prohibido:** manos, personas, caras, cuchillos o utensilios, texto, letras o logotipos, objetos o decoraciones que no estén en la foto (salvo lo que pide el movimiento, como el azúcar o el vapor), deformar, derretir, redecorar o duplicar el producto, zoom digital, destellos de lente, diálogo y voz en off. La misma lista va, como sustantivos, en el prompt negativo del proveedor que lo admite.
 
 ### 7.6 Vocabulario
 
@@ -304,7 +338,7 @@ Una fecha especial se considera "próxima" durante los 15 días anteriores.
 Hacen trabajos distintos, y ninguno puede hacer el del otro:
 
 - **El modelo de video (Veo) solo anima una imagen.** Recibe una foto y una instrucción de movimiento, y devuelve un clip. No escribe los textos que aparecen en pantalla (esos los pone nuestra plantilla, para que nunca salgan deformes), ni la descripción de la publicación, ni los hashtags.
-- **El modelo de texto (Gemini) convierte las respuestas del negocio en el guion.** Las respuestas del chat son datos sueltos ("fresas frescas, crema batida, la más pedida, S/ 65"). El modelo de texto las transforma en frases cortas de antojo para cada plano, elige qué movimiento conviene a cada foto, y redacta la descripción y los hashtags con el tono del negocio. Pasarle los campos tal cual al modelo de video no produciría esos textos.
+- **El modelo de texto (Gemini) convierte las respuestas del negocio en el guion.** Las respuestas del chat son datos sueltos ("fresas frescas, crema batida, la más pedida, S/ 65"). El modelo de texto las transforma en frases cortas de antojo para cada plano, elige qué movimiento conviene a cada foto, y redacta la descripción y los hashtags con el tono del negocio. *Desde el 2026-11-12 (ADR 0021)* también escribe los textos del cierre: interpreta la respuesta del precio (un precio real o una instrucción) y propone una frase gancho. Pasarle los campos tal cual al modelo de video no produciría esos textos.
 
 **Lo que el modelo de texto no hace es escribir libremente la instrucción para el modelo de video.** Solo elige un movimiento de la lista permitida, y el sistema arma la instrucción con una plantilla fija (sección 8.2). Así se aprovecha la creatividad del modelo de texto donde suma, sin arriesgar que pida algo que genere errores.
 
@@ -331,11 +365,61 @@ El sistema envía al modelo de texto del plan efectivo (Gemini en el plan Lite) 
 
 **El sistema valida el JSON antes de usarlo:** cantidad de planos, fotos y movimientos dentro de las listas permitidas, longitud de cada texto, ausencia de palabras prohibidas, y que el precio o la promoción coincidan exactamente con lo que escribió el usuario. Si la validación falla, se reintenta hasta 2 veces indicando el error. Si vuelve a fallar, se usa un **guion de respaldo** armado sin IA con los textos del usuario.
 
+*Cambio del 2026-11-12 (ADR 0021): guion publicitario, cierre de la IA y sin guion de respaldo.*
+
+**Forma de la respuesta.** El modelo escribe los planos 1 a 3 y el objeto `cierre`. Los nombres son los del código:
+
+```json
+{
+  "planos": [
+    { "orden": 1, "movimiento": "MACRO_DETALLE", "texto": "Antojo de fresa recién llegada" },
+    { "orden": 2, "movimiento": "ORBITA_FRONTAL", "texto": "Tres Leches de Fresa" },
+    { "orden": 3, "movimiento": "PARALAJE_LATERAL", "texto": "Cremosa en cada cucharada" }
+  ],
+  "cierre": { "precio": "S/ 65 la torta entera", "frase": "Tu antojo te espera", "ubicacion": null },
+  "descripcion": "Nuestra Tres Leches de Fresa ya está en vitrina...",
+  "hashtags": ["#pasteleria", "#miraflores", "#tresleches", "#postres", "#antojo"]
+}
+```
+
+**Cómo escribe:**
+
+- Las instrucciones (`guion.md`, en el paquete de nicho) le piden escribir como el **copywriter** de la pastelería, con buena ortografía y tildes.
+- Las respuestas del negocio son **indicaciones**, no textos para copiar. Una instrucción ("no menciones precio") se cumple y nunca se muestra. Si la instrucción dice qué comunicar ("solo di que están recién salidas del horno"), ese mensaje es el material del gancho o de la frase del cierre.
+- Cada plano tiene su papel: el 1 engancha, el 2 presenta el producto y el 3 remata el antojo.
+
+**El cierre** (sección 7.4):
+
+- **`precio`:** solo si el negocio escribió un precio o una promoción real con números. Va resumido en hasta 40 caracteres, con los **mismos números y moneda** de su respuesta del precio. Si no, `null`.
+- **`frase`:** siempre, de hasta 6 palabras y 40 caracteres. Se muestra en grande cuando no hay precio.
+- **`ubicacion`:** opcional, de hasta 40 caracteres. Solo con palabras que el negocio usó.
+- El llamado a la acción lo agrega el sistema.
+
+**El sistema valida el JSON antes de usarlo:**
+
+- La cantidad de planos y los movimientos dentro de la lista permitida, con al menos 2 de cámara 3D y sin repetir el mismo en los tres (sección 7.5).
+- La longitud de cada texto, la ausencia de palabras prohibidas y de precios en los planos 1 a 3, y ningún número o promoción que el negocio no haya escrito (RN-22).
+- En el cierre:
+  - si el negocio escribió un precio real con moneda, `precio` no puede ir vacío;
+  - si lo que escribió no trae números, `precio` debe ir vacío;
+  - los números y la moneda del precio deben estar en la respuesta del precio (no en la descripción del producto);
+  - la frase respeta sus límites;
+  - cada palabra de la ubicación debe estar en los datos del negocio.
+
+Si la validación falla, se reintenta hasta 2 veces indicando el error.
+
+**Sin guion de respaldo.** El guion de respaldo copiaba los textos del negocio y se quitó. Ahora:
+
+- **El proveedor de texto falla** (no responde, rechaza la clave, no hay credencial o el modelo está inactivo): el video sigue en `GUION_PENDIENTE` y se vuelve a intentar solo cada 45 segundos, durante 5 minutos desde que empezó el guion. Si sigue fallando, pasa a `ERROR` con el mensaje "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato."
+- **Tres respuestas no pasan la validación:** el video pasa a `ERROR` con "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo."
+- **El producto ya no existe o no tiene fotos:** el error es definitivo. No se llama al modelo y no se ofrece reintentar.
+- **"Reintentar"** vuelve a escribir el guion de un video que falló en esta etapa, con un plazo nuevo. **No usa el video del día**, porque todavía no se aprobó el storyboard (RN-25, RN-26).
+
 ### 8.2 Clips con el modelo de video
 
 - **Modelo:** el modelo de video del plan efectivo del negocio. En el plan Lite, Google Veo 3.1 Lite, en modo imagen a video, 9:16, clips de 4 segundos. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.*
 - **Un clip por plano con IA** (3 en total), usando la foto correspondiente como primer cuadro.
-- **La instrucción de movimiento** se arma a partir de una plantilla fija por movimiento, en inglés, más la lista de prohibiciones de la sección 7.5. Si el proveedor admite una instrucción negativa separada, las prohibiciones van ahí.
+- **La instrucción de movimiento** se arma a partir de una plantilla fija por movimiento, en inglés, más la lista de prohibiciones de la sección 7.5. Si el proveedor admite una instrucción negativa separada, las prohibiciones van ahí. *Cambio del 2026-11-12 (ADR 0021):* el prompt completo sale del paquete de nicho: la plantilla de toma con la instrucción del movimiento y las prohibiciones en frases. La lista de lo prohibido como sustantivos va como prompt negativo en Veo, y al final del prompt ("Avoid: …") en Gemini Omni Flash, que no admite uno. Los dos modelos reciben el mismo prompt.
 - **Las tres generaciones se envían en paralelo** y el sistema consulta su estado periódicamente.
 - **Cada clip se recorta** a la duración de su plano (3 o 4 segundos).
 
@@ -357,7 +441,7 @@ FFmpeg, ejecutado por el backend, une los clips, agrega el plano de cierre, los 
   - **En una regeneración**, el plano conserva su clip anterior, la regeneración no se descuenta y el usuario ve un aviso.
   - **En la primera generación**, el video pasa a ERROR, se devuelve el video del día (RN-27) y los clips ya pedidos se registran como costo (RN-32).
 - Sin el modelo de video disponible (inactivo o sin credencial), "Crear mi video" se desactiva y no se puede cambiar una foto en la revisión. Los textos sí se pueden editar.
-- El guion de respaldo (sección 8.1) se mantiene.
+- El guion de respaldo (sección 8.1) se mantiene. *Cambio del 2026-11-12 (ADR 0021):* **el guion tampoco tiene respaldo sin IA.** Si el modelo de texto falla, el guion se reintenta solo durante 5 minutos y luego el video queda en `ERROR`, sin consumir el video del día; el usuario lo puede reintentar (sección 8.1).
 
 ### 8.6 Opciones de producción (preparado para el futuro)
 
@@ -397,7 +481,7 @@ Evolución prevista:
 - **Conversacion:** id, negocio, estado (EN_CURSO, COMPLETA o ABANDONADA), pasoActual, respuestas (JSON), video.
 - **MensajeChat:** id, conversacion, autor (SISTEMA o USUARIO), texto, fechaHora.
 - **Video:** id, negocio, conversacion, producto, tipoVideo, estado, planAplicado, modeloTextoUsado, modeloVideoUsado, opcionesProduccion (JSON), guion (JSON), descripcionPublicacion, hashtags, claveS3Final, regeneracionesUsadas, costoEstimado, motivoError, fechas.
-- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor.
+- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor. En el cierre: precio, frase (desde el 2026-11-12, ADR 0021), llamado y ubicación.
 - **PistaMusical:** id, nicho, estilo, nombre, claveS3, duracion, licencia.
 - **CuentaInstagram:** id, negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken.
 - **Publicacion:** id, video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError.
@@ -409,6 +493,9 @@ Evolución prevista:
 stateDiagram-v2
     [*] --> GUION_PENDIENTE : chat completo
     GUION_PENDIENTE --> STORYBOARD : guion válido
+    GUION_PENDIENTE --> ERROR : sin guion con IA (desde el 2026-11-12)
+    ERROR --> GUION_PENDIENTE : Reintentar si falló el guion (no consume)
+    ERROR --> GENERANDO : Reintentar si falló la generación (consume)
     STORYBOARD --> GENERANDO : usuario aprueba
     GENERANDO --> COMPONIENDO : clips listos
     COMPONIENDO --> LISTO
@@ -459,16 +546,16 @@ stateDiagram-v2
 
 ### 10.4 Guion
 
-- **RN-21.** El guion respeta la plantilla: 4 planos, las fotos y los movimientos permitidos, y las longitudes máximas de texto.
-- **RN-22.** El guion nunca contiene precios, promociones, ingredientes, sabores ni datos que el usuario no haya escrito en el chat, el perfil o la descripción del producto.
+- **RN-21.** El guion respeta la plantilla: 4 planos, las fotos y los movimientos permitidos, y las longitudes máximas de texto. *Desde el 2026-11-12 (ADR 0021):* al menos 2 de los 3 planos usan un movimiento de cámara 3D, los tres no repiten el mismo movimiento, y el cierre trae una frase y, si corresponde, el precio y la ubicación (sección 8.1).
+- **RN-22.** El guion nunca contiene precios, promociones, ingredientes, sabores ni datos que el usuario no haya escrito en el chat, el perfil o la descripción del producto. *Desde el 2026-11-12:* el precio del cierre solo usa los números y la moneda de la respuesta del precio, la ubicación del cierre solo usa palabras del negocio, y una instrucción del negocio ("no menciones precio") nunca se muestra.
 - **RN-23.** El guion no contiene palabras prohibidas por el paquete ni por el negocio.
 - **RN-24.** La descripción de la publicación tiene como máximo 600 caracteres, e incluye entre 5 y 8 hashtags, con al menos uno del distrito.
-- **RN-25.** Si el guion no es válido después de 2 reintentos, se usa el guion de respaldo.
+- **RN-25.** Si el guion no es válido después de 2 reintentos, se usa el guion de respaldo. *Cambio del 2026-11-12 (ADR 0021):* **ya no hay guion de respaldo.** Un guion inválido después de 2 reintentos deja el video en `ERROR`. Si falla el proveedor, el guion se reintenta solo cada 45 s durante 5 minutos y luego queda en `ERROR`. En los dos casos, "Reintentar" vuelve a escribir el guion sin consumir el video del día. No se ofrece si el error no se arregla reintentando (por ejemplo, el producto ya no tiene fotos).
 
 ### 10.5 Generación y consumo
 
 - **RN-26.** Generar un video consume 1 video del día, en el momento en que el usuario aprueba el storyboard. El día es el calendario de Lima y los videos no usados no se acumulan. Si ya usó los videos del día, no puede aprobar y ve cuándo vuelve a tener disponible.
-- **RN-27.** Si el video termina en ERROR por una falla del sistema, se devuelve el video consumido.
+- **RN-27.** Si el video termina en ERROR por una falla del sistema, se devuelve el video consumido. *Desde el 2026-11-12:* un video que falló al generarse se puede reintentar, y vuelve a consumir el video del día; uno que falló al escribir su guion se reintenta sin consumir (RN-25).
 - **RN-28.** Cada video permite las regeneraciones de plano que define su plan (3 en Lite). Agotadas, no se puede regenerar, pero sí editar textos.
 - **RN-29.** Editar un texto no consume videos ni regeneraciones.
 - **RN-30.** Un plano tiene dos intentos; si los dos fallan, se aplica la sección 8.5 (sin respaldo sin IA desde el 2026-11-06, ADR 0020).
@@ -770,8 +857,8 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 **Guion y storyboard**
 
 - **V18.** El storyboard tiene 4 planos con las fotos y los textos dentro de sus límites.
-- **V19.** Si el usuario no escribió un precio, el guion no muestra ninguno.
-- **V20.** Si el modelo devuelve un guion inválido tres veces, se usa el guion de respaldo y el usuario igual ve su storyboard.
+- **V19.** Si el usuario no escribió un precio, el guion no muestra ninguno. *Desde el 2026-11-12:* si escribió una instrucción en lugar de un precio ("no menciones precio, solo que están recién salidas del horno"), el cierre no tiene precio y muestra una frase de la IA ("Recién salidas del horno"), nunca la instrucción. Si escribió un precio real, el cierre lo muestra con sus mismos números y moneda.
+- **V20.** Si el modelo devuelve un guion inválido tres veces, se usa el guion de respaldo y el usuario igual ve su storyboard. *Cambio del 2026-11-12:* el video pasa a `ERROR` sin consumir el video del día, y "Reintentar" lo devuelve a "Preparando propuesta" sin consumirlo. Sin credencial de texto, el guion se reintenta solo durante 5 minutos y luego pasa a `ERROR`.
 - **V21.** Editar un texto del storyboard por encima del límite muestra un error.
 
 **Generación**
@@ -815,7 +902,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 
 Pocas y enfocadas en lo que más puede fallar:
 
-- Validador del guion: longitudes, listas permitidas, palabras prohibidas y que el precio coincida con el escrito.
+- Validador del guion: longitudes, listas permitidas, palabras prohibidas y que el precio coincida con el escrito. Desde el 2026-11-12, también el cierre (precio frente a instrucción, frase y ubicación) y la variedad de movimientos.
 - Agrupación de mensajes del chat y detección de preguntas.
 - Transiciones de estado del video.
 - Cálculo de consumo diario y regeneraciones.
@@ -831,7 +918,7 @@ Pocas y enfocadas en lo que más puede fallar:
 1. **Base:** repositorio, backend y frontend, Docker, Flyway, autenticación, roles y panel de administración (crear negocio con plan y fecha de pago, contraseña temporal, reinicio).
 2. **Negocio:** onboarding, perfil, subida de archivos a S3 y catálogo.
 3. **Chat:** conversación guiada con la agrupación de mensajes y la detección de preguntas.
-4. **Guion y storyboard:** modelos de IA en base de datos, fábrica de proveedores, adaptador Gemini, validador y guion de respaldo.
+4. **Guion y storyboard:** modelos de IA en base de datos, fábrica de proveedores, adaptador Gemini, validador y guion de respaldo (quitado el 2026-11-12, ADR 0021).
 5. **Generación:** adaptador Veo, procesador de tareas, composición con FFmpeg, plan de respaldo y revisión.
 6. **Publicación:** conexión con Instagram, publicación y programación.
 7. **Facturación:** pagos, estados de pago, notificaciones del administrador, gestión de planes, pantalla de integraciones, beneficios temporales y costos.

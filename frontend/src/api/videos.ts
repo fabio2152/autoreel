@@ -42,8 +42,13 @@ export interface CierreVista {
   orden: number
   nombre: string
   segundos: number
+  /** Lo propone la IA solo si el negocio escribió un precio real. */
   precio: string | null
+  /** Máximo del precio y de la frase. */
   maximoCaracteresPrecio: number
+  /** Frase gancho de la IA: se muestra en grande cuando no hay precio. */
+  frase: string | null
+  maxPalabrasFrase: number
   llamado: string | null
   ubicacion: string
   whatsapp: string | null
@@ -59,7 +64,6 @@ export interface Video {
   tipoVideo: string
   producto: { id: number; nombre: string }
   plan: { nombre: string; videosPorDia: number; regeneracionesPorVideo: number }
-  avisoDeRespaldo: string | null
   /** Vacío mientras el guion está pendiente. */
   planos: PlanoVista[]
   cierre: CierreVista | null
@@ -68,6 +72,8 @@ export interface Video {
   maximoPublicacion: number
   fotosDelProducto: FotoVista[]
   fechaCreacion: string
+  /** Desde cuándo se escribe el guion: la creación o el último "Reintentar". */
+  inicioDelGuion: string
   generacion: {
     /** Videos aprobados hoy (día de Lima) y si se puede aprobar otro (RN-26). */
     videosHoy: { usados: number; porDia: number; puedeAprobar: boolean }
@@ -78,8 +84,10 @@ export interface Video {
     iaDisponible: boolean
     avisoRevision: string | null
     motivoError: string | null
-    /** Si el video falló al generarse y se puede volver a intentar (vuelve a usar el video del día). */
+    /** Si el video falló (al escribir el guion o al generarse) y se puede volver a intentar. */
     puedeReintentar: boolean
+    /** Si reintentar vuelve a usar el video del día: solo si falló al generarse, no al escribir el guion. */
+    reintentoUsaVideoDelDia: boolean
   }
 }
 
@@ -95,7 +103,7 @@ export interface VideoResumen {
 export type CambioDePlano =
   | { texto: string }
   | { foto: { tipo: TipoFoto } | { clave: string } }
-  | { precio: string }
+  | { precio?: string; frase?: string }
 
 export const CLAVE_VIDEOS = ['videos']
 export const claveVideo = (id: number) => ['videos', id]
@@ -112,7 +120,7 @@ export const descartarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/de
 /** "Crear mi video": consume el video del día y empieza la generación. */
 export const aprobarStoryboard = (id: number) => pedir<Video>(`/api/videos/${id}/aprobar-storyboard`, 'POST')
 
-/** Reintentar un video que falló al generarse. */
+/** Reintentar un video que falló al escribir su guion o al generarse. */
 export const reintentarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/reintentar`, 'POST')
 
 export const regenerarPlano = (id: number, orden: number) =>

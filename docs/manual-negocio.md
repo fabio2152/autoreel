@@ -2,7 +2,14 @@
 
 Guía sencilla para la persona que usa **AutoReel** en el negocio. AutoReel convierte las fotos de tus productos en un Reel de 15 segundos y lo publica en tu Instagram.
 
-> **Estado del documento:** al día con `main` al 2026-11-06, incluida la revisión del flujo del negocio: primer ingreso, perfil del negocio (onboarding, con la opción "Otros"), catálogo de productos, guía de fotos, Ajustes (perfil y contraseña), el chat para crear el video del día, la propuesta del video (storyboard), la creación del video, su revisión, la aprobación, la descarga y Mis videos. La publicación en Instagram todavía no existe y está marcada como **pendiente (fase 6)**. Las capturas de pantalla se agregan cuando cada pantalla esté terminada (sección 23 de la especificación); por ahora están marcadas como *Captura pendiente*.
+> **Estado del documento:** al día al 2026-11-12, incluida la **mejora de la calidad del video**:
+> - el cierre lo escribe la IA (sección 12.6);
+> - la propuesta se reintenta si la IA no responde y no hay propuesta básica (secciones 12.2 y 12.7);
+> - el botón **Reintentar** (sección 13.10);
+> - los movimientos de cámara 3D (sección 12.3);
+> - los fundidos entre momentos.
+>
+> Cubre, además, la revisión del flujo del negocio (2026-11-06) y todo el recorrido: primer ingreso, perfil del negocio (onboarding, con la opción "Otros"), catálogo de productos, guía de fotos, Ajustes (perfil y contraseña), el chat para crear el video del día, la propuesta del video (storyboard), la creación del video, su revisión, la aprobación, la descarga y Mis videos. La publicación en Instagram todavía no existe y está marcada como **pendiente (fase 6)**. Las capturas de pantalla se agregan cuando cada pantalla esté terminada (sección 23 de la especificación); por ahora están marcadas como *Captura pendiente*.
 
 ---
 
@@ -478,7 +485,7 @@ flowchart TD
 | **¡Hola! ¿Qué video quieres crear hoy?** | Toca un botón: **Producto estrella**, **Promoción**, **Tortas por encargo** o **Recién salido del horno**. O escríbelo con tus palabras en la caja de texto (ver abajo). | O escríbelo: "Quiero mostrar la torta de fresa que más nos piden". | Sí |
 | **¿Qué producto mostramos?** | Elige uno de tu catálogo o sube uno nuevo (sección 11.3). | — | Sí |
 | **¿Qué lo hace especial hoy?** | Escribe con tus palabras. Si tocas **Usar la descripción de mi producto**, se copia la descripción del catálogo en la caja de texto para que la ajustes antes de enviarla. | Ej.: "Bizcocho de vainilla con fresas frescas, recién hecho esta mañana". | Sí |
-| **¿Hay precio o promoción que quieras mencionar?** | Escribe el precio o la promoción tal como quieres que aparezca. | Ej.: "S/ 65" o "2x1 hasta el domingo". | Solo si elegiste **Promoción** |
+| **¿Hay precio o promoción que quieras mencionar?** | Escribe el precio o la promoción con sus números. AutoReel lo resume para el cierre con tus mismos números y moneda. También puedes pedir otra cosa: "no pongas precio, solo que están recién salidas del horno" (sección 12.6). | Ej.: "S/ 65" o "2x1 hasta el domingo". | Solo si elegiste **Promoción** |
 | **¿Algo más que quieras que se diga?** | Escribe lo que quieras agregar. | Ej.: "Atendemos pedidos hasta las 8 p. m.". | No |
 
 **Escribir en la primera pregunta.** Debajo de los cuatro botones está la caja de texto, que dice "O escríbelo con tus palabras…". Si ninguno de los botones describe el video que quieres, escríbelo ahí y toca **Enviar**:
@@ -588,6 +595,7 @@ Al terminar el chat, AutoReel arma la **propuesta** de tu video: los cuatro mome
 Al abrirla recién terminado el chat, verás **"Estoy preparando tu propuesta…"**. Suele tardar unos segundos y la pantalla se actualiza sola cuando está lista: no tienes que recargarla.
 
 - Si tarda más de un minuto, aparece: "Está tardando más de lo normal. Puedes salir: tu propuesta te esperará en Mis videos." Puedes cerrar la página sin perder nada.
+- **Si el servicio de IA no responde,** AutoReel vuelve a intentarlo solo, durante unos 5 minutos. Mientras tanto sigues viendo "Estoy preparando tu propuesta…". Si no lo logra, verás un aviso con el botón **Reintentar** (sección 12.7).
 - Si se corta internet, verás un aviso con el botón **Reintentar**.
 
 ### 12.3 Los cuatro momentos de tu video
@@ -601,13 +609,15 @@ Arriba ves el tipo de video (por ejemplo, "Promoción") y el nombre del producto
 | **1. Gancho** | 3 s | Detalle | Hasta **6** palabras, para atrapar la mirada. |
 | **2. Producto** | 4 s | Producto entero | Hasta **5** palabras. |
 | **3. Relleno** | 4 s | Porción | Hasta **7** palabras. |
-| **4. Cierre** | 4 s | Foto del local, o tus colores si no la subiste | Tu logo, el precio y cómo pedir. |
+| **4. Cierre** | 4 s | Foto del local o, si no la subiste, el final del momento 3 desenfocado | Tu logo, el precio o una frase, y cómo pedir. |
+
+Entre un momento y otro, la imagen pasa con un fundido suave. Los textos aparecen en la parte de abajo, sin tapar el producto.
 
 En cada uno de los tres primeros ves:
 
 - **La foto** que se animará.
-- **Movimiento:** cómo se moverá la cámara, en palabras simples (por ejemplo, "La cámara se acerca muy despacio" o "Azúcar impalpable cayendo suavemente").
-- **El texto** que aparecerá en pantalla.
+- **Movimiento:** cómo se moverá la cámara, en palabras simples. Por ejemplo, "La cámara gira alrededor del producto en un arco suave", "La cámara entra hasta un primer plano de la textura y la decoración" o "La cámara sube desde la base y revela la decoración de arriba". La cámara se mueve alrededor de tu producto, como en un comercial: al menos dos momentos la rodean, la suben o la cruzan, y tu producto no cambia de forma ni de decoración.
+- **El texto** que aparecerá en pantalla. AutoReel lo escribe como publicidad a partir de tus respuestas: no copia tus frases tal cual y corrige las tildes.
 
 Al final está el **Texto de la publicación**: la descripción y los hashtags que acompañarán al Reel en Instagram. Por ahora solo se puede leer (puedes copiarlo al subir tu video a mano); editarlo antes de publicar está *pendiente (fase 6)*.
 
@@ -637,34 +647,42 @@ Al elegirla, la ventana se cierra y la tarjeta muestra la foto nueva.
 
 > **Una foto subida aquí se usa solo en este video.** No cambia las fotos de tu producto ni tu catálogo. Si quieres usarla siempre, cámbiala en el [catálogo](#73-editar-un-producto).
 
-### 12.6 El cierre y el precio
+### 12.6 El cierre: precio o frase
 
 > *Captura pendiente: tarjeta del cierre.*
 
-El último momento lo arma AutoReel con tus datos, **sin cambiar nada de lo que escribiste**. Dice "Lo armamos con tu logo y tus datos." y muestra:
+El último momento muestra tu logo, un texto grande y cómo pedirte. **El texto grande lo propone AutoReel** a partir de lo que respondiste en el chat:
 
-- **Precio:** el que escribiste en el chat, tal cual. Si no escribiste ninguno, dice "Sin precio" y el video no menciona precios en ninguna parte.
+- **Si escribiste un precio o una promoción,** AutoReel lo resume con **tus mismos números y moneda**. Por ejemplo, de "la torta entera a 65 soles, la porción a 8" puede salir "65 soles la torta entera". Nunca cambia un número ni inventa una promoción.
+- **Si no escribiste precio, o pediste no ponerlo,** el cierre no tiene precio y muestra una **frase** corta. Por ejemplo, si escribiste "no menciones precio, solo que están recién salidas del horno", el cierre dice "Recién salidas del horno". **Lo que le pides a AutoReel nunca aparece en el video**: solo el mensaje que quieres dar.
+
+La tarjeta del cierre muestra:
+
+- **El texto grande:** el precio o, si no hay, la frase.
+- **Precio:** el precio que va en el video, o "Sin precio". Si hay precio y también frase, debajo dice "Si quitas el precio, se mostrará la frase: …".
 - **Llamado:** cómo pedir, según lo que marcaste en "¿Cómo te piden?" de tu perfil. Si tienes varias opciones, se usa la primera de esta lista: "Pide por WhatsApp", "Pídelo por delivery", "Te esperamos en *tu distrito*".
-- **Ubicación:** tu distrito (no se repite si el llamado ya lo dice).
+- **Ubicación:** tu distrito o, si en el chat dijiste dónde estás (por ejemplo, "nuestro local está en Plaza Lima Sur, Chorrillos"), ese lugar: "Plaza Lima Sur, Chorrillos". No se repite si el llamado ya lo dice.
 - **WhatsApp:** tu número, si vendes por WhatsApp.
 
-Al lado ves una vista pequeña del cierre: tu logo, el precio y el llamado sobre la foto de tu local o sobre tus dos colores.
+Al lado ves una vista pequeña del cierre: tu logo, el texto grande y el llamado sobre la foto de tu local o sobre tus dos colores. En el video, si no subiste la foto del local, el fondo es el final del momento 3, desenfocado y más oscuro, y el llamado va en el color de tu marca.
 
-**Para cambiar el precio:**
+**Para cambiar el precio o la frase:**
 
-1. Toca **Editar precio** (o **Agregar precio**, si no había).
-2. Escríbelo tal como quieres que aparezca, por ejemplo "S/ 65". Admite hasta **40 caracteres**; debajo ves cuántos llevas.
-3. Toca **Guardar**. Para quitar el precio, borra el texto y guarda vacío.
+1. Toca **Editar precio y frase**.
+2. En **Precio o promoción**, escríbelo tal como quieres que aparezca, por ejemplo "S/ 65". Admite hasta **40 caracteres**. Déjalo vacío para mostrar la frase.
+3. En **Frase**, escribe la frase que va cuando no hay precio. Admite hasta **6 palabras** (y 40 caracteres); debajo ves cuántas llevas.
+4. Toca **Guardar**.
 
-Si en el chat escribiste un precio de más de 40 caracteres, la propuesta lo trae recortado en la última palabra completa que entra. Revísalo y ajústalo.
+### 12.7 Si AutoReel no puede escribir tu propuesta
 
-### 12.7 "Preparamos una propuesta básica"
+Tu propuesta siempre la escribe la IA: ya no hay "propuesta básica" con textos sencillos.
 
-A veces AutoReel no puede escribir los textos a la medida y arma una **propuesta básica** con tus respuestas y textos sencillos de pastelería. En ese caso, arriba de la propuesta verás:
+- **Si el servicio de IA no responde,** AutoReel lo vuelve a intentar solo durante unos 5 minutos. Si no lo logra, verás: "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato. Puedes reintentarlo abajo."
+- **Si la IA no logra textos que cumplan las reglas** (por ejemplo, sin inventar precios ni usar tus palabras prohibidas), verás: "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo. Puedes reintentarlo abajo."
 
-> "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto."
+En los dos casos, toca **Reintentar**. Debajo del botón dice "Volveremos a escribir tu propuesta. **No usa tu video de hoy.**" La pantalla vuelve a "Estoy preparando tu propuesta…".
 
-Tu propuesta sirve igual: revisa cada texto, cámbialo si quieres (sección 12.4) y sigue como siempre. No tienes que hacer nada más ni avisar a nadie.
+En Mis videos, mientras tanto, la propuesta aparece como **Con problemas**. Si sigue fallando, avísale al administrador de AutoReel.
 
 ### 12.8 Crear mi video
 
@@ -696,12 +714,15 @@ Al descartarla, vas a **Mis videos**, donde aparece como **Descartado**. Ya no s
 | "Quita los emojis, los saltos de línea y los símbolos especiales: no se pueden mostrar en el video." | El texto o el precio tiene emojis, varias líneas o símbolos que las letras del video no tienen. Las tildes, la ñ, ¿, ¡ y el símbolo € sí se pueden usar. | Escríbelo en una sola línea, sin emojis ni símbolos raros. |
 | "No podemos usar "…" en tus videos. Escríbelo de otra forma." | El texto o el precio tiene una palabra prohibida (de AutoReel o de tu perfil). | Usa otras palabras. |
 | "El precio admite hasta 40 caracteres." | El precio es muy largo. | Acórtalo. |
+| "La frase admite hasta 6 palabras y 40 caracteres, para que se lea en el video." | La frase del cierre es muy larga. | Acórtala. |
+| "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato. Puedes reintentarlo abajo." | El servicio de IA no respondió durante unos minutos (sección 12.7). | Toca **Reintentar**. No usa tu video de hoy. |
+| "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo. Puedes reintentarlo abajo." | La IA no logró textos que cumplan las reglas (sección 12.7). | Toca **Reintentar**. No usa tu video de hoy. |
 | "El producto ya no tiene esa foto. Elige otra o sube una nueva." | Quitaste esa foto del producto en el catálogo. | Elige otra o sube una nueva. |
 | "Este video ya no se puede cambiar." | La propuesta se descartó o ya se está creando el video (por ejemplo, desde otra pestaña). | Recarga la página. |
 | "Ya usaste tu video de hoy. Mañana tienes uno nuevo." | Ya creaste el video de hoy (sección 11). | Guarda la propuesta: mañana la abres desde **Mis videos** y tocas **Crear mi video**. |
 | "Por ahora no podemos crear clips con IA. Inténtalo en un rato: tu propuesta queda guardada." | En este momento AutoReel no puede crear los clips de tu video (sección 12.8). | Vuelve más tarde. Si sigue así, avísale al administrador. |
 | "Descartaste esta propuesta." | La propuesta está descartada. | Crea otro video desde **Inicio**. |
-| Un aviso rojo que termina en "Crea otro desde el inicio." (por ejemplo, "El producto del video ya no tiene fotos.") | No se pudo armar la propuesta. | Toca **Crear otro video**. |
+| Un aviso rojo que termina en "Crea otro desde el inicio." (por ejemplo, "El producto de este video ya no existe o no tiene fotos. Crea otro video desde el inicio.") | No se pudo armar la propuesta, y reintentar no lo arreglaría. | Toca **Crear otro video**. |
 
 Los mensajes al subir una foto nueva son los mismos del catálogo (sección 10).
 
@@ -717,7 +738,7 @@ flowchart TD
     B --> C["Armando tu video"]
     C --> D["Tu video está listo: revisión"]
     D -->|Regenerar este plano / Cambiar foto| B
-    D -->|Editar texto o precio| C
+    D -->|Editar texto, precio o frase| C
     D -->|Aprobar mi video| E["Aprobado: Descargar"]
 ```
 
@@ -756,7 +777,7 @@ Debajo están las tarjetas de los cuatro momentos, igual que en la propuesta, co
 | Opción | Qué hace | ¿Gasta algo? |
 |---|---|---|
 | **Editar texto** (momentos 1 a 3) | Cambia el texto en pantalla (sección 13.6). | No |
-| **Editar precio** (cierre) | Cambia el precio del cierre (sección 13.6). | No |
+| **Editar precio y frase** (cierre) | Cambia el precio o la frase del cierre (sección 13.6). | No |
 | **Cambiar foto** (momentos 1 a 3) | Usa otra foto en ese momento y crea su clip de nuevo (sección 13.6). Solo aparece si te quedan regeneraciones y se pueden crear clips (sección 13.5). | 1 regeneración |
 | **Regenerar este plano (te quedan *N*)** | Pide otra versión del clip de ese momento (sección 13.4). Solo aparece si se pueden crear clips (sección 13.5). | 1 regeneración |
 | **Aprobar mi video** | Das el video por terminado (sección 13.7). | No |
@@ -786,11 +807,11 @@ Cada momento de tu video es un clip creado con IA. Si en este momento AutoReel n
 
 Si intentas regenerar justo cuando deja de estar disponible, verás "Por ahora no podemos crear clips con IA. Inténtalo en un rato; mientras tanto puedes editar los textos."
 
-### 13.6 Cambiar un texto, una foto o el precio
+### 13.6 Cambiar un texto, una foto, el precio o la frase
 
 Se hace igual que en la propuesta (secciones 12.4 a 12.6), con las mismas reglas.
 
-- **Texto o precio:** al guardar, el video se arma de nuevo con el cambio (verás **"Armando tu video"** un momento). **No gasta regeneraciones.**
+- **Texto, precio o frase:** al guardar, el video se arma de nuevo con el cambio (verás **"Armando tu video"** un momento). **No gasta regeneraciones.**
 - **Foto:** la ventana **Foto del momento *N*** te avisa: "Cambiar la foto crea un clip nuevo y usa 1 de tus regeneraciones (te quedan *N*)." El video vuelve a **"Creando tu video"** solo para ese momento. Si el clip nuevo no se logra, el momento conserva su clip anterior y la regeneración no se cuenta (sección 13.4). Si ya no te quedan regeneraciones, o si por ahora no se pueden crear clips, el botón **Cambiar foto** no aparece.
 
 Si el cambio no se pudo aplicar, verás: "No pudimos aplicar tu último cambio; tu video anterior sigue disponible. Inténtalo de nuevo." Tu video anterior no se pierde.
@@ -817,8 +838,13 @@ En la revisión, al final de la página, toca **Descartar video**. Aparece "¿De
 
 ### 13.10 Si algo falla
 
-- **AutoReel no logró crear los clips de un video nuevo:** cada momento tiene dos intentos; si alguno no consigue su clip, el video no se puede armar. Verás "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato. Crea otro desde el inicio." En Mis videos aparece como **Con problemas**. Tu video del día se devolvió: crea otro desde **Inicio** el mismo día.
-- **AutoReel no logró armar el video:** verás "No pudimos armar el video. Te devolvimos el video del día. Crea otro desde el inicio." También aparece como **Con problemas** y tu video del día se devolvió.
+- **AutoReel no logró crear los clips de un video nuevo:** cada momento tiene dos intentos; si alguno no consigue su clip, el video no se puede armar. Verás "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato. Puedes reintentarlo abajo." En Mis videos aparece como **Con problemas**. Tu video del día se devolvió.
+- **AutoReel no logró armar el video:** verás "No pudimos armar el video. Te devolvimos el video del día. Puedes reintentarlo abajo." También aparece como **Con problemas** y tu video del día se devolvió.
+- **Reintentar un video que no se pudo crear:** toca **Reintentar**, debajo del aviso. AutoReel pide solo los clips que faltaban; los que ya estaban se conservan. **Este reintento vuelve a usar tu video del día**, porque se te devolvió: debajo del botón ves "Usarás tu video de hoy.".
+  - Si ya usaste tu video de hoy, el botón se desactiva con "Ya usaste tu video de hoy. Mañana tienes uno nuevo.".
+  - Si por ahora no se pueden crear clips, se desactiva con "Por ahora no podemos crear clips con IA. Inténtalo en un rato.".
+  - También puedes crear otro video desde **Inicio**.
+- **Reintentar una propuesta que no se pudo escribir:** es la sección 12.7. Ese reintento no usa tu video del día.
 - **Una regeneración o un cambio de foto no se logró:** el momento conserva su clip anterior y no se cuenta la regeneración (sección 13.4).
 - **Un cambio de texto o de precio no se pudo aplicar:** tu video anterior sigue disponible (sección 13.6).
 
@@ -849,7 +875,7 @@ Toca **Mis videos** en la barra de navegación. Ves tus propuestas y videos, **l
 | **Listo** | El video está listo para revisarlo, aprobarlo o descargarlo (sección 13.3). |
 | **Aprobado** | Aprobaste el video. Puedes verlo y descargarlo. |
 | **Descartado** | Descartaste la propuesta o el video. Se puede ver, pero no editar. |
-| **Con problemas** | No se pudo preparar la propuesta o armar el video. Crea otro video desde **Inicio**. |
+| **Con problemas** | No se pudo preparar la propuesta o armar el video. Ábrelo: si ves **Reintentar**, puedes volver a intentarlo (secciones 12.7 y 13.10); si no, crea otro video desde **Inicio**. |
 
 Toca un video para abrirlo. Si todavía no tienes ninguno, verás "Todavía no tienes videos." con el enlace **Crear mi primer video**. Mientras algún video se está preparando o creando, la lista se actualiza sola.
 

@@ -26,9 +26,7 @@ import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
 import com.autoreel.video.dominio.DatosDelGuion;
 import com.autoreel.video.dominio.EstadoVideo;
-import com.autoreel.video.dominio.GuionDeRespaldo;
 import com.autoreel.video.dominio.GuionPropuesto;
-import com.autoreel.video.dominio.MotivoRespaldo;
 import com.autoreel.video.dominio.ValidadorDeGuion;
 import com.autoreel.video.dominio.Video;
 import com.autoreel.video.infraestructura.VideoRepositorio;
@@ -42,7 +40,9 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Escribe el guion de un video (sección 8.1, RN-21 a RN-25). Las llamadas al modelo van fuera de toda transacción;
+ * Escribe el guion de un video con IA (sección 8.1, RN-21 a RN-25). No hay guion de respaldo (2026-11-12): si el
+ * proveedor de texto falla, el video sigue esperando y se reintenta solo durante unos minutos; después queda en ERROR y
+ * el usuario puede reintentarlo sin gastar su video del día. Las llamadas al modelo van fuera de toda transacción;
  * cada paso que toca la base de datos usa una transacción corta.
  */
 @Service
@@ -50,23 +50,45 @@ public class ServicioGuion {
 
     private static final Logger log = LoggerFactory.getLogger(ServicioGuion.class);
 
-    /** RN-25: un intento y hasta dos reintentos. */
+    /** RN-25: un intento y hasta dos reintentos cuando la respuesta no pasa el validador. */
     static final int INTENTOS = 3;
-    /** Después de este plazo no se empieza otro intento: se usa el respaldo. */
+    /** Después de este plazo no se empieza otro intento de la misma ronda. */
     static final Duration PLAZO_TOTAL = Duration.ofSeconds(60);
-    /** Tiempo que el video queda tomado; si vence sin terminar, el siguiente proceso usa el respaldo. */
+    /** Tiempo que el video queda tomado; si vence sin terminar (por ejemplo, un reinicio), se vuelve a intentar. */
     static final Duration RECLAMO = Duration.ofMinutes(3);
+    /** Si el proveedor falla, espera antes del siguiente intento automático. */
+    public static final Duration ESPERA_ENTRE_INTENTOS = Duration.ofSeconds(45);
+    /** Plazo de los intentos automáticos, desde la creación del video o el último "Reintentar". */
+    public static final Duration PLAZO_DE_REINTENTOS = Duration.ofMinutes(5);
 
-    private record Reclamo(boolean obtenido, boolean interrumpido) {
-    }
+    public static final String MOTIVO_SIN_IA = "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato.";
+    public static final String MOTIVO_GUION_INVALIDO =
+            "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo.";
+    /** No se arregla reintentando: no se llama al modelo ni se ofrece "Reintentar". */
+    public static final String MOTIVO_SIN_FOTOS =
+            "El producto de este video ya no existe o no tiene fotos. Crea otro video desde el inicio.";
+    /** Una falla nuestra (no del proveedor de IA): no se reintenta sola para no volver a pagar el guion. */
+    public static final String MOTIVO_FALLA_INTERNA =
+            "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo.";
 
     private record Contexto(Long videoId, Long negocioId, ModeloIA modelo, PaqueteNicho paquete,
             DatosDelGuion datos) {
     }
 
-    /** @param guionDelModelo última respuesta del modelo que se pudo leer, para auditoría. */
-    private record Resultado(GuionPropuesto guion, MotivoRespaldo motivoRespaldo,
-            Map<String, Object> guionDelModelo) {
+    /** Lo que pasó al pedir el guion. */
+    private sealed interface Resultado {
+    }
+
+    /** @param guionDelModelo la respuesta del modelo, para auditoría. */
+    private record Escrito(GuionPropuesto guion, Map<String, Object> guionDelModelo) implements Resultado {
+    }
+
+    /** El proveedor no respondió (o no está configurado): se vuelve a intentar más tarde. */
+    private record SinProveedor() implements Resultado {
+    }
+
+    /** Los intentos devolvieron guiones que no pasaron el validador. */
+    private record Invalido() implements Resultado {
     }
 
     private final VideoRepositorio videos;
@@ -98,40 +120,42 @@ public class ServicioGuion {
         this.lectura.setReadOnly(true);
     }
 
-    /** Videos que esperan su guion y nadie está procesando. */
+    /** Videos que esperan su guion, que nadie está procesando y cuya espera entre intentos ya pasó. */
     public List<Long> pendientes(int maximo) {
         return lectura.execute(estado -> videos.pendientesDeGuion(reloj.instant(), Limit.of(maximo)));
     }
 
     /**
-     * Escribe el guion del video y lo deja en STORYBOARD. Si otro proceso lo tiene tomado, no hace nada. Si un
-     * proceso anterior se cortó, usa el respaldo directamente para que el video nunca quede atascado.
+     * Escribe el guion del video y lo deja en STORYBOARD. Si otro proceso lo tiene tomado, no hace nada. Si el
+     * proveedor falla, el video sigue esperando su guion y se reintenta después de una espera; vencido el plazo,
+     * queda en ERROR.
      */
     public void procesar(Long videoId) {
-        Reclamo reclamo = transaccion.execute(estado -> reclamar(videoId));
-        if (reclamo == null || !reclamo.obtenido()) {
+        Boolean obtenido = transaccion.execute(estado -> {
+            Instant ahora = reloj.instant();
+            return videos.reclamar(videoId, ahora, ahora.plus(RECLAMO)) == 1;
+        });
+        if (!Boolean.TRUE.equals(obtenido)) {
             return;
         }
-        if (reclamo.interrumpido()) {
-            try {
-                Contexto contexto = lectura.execute(estado -> leer(videoId));
-                finalizar(contexto, new Resultado(GuionDeRespaldo.armar(contexto.datos(), contexto.paquete()),
-                        MotivoRespaldo.PROCESO_INTERRUMPIDO, null));
-            } catch (RuntimeException e) {
-                log.error("No se pudo armar el guion de respaldo del video {}", videoId, e);
-                marcarError(videoId, "No pudimos preparar la propuesta.");
+        try {
+            Optional<Contexto> contexto = lectura.execute(estado -> leer(videoId));
+            if (contexto.isEmpty()) {
+                // Sin producto o sin fotos no hay video posible: no se paga el modelo ni se ofrece reintentar.
+                marcarError(videoId, MOTIVO_SIN_FOTOS, true);
+                return;
             }
-            return;
+            switch (escribir(contexto.get())) {
+                case Escrito escrito -> finalizar(contexto.get(), escrito);
+                case SinProveedor sinProveedor -> reintentarMasTarde(videoId);
+                case Invalido invalido -> marcarError(videoId, MOTIVO_GUION_INVALIDO, false);
+            }
+        } catch (RuntimeException e) {
+            // Una falla nuestra no deja el video atascado ni se reintenta sola (cada ronda pagaría otra vez el guion):
+            // queda en ERROR y el usuario decide si lo vuelve a intentar.
+            log.error("No se pudo escribir el guion del video {}", videoId, e);
+            marcarError(videoId, MOTIVO_FALLA_INTERNA, false);
         }
-        Contexto contexto = lectura.execute(estado -> leer(videoId));
-        finalizar(contexto, escribir(contexto));
-    }
-
-    private Reclamo reclamar(Long videoId) {
-        Instant ahora = reloj.instant();
-        boolean yaSeIntento = videos.reclamadoHasta(videoId).isPresent();
-        boolean obtenido = videos.reclamar(videoId, ahora, ahora.plus(RECLAMO)) == 1;
-        return new Reclamo(obtenido, obtenido && yaSeIntento);
     }
 
     private Resultado escribir(Contexto contexto) {
@@ -140,17 +164,16 @@ public class ServicioGuion {
         if (guionista.isEmpty()) {
             aviso.avisar(modelo, ErrorDeProveedor.Tipo.CONFIGURACION_INVALIDA,
                     "El modelo no está activo, no es de texto o su adaptador no existe");
-            return respaldo(contexto, MotivoRespaldo.MODELO_INACTIVO, null);
+            return new SinProveedor();
         }
         Optional<String> credencial = secretos.obtener(modelo.getNombreSecreto());
         if (credencial.isEmpty()) {
             aviso.avisar(modelo, ErrorDeProveedor.Tipo.CREDENCIAL_INVALIDA,
                     "No hay credencial configurada para el secreto " + modelo.getNombreSecreto());
-            return respaldo(contexto, MotivoRespaldo.SIN_CREDENCIAL, null);
+            return new SinProveedor();
         }
         String esquema = InstruccionesDelGuion.esquema(contexto.datos(), contexto.paquete(), json);
         List<String> errores = List.of();
-        Map<String, Object> ultimaLeida = null;
         Instant inicio = reloj.instant();
         for (int intento = 1; intento <= INTENTOS; intento++) {
             if (intento > 1 && Duration.between(inicio, reloj.instant()).compareTo(PLAZO_TOTAL) > 0) {
@@ -162,11 +185,11 @@ public class ServicioGuion {
                 respuesta = guionista.get().escribir(modelo, credencial.get(), instrucciones, esquema);
             } catch (ErrorDeProveedor e) {
                 aviso.avisar(modelo, e.getTipo(), e.getMessage());
-                return respaldo(contexto, motivo(e.getTipo()), ultimaLeida);
+                return new SinProveedor();
             } catch (RuntimeException e) {
                 log.error("Falla inesperada del modelo de texto en el video {}", contexto.videoId(), e);
                 aviso.avisar(modelo, ErrorDeProveedor.Tipo.NO_DISPONIBLE, "Falla inesperada: " + e.getMessage());
-                return respaldo(contexto, MotivoRespaldo.PROVEEDOR_NO_DISPONIBLE, ultimaLeida);
+                return new SinProveedor();
             }
             // El proveedor cobra la respuesta aunque no sirva (RN-32).
             registrarCosto(contexto);
@@ -179,19 +202,14 @@ public class ServicioGuion {
                 errores = List.of("La respuesta no es un JSON con la forma pedida.");
                 continue;
             }
-            ultimaLeida = comoMapa(respuesta.texto());
             GuionPropuesto guion = leido.get().limpio();
             errores = ValidadorDeGuion.validar(guion, contexto.datos(), contexto.paquete());
             if (errores.isEmpty()) {
-                return new Resultado(guion, null, ultimaLeida);
+                return new Escrito(guion, comoMapa(respuesta.texto()));
             }
             log.info("Guion inválido del video {} (intento {}): {}", contexto.videoId(), intento, errores);
         }
-        return respaldo(contexto, MotivoRespaldo.GUION_INVALIDO, ultimaLeida);
-    }
-
-    private Resultado respaldo(Contexto contexto, MotivoRespaldo motivo, Map<String, Object> guionDelModelo) {
-        return new Resultado(GuionDeRespaldo.armar(contexto.datos(), contexto.paquete()), motivo, guionDelModelo);
+        return new Invalido();
     }
 
     private void registrarCosto(Contexto contexto) {
@@ -204,7 +222,7 @@ public class ServicioGuion {
     }
 
     /** Crea los planos y deja el video en STORYBOARD, si sigue esperando su guion. */
-    private void finalizar(Contexto contexto, Resultado resultado) {
+    private void finalizar(Contexto contexto, Escrito escrito) {
         transaccion.executeWithoutResult(estado -> {
             Video video = videos.bloquear(contexto.videoId()).orElseThrow();
             if (video.getEstado() != EstadoVideo.GUION_PENDIENTE) {
@@ -213,58 +231,69 @@ public class ServicioGuion {
             Instant ahora = reloj.instant();
             Optional<Producto> producto = catalogo.elegidoParaVideo(video.getNegocioId(), video.getProductoId());
             if (producto.isEmpty() || producto.get().getFotos().isEmpty()) {
-                video.marcarError("El producto del video ya no tiene fotos.", ahora);
+                // Se quedó sin fotos mientras se escribía el guion: reintentar no lo arregla.
+                video.marcarErrorDefinitivo(MOTIVO_SIN_FOTOS, ahora);
                 return;
             }
             PlantillaVideo plantilla = contexto.paquete().plantillaVideo();
             for (PlanoPlantilla plano : plantilla.planosConIa()) {
                 TipoFoto tipo = TipoFoto.valueOf(plano.foto());
                 FotoProducto foto = producto.get().foto(tipo).orElseGet(() -> producto.get().getFotos().getFirst());
-                GuionPropuesto.PlanoPropuesto escrito = resultado.guion().plano(plano.orden());
-                video.agregarPlano(plano.orden(), foto.getTipo(), foto.getClaveS3(), escrito.movimiento(),
-                        escrito.texto());
+                GuionPropuesto.PlanoPropuesto propuesto = escrito.guion().plano(plano.orden());
+                video.agregarPlano(plano.orden(), foto.getTipo(), foto.getClaveS3(), propuesto.movimiento(),
+                        propuesto.texto());
             }
             DatosDelGuion datos = contexto.datos();
-            video.agregarCierre(plantilla.cierre().orden(), precioDelCierre(datos.precio(),
-                            plantilla.maximoCaracteresPrecio()),
-                    plantilla.llamadoPrincipal(datos.canales(), datos.distrito()).orElse(null), datos.distrito());
-            video.mostrarStoryboard(resultado.guion().descripcion(), resultado.guion().hashtags(),
-                    resultado.guionDelModelo(), resultado.motivoRespaldo(), ahora);
+            GuionPropuesto.CierrePropuesto cierre = escrito.guion().cierre();
+            String ubicacion = cierre.ubicacion() != null ? cierre.ubicacion() : datos.distrito();
+            video.agregarCierre(plantilla.cierre().orden(), cierre.precio(), cierre.frase(),
+                    plantilla.llamadoPrincipal(datos.canales(), datos.distrito()).orElse(null), ubicacion);
+            video.mostrarStoryboard(escrito.guion().descripcion(), escrito.guion().hashtags(),
+                    escrito.guionDelModelo(), ahora);
         });
     }
 
-    private void marcarError(Long videoId, String motivo) {
+    /**
+     * El proveedor no respondió: el video sigue esperando su guion y se vuelve a intentar después de la espera. Si el
+     * siguiente intento ya caería fuera del plazo, queda en ERROR (no consumió el video del día).
+     */
+    private void reintentarMasTarde(Long videoId) {
         transaccion.executeWithoutResult(estado -> videos.bloquear(videoId)
                 .filter(video -> video.getEstado() == EstadoVideo.GUION_PENDIENTE)
-                .ifPresent(video -> video.marcarError(motivo, reloj.instant())));
+                .ifPresent(video -> {
+                    Instant ahora = reloj.instant();
+                    Instant siguiente = ahora.plus(ESPERA_ENTRE_INTENTOS);
+                    if (siguiente.isAfter(video.inicioDelGuion().plus(PLAZO_DE_REINTENTOS))) {
+                        video.marcarError(MOTIVO_SIN_IA, ahora);
+                    } else {
+                        video.esperarSiguienteIntentoDeGuion(siguiente, ahora);
+                    }
+                }));
     }
 
-    /**
-     * El precio tal como lo escribió el usuario (V19). Si pasa del máximo del cierre, se propone recortado en el
-     * límite de una palabra; el usuario puede editarlo en el storyboard.
-     */
-    static String precioDelCierre(String precio, int maximo) {
-        if (precio == null || precio.isBlank()) {
-            return null;
-        }
-        String limpio = precio.strip();
-        if (limpio.length() <= maximo) {
-            return limpio;
-        }
-        String cortado = limpio.substring(0, maximo);
-        int espacio = cortado.lastIndexOf(' ');
-        String enPalabra = (espacio > 0 && !Character.isWhitespace(limpio.charAt(maximo))
-                ? cortado.substring(0, espacio) : cortado).strip();
-        // "S/ 65 la torta entera para compartir en" no se lee bien: se quitan los conectores del final.
-        String sinConectores = GuionDeRespaldo.sinConectoresAlFinal(enPalabra);
-        return sinConectores.isEmpty() ? enPalabra : sinConectores;
+    /** @param definitivo si reintentar no lo arregla: el video no ofrece "Reintentar". */
+    private void marcarError(Long videoId, String motivo, boolean definitivo) {
+        transaccion.executeWithoutResult(estado -> videos.bloquear(videoId)
+                .filter(video -> video.getEstado() == EstadoVideo.GUION_PENDIENTE)
+                .ifPresent(video -> {
+                    if (definitivo) {
+                        video.marcarErrorDefinitivo(motivo, reloj.instant());
+                    } else {
+                        video.marcarError(motivo, reloj.instant());
+                    }
+                }));
     }
 
-    private Contexto leer(Long videoId) {
+    /** Los datos del guion; vacío si el producto del video ya no existe o no tiene fotos. */
+    private Optional<Contexto> leer(Long videoId) {
         Video video = videos.buscarConModeloDeTexto(videoId).orElseThrow();
+        Optional<Producto> producto = catalogo.elegidoParaVideo(video.getNegocioId(), video.getProductoId());
+        if (producto.isEmpty() || producto.get().getFotos().isEmpty()) {
+            return Optional.empty();
+        }
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
-        return new Contexto(video.getId(), video.getNegocioId(), video.getModeloTextoUsado(), datos.paquete(),
-                datos.guion());
+        return Optional.of(new Contexto(video.getId(), video.getNegocioId(), video.getModeloTextoUsado(),
+                datos.paquete(), datos.guion()));
     }
 
     private Map<String, Object> comoMapa(String respuesta) {
@@ -274,13 +303,5 @@ public class ServicioGuion {
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    private static MotivoRespaldo motivo(ErrorDeProveedor.Tipo tipo) {
-        return switch (tipo) {
-            case CREDENCIAL_INVALIDA -> MotivoRespaldo.CREDENCIAL_INVALIDA;
-            case CONFIGURACION_INVALIDA -> MotivoRespaldo.CONFIGURACION_INVALIDA;
-            case NO_DISPONIBLE -> MotivoRespaldo.PROVEEDOR_NO_DISPONIBLE;
-        };
     }
 }

@@ -33,13 +33,16 @@ public interface ComponedorDeVideo {
     }
 
     /**
-     * El cierre, sin IA.
+     * El cierre, sin clip de IA.
      *
-     * @param fondo la foto del local o el degradado de los colores de marca, ya en vertical.
-     * @param logo  el logo en PNG; puede faltar.
+     * @param fotoDelLocal   la foto del local ya en vertical; si falta, el fondo es el último cuadro del último plano,
+     *                       desenfocado y oscurecido.
+     * @param logo           el logo (PNG o JPEG); puede faltar.
+     * @param textoPrincipal lo que va en grande: el precio o, si no hay, la frase que escribió la IA.
+     * @param colorDeMarca   color primario del negocio (#rrggbb), para destacar el llamado.
      */
-    record CierreAComponer(int segundos, byte[] fondo, boolean fondoEsFoto, byte[] logo, String precio,
-            String llamado, String ubicacion, String whatsapp) {
+    record CierreAComponer(int segundos, byte[] fotoDelLocal, byte[] logo, String textoPrincipal, String llamado,
+            String ubicacion, String whatsapp, String colorDeMarca) {
     }
 
     class ErrorDeComposicion extends RuntimeException {

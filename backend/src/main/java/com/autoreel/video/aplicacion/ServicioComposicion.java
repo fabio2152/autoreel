@@ -158,14 +158,14 @@ public class ServicioComposicion {
         }
 
         Plano cierre = video.plano(plantilla.cierre().orden()).orElseThrow();
-        boolean conFotoDelLocal = perfil.getFotoLocalClave() != null;
-        byte[] fondo = conFotoDelLocal ? preparador.vertical(leer(perfil.getFotoLocalClave()))
-                : preparador.degradado(perfil.getColorPrimario(), perfil.getColorSecundario());
+        byte[] fotoDelLocal = perfil.getFotoLocalClave() == null ? null
+                : preparador.vertical(leer(perfil.getFotoLocalClave()));
         byte[] logo = perfil.getLogoClave() == null ? null : leer(perfil.getLogoClave());
         String whatsapp = datos.guion().canales().contains(CamposDelPerfil.CANAL_WHATSAPP)
                 ? datos.guion().whatsapp() : null;
-        CierreAComponer cierreAComponer = new CierreAComponer(plantilla.cierre().segundos(), fondo, conFotoDelLocal,
-                logo, cierre.getPrecio(), cierre.getLlamado(), cierre.getUbicacion(), whatsapp);
+        CierreAComponer cierreAComponer = new CierreAComponer(plantilla.cierre().segundos(), fotoDelLocal, logo,
+                cierre.textoPrincipalDelCierre(), cierre.getLlamado(), cierre.getUbicacion(), whatsapp,
+                perfil.getColorPrimario());
 
         byte[] musica = video.getPistaMusicalId() == null ? null
                 : pistas.findById(video.getPistaMusicalId()).map(pista -> leer(pista.getClave())).orElse(null);

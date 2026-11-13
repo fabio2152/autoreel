@@ -32,11 +32,21 @@ final class Guiones {
                 List.of("#pasteleria", "#tortas", "#tresleches", "#postres", "#miraflores"));
     }
 
+    /** Cierre sin precio, con la frase gancho y el distrito del negocio. */
+    static final GuionPropuesto.CierrePropuesto CIERRE = new GuionPropuesto.CierrePropuesto(null,
+            "Hecha con cariño para ti", null);
+
     static GuionPropuesto guion(String gancho, String producto, String relleno, String descripcion,
             List<String> hashtags) {
         return new GuionPropuesto(List.of(
                 new GuionPropuesto.PlanoPropuesto(1, "ACERCAMIENTO_LENTO", gancho),
-                new GuionPropuesto.PlanoPropuesto(2, "DESPLAZAMIENTO_LATERAL", producto),
-                new GuionPropuesto.PlanoPropuesto(3, "LUZ_CALIDA", relleno)), descripcion, hashtags);
+                new GuionPropuesto.PlanoPropuesto(2, "ORBITA_FRONTAL", producto),
+                new GuionPropuesto.PlanoPropuesto(3, "LUZ_CALIDA", relleno)), CIERRE, descripcion, hashtags);
+    }
+
+    /** El guion válido con otro cierre. */
+    static GuionPropuesto conCierre(GuionPropuesto.CierrePropuesto cierre) {
+        GuionPropuesto valido = valido();
+        return new GuionPropuesto(valido.planos(), cierre, valido.descripcion(), valido.hashtags());
     }
 }

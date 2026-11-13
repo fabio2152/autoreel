@@ -15,13 +15,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import javax.sql.DataSource;
+
 import com.autoreel.Imagenes;
 import com.autoreel.PruebaDeIntegracion;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import com.autoreel.ia.infraestructura.ServidorGeminiSimulado;
 import com.autoreel.video.aplicacion.ServicioGuion;
-import com.autoreel.video.dominio.MotivoRespaldo;
 import com.autoreel.video.dominio.Video;
 import com.autoreel.video.infraestructura.VideoRepositorio;
 import jakarta.servlet.http.Cookie;
@@ -33,6 +34,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
@@ -42,7 +44,7 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Guion y storyboard (V18 a V21) de punta a punta: chat real, {@code GeminiGuionista} real contra un servidor
- * simulado, validador, respaldo, costos y edición del storyboard.
+ * simulado, validador, cierre de la IA, reintentos sin guion de respaldo, costos y edición del storyboard.
  */
 @Import(VideoIntegracionTest.Secretos.class)
 class VideoIntegracionTest extends PruebaDeIntegracion {
@@ -53,8 +55,9 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     private static final String GUION_VALIDO = """
             {"planos":[
               {"orden":1,"movimiento":"ACERCAMIENTO_LENTO","texto":"Un antojo de fresas frescas"},
-              {"orden":2,"movimiento":"DESPLAZAMIENTO_LATERAL","texto":"Torta Tres Leches de casa"},
+              {"orden":2,"movimiento":"ORBITA_FRONTAL","texto":"Torta Tres Leches de casa"},
               {"orden":3,"movimiento":"LUZ_CALIDA","texto":"Cada porción con fresas de Huaral"}],
+             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
              "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
              "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
     private static final String GUION_LARGO = GUION_VALIDO.replace("Un antojo de fresas frescas",
@@ -102,6 +105,9 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     @Autowired
     private PlatformTransactionManager transacciones;
 
+    @Autowired
+    private DataSource datos;
+
     @BeforeEach
     void reiniciar() {
         GEMINI.reiniciar();
@@ -131,7 +137,6 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.tipoVideo").value("Producto estrella"))
                 .andExpect(jsonPath("$.producto.nombre").value("Torta Tres Leches"))
                 .andExpect(jsonPath("$.plan.videosPorDia").value(1))
-                .andExpect(jsonPath("$.avisoDeRespaldo").doesNotExist())
                 .andExpect(jsonPath("$.planos", hasSize(3)))
                 .andExpect(jsonPath("$.planos[0].nombre").value("Gancho"))
                 .andExpect(jsonPath("$.planos[0].foto.tipo").value("DETALLE"))
@@ -142,6 +147,8 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.planos[1].foto.tipo").value("ENTERO"))
                 .andExpect(jsonPath("$.planos[2].foto.tipo").value("PORCION"))
                 .andExpect(jsonPath("$.cierre.precio").doesNotExist())
+                .andExpect(jsonPath("$.cierre.frase").value("Hecha con cariño para ti"))
+                .andExpect(jsonPath("$.cierre.maxPalabrasFrase").value(6))
                 .andExpect(jsonPath("$.cierre.llamado").value("Te esperamos en Miraflores"))
                 .andExpect(jsonPath("$.cierre.ubicacion").value("Miraflores"))
                 .andExpect(jsonPath("$.cierre.colorPrimario").value("#be123c"))
@@ -164,18 +171,19 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
-    void v19ElCierreLlevaElPrecioDelUsuarioYUnPrecioInventadoSeCorrige() throws Exception {
+    void v19ElCierreLlevaElPrecioQueResumioLaIaYUnPrecioInventadoSeCorrige() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
-        long videoId = completarChat(negocio, "PROMOCION", "S/ 65 la torta entera");
+        long videoId = completarChat(negocio, "PROMOCION", "la torta entera esta a S/ 65 este finde");
+        String conPrecio = GUION_VALIDO.replace("\"precio\":null", "\"precio\":\"S/ 65 la torta entera\"");
 
-        GEMINI.responderTexto(GUION_VALIDO.replace("Te esperamos en Miraflores.", "Hoy a solo S/ 50."));
-        GEMINI.responderTexto(GUION_VALIDO);
+        GEMINI.responderTexto(conPrecio.replace("Te esperamos en Miraflores.", "Hoy a solo S/ 50."));
+        GEMINI.responderTexto(conPrecio);
         guiones.procesar(videoId);
 
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("STORYBOARD"))
-                .andExpect(jsonPath("$.avisoDeRespaldo").doesNotExist())
                 .andExpect(jsonPath("$.cierre.precio").value("S/ 65 la torta entera"))
+                .andExpect(jsonPath("$.cierre.frase").value("Hecha con cariño para ti"))
                 .andExpect(jsonPath("$.cierre.maximoCaracteresPrecio").value(40));
         assertThat(GEMINI.peticiones()).hasSize(2);
         assertThat(GEMINI.peticiones().get(1).cuerpo()).contains("corrígelos", "menciona \\\"50\\\"");
@@ -183,7 +191,27 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
-    void v20TresGuionesInvalidosUsanElRespaldo() throws Exception {
+    void unaInstruccionDelNegocioNoSeMuestraComoPrecio() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", "no menciones precio solo que estan");
+
+        GEMINI.responderTexto(GUION_VALIDO.replace("\"precio\":null",
+                "\"precio\":\"no menciones precio solo que estan\""));
+        GEMINI.responderTexto(GUION_VALIDO.replace("Hecha con cariño para ti", "Ya están listas para ti"));
+        guiones.procesar(videoId);
+
+        mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.cierre.precio").doesNotExist())
+                .andExpect(jsonPath("$.cierre.frase").value("Ya están listas para ti"));
+        assertThat(GEMINI.peticiones()).hasSize(2);
+        assertThat(GEMINI.peticiones().getFirst().cuerpo()).contains("no menciones precio solo que estan",
+                "\"cierre\"");
+        assertThat(GEMINI.peticiones().get(1).cuerpo()).contains("debe ser null");
+    }
+
+    @Test
+    void v20TresGuionesInvalidosDejanElVideoEnErrorYSePuedeReintentarSinGastarElVideoDelDia() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
 
@@ -193,53 +221,102 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         guiones.procesar(videoId);
 
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
-                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
-                .andExpect(jsonPath("$.avisoDeRespaldo").value(
-                        "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto."))
-                .andExpect(jsonPath("$.planos[1].texto").value("Torta Tres Leches"))
-                .andExpect(jsonPath("$.planos[2].texto").value("Fresas frescas de Huaral"))
-                .andExpect(jsonPath("$.cierre.llamado").value("Te esperamos en Miraflores"));
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.planos", hasSize(0)))
+                .andExpect(jsonPath("$.generacion.motivoError").value(ServicioGuion.MOTIVO_GUION_INVALIDO))
+                .andExpect(jsonPath("$.generacion.puedeReintentar").value(true))
+                .andExpect(jsonPath("$.generacion.reintentoUsaVideoDelDia").value(false));
         Video video = videos.findById(videoId).orElseThrow();
-        assertThat(video.getMotivoRespaldo()).isEqualTo(MotivoRespaldo.GUION_INVALIDO);
         assertThat(video.getIntentosGuion()).isEqualTo(3);
         assertThat(GEMINI.peticiones()).hasSize(3);
         assertThat(costos.findByVideoIdOrderById(videoId)).hasSize(3);
+
+        // Reintentar vuelve a escribir el guion sin usar el video del día.
+        mvc.perform(post("/api/videos/" + videoId + "/reintentar").with(csrf()).cookie(negocio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("GUION_PENDIENTE"))
+                .andExpect(jsonPath("$.generacion.motivoError").doesNotExist())
+                .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0));
+        GEMINI.responderTexto(GUION_VALIDO);
+        guiones.procesar(videoId);
+        mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.planos", hasSize(3)));
+        mvc.perform(post("/api/videos/" + videoId + "/reintentar").with(csrf()).cookie(negocio))
+                .andExpect(status().isConflict());
     }
 
     @Test
-    void sinCredencialUsaElRespaldoSinLlamarNiCobrar() throws Exception {
+    void sinCredencialSeReintentaSoloYAlFinalQuedaEnErrorSinLlamarNiCobrar() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long videoId = completarChat(negocio, "RECIEN_HORNEADO", null);
         secretos.clave = null;
 
         guiones.procesar(videoId);
+        assertThat(videos.findById(videoId).orElseThrow().getEstado().name()).isEqualTo("GUION_PENDIENTE");
+        // Espera antes del siguiente intento.
+        assertThat(guiones.pendientes(500)).doesNotContain(videoId);
+        reloj.avanzar(ServicioGuion.ESPERA_ENTRE_INTENTOS.plusSeconds(1));
+        assertThat(guiones.pendientes(500)).contains(videoId);
+
+        for (int intento = 0; intento < 10 && guiones.pendientes(500).contains(videoId); intento++) {
+            guiones.procesar(videoId);
+            reloj.avanzar(ServicioGuion.ESPERA_ENTRE_INTENTOS.plusSeconds(1));
+        }
 
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
-                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
-                .andExpect(jsonPath("$.planos[0].texto").value("Recién salido del horno"))
-                .andExpect(jsonPath("$.avisoDeRespaldo").isString());
-        assertThat(videos.findById(videoId).orElseThrow().getMotivoRespaldo())
-                .isEqualTo(MotivoRespaldo.SIN_CREDENCIAL);
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.generacion.motivoError").value(ServicioGuion.MOTIVO_SIN_IA))
+                .andExpect(jsonPath("$.generacion.puedeReintentar").value(true));
         assertThat(GEMINI.peticiones()).isEmpty();
         assertThat(costos.findByVideoIdOrderById(videoId)).isEmpty();
     }
 
+    /** Sin fotos no hay video posible: no se llama al modelo, no se cobra y no se ofrece reintentar. */
     @Test
-    void siElProveedorFallaUsaElRespaldoSinCobrar() throws Exception {
+    void unProductoSinFotosDejaElVideoEnErrorSinReintentoYSinCobrar() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
+        Long productoId = videos.findById(videoId).orElseThrow().getProductoId();
+        new JdbcTemplate(datos).update("delete from foto_producto where producto_id = ?", productoId);
+
+        guiones.procesar(videoId);
+
+        mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("ERROR"))
+                .andExpect(jsonPath("$.generacion.motivoError").value(ServicioGuion.MOTIVO_SIN_FOTOS))
+                .andExpect(jsonPath("$.generacion.puedeReintentar").value(false));
+        assertThat(GEMINI.peticiones()).isEmpty();
+        assertThat(costos.findByVideoIdOrderById(videoId)).isEmpty();
+        mvc.perform(post("/api/videos/" + videoId + "/reintentar").with(csrf()).cookie(negocio))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void siElProveedorFallaSeReintentaDespuesDeUnaEsperaSinCobrar() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
 
         GEMINI.responder(503, "{\"error\":{\"code\":503}}");
         guiones.procesar(videoId);
+        assertThat(videos.findById(videoId).orElseThrow().getEstado().name()).isEqualTo("GUION_PENDIENTE");
+        assertThat(costos.findByVideoIdOrderById(videoId)).isEmpty();
+        // Antes de la espera no se vuelve a llamar.
+        guiones.procesar(videoId);
+        assertThat(GEMINI.peticiones()).hasSize(1);
+
+        reloj.avanzar(ServicioGuion.ESPERA_ENTRE_INTENTOS.plusSeconds(1));
+        GEMINI.responderTexto(GUION_VALIDO);
+        guiones.procesar(videoId);
 
         Video video = videos.findById(videoId).orElseThrow();
-        assertThat(video.getMotivoRespaldo()).isEqualTo(MotivoRespaldo.PROVEEDOR_NO_DISPONIBLE);
-        assertThat(GEMINI.peticiones()).hasSize(1);
-        assertThat(costos.findByVideoIdOrderById(videoId)).isEmpty();
+        assertThat(video.getEstado().name()).isEqualTo("STORYBOARD");
+        assertThat(GEMINI.peticiones()).hasSize(2);
+        assertThat(costos.findByVideoIdOrderById(videoId)).hasSize(1);
     }
 
     @Test
-    void unProcesoInterrumpidoTerminaConElRespaldo() throws Exception {
+    void unProcesoInterrumpidoSeVuelveAIntentar() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
         // Otro proceso lo tomó y se cortó (por ejemplo, un reinicio).
@@ -248,6 +325,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
 
         guiones.procesar(videoId);
         assertThat(videos.findById(videoId).orElseThrow().getEstado().name()).isEqualTo("GUION_PENDIENTE");
+        assertThat(GEMINI.peticiones()).isEmpty();
 
         reloj.avanzar(Duration.ofMinutes(4));
         GEMINI.responderTexto(GUION_VALIDO);
@@ -255,8 +333,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
 
         Video video = videos.findById(videoId).orElseThrow();
         assertThat(video.getEstado().name()).isEqualTo("STORYBOARD");
-        assertThat(video.getMotivoRespaldo()).isEqualTo(MotivoRespaldo.PROCESO_INTERRUMPIDO);
-        assertThat(GEMINI.peticiones()).isEmpty();
+        assertThat(GEMINI.peticiones()).hasSize(1);
     }
 
     @Test
@@ -294,14 +371,27 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
 
-        // Cierre: solo el precio, hasta 40 caracteres.
+        // Cierre: el precio (hasta 40 caracteres) y la frase (hasta 6 palabras).
         editar(negocio, videoId, 4, Map.of("precio", "S/ 65 la torta entera y llévate un postre"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PRECIO_MUY_LARGO"));
         editar(negocio, videoId, 4, Map.of("precio", "S/ 59"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cierre.precio").value("S/ 59"));
+        editar(negocio, videoId, 4, Map.of("frase", "Una torta para compartir con toda la familia"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("FRASE_MUY_LARGA"));
+        editar(negocio, videoId, 4, Map.of("frase", "La mejor de Lima"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("PALABRA_PROHIBIDA"));
+        editar(negocio, videoId, 4, Map.of("precio", "", "frase", "  Tu antojo te espera "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cierre.precio").doesNotExist())
+                .andExpect(jsonPath("$.cierre.frase").value("Tu antojo te espera"));
         editar(negocio, videoId, 4, Map.of("texto", "Hola"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
+        editar(negocio, videoId, 1, Map.of("frase", "Hola"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
         editar(negocio, videoId, 9, Map.of("texto", "Hola"))

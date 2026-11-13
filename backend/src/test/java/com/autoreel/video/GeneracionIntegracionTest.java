@@ -21,6 +21,8 @@ import com.autoreel.costos.dominio.RegistroCosto;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import com.autoreel.ia.infraestructura.ServidorOmniSimulado;
+import com.autoreel.nicho.dominio.Movimientos;
+import com.autoreel.nicho.pasteleria.PaquetePasteleria;
 import com.autoreel.video.aplicacion.ServicioComposicion;
 import com.autoreel.video.aplicacion.ServicioGeneracion;
 import com.autoreel.video.aplicacion.ServicioGuion;
@@ -52,7 +54,7 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     private static final ServidorOmniSimulado OMNI = new ServidorOmniSimulado();
 
-    /** La API de Gemini (guion y Omni) apunta al servidor simulado; el guion recibe 404 y usa su respaldo. */
+    /** La API de Gemini (guion y Omni) apunta al servidor simulado, que responde un guion válido. */
     @DynamicPropertySource
     static void aiStudio(DynamicPropertyRegistry propiedades) {
         propiedades.add("autoreel.ia.gemini.url", OMNI::url);
@@ -105,6 +107,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     @Autowired
     private ServicioGuion guiones;
+
+    @Autowired
+    private PaquetePasteleria paquete;
 
     @Autowired
     private ServicioGeneracion generacion;
@@ -167,7 +172,16 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         generacion.procesar(id);
         assertThat(OMNI.creacionesRecibidas()).hasSize(3);
         assertThat(OMNI.creacionesRecibidas().getFirst().clave()).isEqualTo("clave-ai-studio");
-        assertThat(OMNI.creacionesRecibidas().getFirst().cuerpo()).contains("\"9:16\"", "Never show:");
+        // El prompt sale completo del paquete de nicho: plantilla de toma, movimiento, prohibiciones y negativos.
+        Movimientos movimientos = paquete.movimientos();
+        String inicioDeLaToma = movimientos.plantillaDeToma()
+                .substring(0, movimientos.plantillaDeToma().indexOf(Movimientos.MARCA_INSTRUCCION)).strip();
+        assertThat(json.readTree(OMNI.creacionesRecibidas().getFirst().cuerpo()).at("/input/1/text").asString())
+                .startsWith(inicioDeLaToma)
+                .contains(movimientos.prohibiciones())
+                .endsWith("Avoid: " + movimientos.negativos() + ".")
+                .doesNotContain(Movimientos.MARCA_INSTRUCCION);
+        assertThat(OMNI.creacionesRecibidas().getFirst().cuerpo()).contains("\"9:16\"");
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("GENERANDO"))
                 .andExpect(jsonPath("$.planos[0].estado").value("GENERANDO"));
@@ -339,8 +353,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
     void sinCredencialNoSeCreaElVideoNiSeRegeneraPeroSePuedenEditarTextos() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long listo = videoListo(negocio);
-        secretos.conClave = false;
+        // El guion usa la misma clave de AI Studio: se quita después de tener el storyboard.
         long id = storyboard(negocio);
+        secretos.conClave = false;
 
         aprobar(negocio, id)
                 .andExpect(status().isConflict())

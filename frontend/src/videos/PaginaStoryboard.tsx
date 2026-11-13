@@ -56,7 +56,7 @@ export function PaginaStoryboard() {
       const video = query.state.data
       if (video?.estado === 'GENERANDO' || video?.estado === 'COMPONIENDO') return 5000
       if (video?.estado !== 'GUION_PENDIENTE') return false
-      return query.state.dataUpdatedAt - Date.parse(video.fechaCreacion) > ESPERA_LARGA_MS ? 5000 : 2000
+      return query.state.dataUpdatedAt - Date.parse(video.inicioDelGuion) > ESPERA_LARGA_MS ? 5000 : 2000
     },
   })
 
@@ -86,7 +86,7 @@ export function PaginaStoryboard() {
   const video = consulta.data
   if (!video) return <Cargando />
   if (video.estado === 'GUION_PENDIENTE') {
-    const tardando = consulta.dataUpdatedAt - Date.parse(video.fechaCreacion) > ESPERA_LARGA_MS
+    const tardando = consulta.dataUpdatedAt - Date.parse(video.inicioDelGuion) > ESPERA_LARGA_MS
     return (
       <div className="mx-auto max-w-md space-y-4 py-8 text-center">
         <Cargando texto="Estoy preparando tu propuesta…" />
@@ -165,7 +165,6 @@ function Storyboard({ video }: { video: Video }) {
           {video.generacion.puedeReintentar ? ' Puedes reintentarlo abajo.' : ' Crea otro desde el inicio.'}
         </Aviso>
       )}
-      {video.avisoDeRespaldo && video.estado === 'STORYBOARD' && <Aviso>{video.avisoDeRespaldo}</Aviso>}
 
       <ol className="space-y-4">
         {video.planos.map((plano) => (
@@ -242,17 +241,21 @@ function Storyboard({ video }: { video: Video }) {
           <Boton
             className="w-full"
             cargando={reintentar.isPending}
-            disabled={!videosHoy.puedeAprobar || !video.generacion.iaDisponible}
+            disabled={
+              video.generacion.reintentoUsaVideoDelDia && (!videosHoy.puedeAprobar || !video.generacion.iaDisponible)
+            }
             onClick={() => reintentar.mutate()}
           >
             Reintentar
           </Boton>
           <p className="text-center text-xs text-stone-500">
-            {!video.generacion.iaDisponible
-              ? 'Por ahora no podemos crear clips con IA. Inténtalo en un rato.'
-              : videosHoy.puedeAprobar
-                ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
-                : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
+            {!video.generacion.reintentoUsaVideoDelDia
+              ? 'Volveremos a escribir tu propuesta. No usa tu video de hoy.'
+              : !video.generacion.iaDisponible
+                ? 'Por ahora no podemos crear clips con IA. Inténtalo en un rato.'
+                : videosHoy.puedeAprobar
+                  ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
+                  : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
           </p>
         </div>
       )}
@@ -496,13 +499,17 @@ function TarjetaCierre({
   editable: boolean
   onGuardado: (video: Video) => void
 }) {
-  const [precio, setPrecio] = useState<string | null>(null)
+  const [edicion, setEdicion] = useState<{ precio: string; frase: string } | null>(null)
   const guardar = useEditarPlano(video, cierre.orden, onGuardado)
   const fondo = cierre.fotoLocal
     ? undefined
     : { background: `linear-gradient(160deg, ${cierre.colorPrimario ?? '#be123c'}, ${cierre.colorSecundario ?? '#fde68a'})` }
   // El llamado "Te esperamos en Miraflores" ya incluye el distrito: no se repite.
   const mostrarUbicacion = !cierre.llamado?.includes(cierre.ubicacion)
+  // En grande va el precio; si no hay, la frase.
+  const principal = cierre.precio ?? cierre.frase
+  const palabrasFrase = contarPalabras(edicion?.frase ?? '')
+  const fraseExcede = palabrasFrase > cierre.maxPalabrasFrase
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
@@ -520,7 +527,7 @@ function TarjetaCierre({
             {cierre.logo && (
               <ImagenRemota consulta={claveVideo(video.id)} src={cierre.logo} alt="Logo" className="size-10 object-contain" />
             )}
-            {cierre.precio && <span className="text-[11px] leading-tight font-bold">{cierre.precio}</span>}
+            {principal && <span className="text-[11px] leading-tight font-bold">{principal}</span>}
             {cierre.llamado && <span className="text-[10px] leading-tight">{cierre.llamado}</span>}
           </div>
         </div>
@@ -528,22 +535,25 @@ function TarjetaCierre({
           <p className="text-xs font-medium tracking-wide text-stone-500 uppercase">
             {cierre.orden}. {cierre.nombre} · {cierre.segundos} s
           </p>
-          <p className="text-stone-600">Lo armamos con tu logo y tus datos.</p>
-          {precio === null ? (
-            <div>
+          {edicion === null ? (
+            <div className="space-y-1">
+              {principal && <p className="text-lg leading-snug font-semibold text-stone-900">{principal}</p>}
               <p>
                 <span className="font-medium text-stone-800">Precio:</span> {cierre.precio ?? 'Sin precio'}
               </p>
+              {cierre.precio && cierre.frase && (
+                <p className="text-xs text-stone-500">Si quitas el precio, se mostrará la frase: {cierre.frase}</p>
+              )}
               {editable && (
                 <button
                   type="button"
                   onClick={() => {
                     guardar.reset()
-                    setPrecio(cierre.precio ?? '')
+                    setEdicion({ precio: cierre.precio ?? '', frase: cierre.frase ?? '' })
                   }}
                   className={ENLACE_PEQUENO}
                 >
-                  {cierre.precio ? 'Editar precio' : 'Agregar precio'}
+                  Editar precio y frase
                 </button>
               )}
             </div>
@@ -552,29 +562,44 @@ function TarjetaCierre({
               className="space-y-2"
               onSubmit={(evento) => {
                 evento.preventDefault()
-                guardar.mutate({ precio }, { onSuccess: () => setPrecio(null) })
+                guardar.mutate(edicion, { onSuccess: () => setEdicion(null) })
               }}
             >
-              <label className="sr-only" htmlFor="precio-cierre">
+              <label className="block text-xs font-medium text-stone-700" htmlFor="precio-cierre">
                 Precio o promoción
               </label>
               <input
                 id="precio-cierre"
-                value={precio}
+                value={edicion.precio}
                 maxLength={cierre.maximoCaracteresPrecio}
-                onChange={(evento) => setPrecio(evento.target.value)}
+                onChange={(evento) => setEdicion({ ...edicion, precio: evento.target.value })}
                 placeholder="Por ejemplo: S/ 65"
                 className={CAMPO}
               />
               <p className="text-xs text-stone-500">
-                {precio.length} de {cierre.maximoCaracteresPrecio} caracteres. Déjalo vacío para no mostrar precio.
+                {edicion.precio.length} de {cierre.maximoCaracteresPrecio} caracteres. Déjalo vacío para mostrar la
+                frase.
+              </p>
+              <label className="block text-xs font-medium text-stone-700" htmlFor="frase-cierre">
+                Frase
+              </label>
+              <input
+                id="frase-cierre"
+                value={edicion.frase}
+                maxLength={cierre.maximoCaracteresPrecio}
+                onChange={(evento) => setEdicion({ ...edicion, frase: evento.target.value })}
+                placeholder="Por ejemplo: Recién salidas del horno"
+                className={CAMPO}
+              />
+              <p className={`text-xs ${fraseExcede ? 'font-semibold text-red-700' : 'text-stone-500'}`} aria-live="polite">
+                {palabrasFrase} de {cierre.maxPalabrasFrase} palabras. Se muestra cuando no hay precio.
               </p>
               {guardar.isError && <Aviso tipo="error">{mensajeDeError(guardar.error)}</Aviso>}
               <div className="flex gap-2">
-                <Boton type="submit" className="flex-1" cargando={guardar.isPending}>
+                <Boton type="submit" className="flex-1" cargando={guardar.isPending} disabled={fraseExcede}>
                   Guardar
                 </Boton>
-                <Boton type="button" variante="secundario" className="flex-1" onClick={() => setPrecio(null)}>
+                <Boton type="button" variante="secundario" className="flex-1" onClick={() => setEdicion(null)}>
                   Cancelar
                 </Boton>
               </div>

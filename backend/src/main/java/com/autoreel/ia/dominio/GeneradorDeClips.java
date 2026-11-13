@@ -30,11 +30,13 @@ public interface GeneradorDeClips {
 
     /**
      * @param foto         la foto ya normalizada (JPEG vertical 9:16, sin metadatos).
-     * @param instruccion  el movimiento, en inglés (de {@code movimientos.json}).
-     * @param prohibiciones lo que nunca debe aparecer; va como instrucción negativa si el proveedor la admite.
-     * @param segundos     duración pedida del clip.
+     * @param prompt    el prompt completo en inglés, armado con la plantilla de toma, el movimiento y las prohibiciones
+     *                  del paquete de nicho; el adaptador lo envía tal cual.
+     * @param negativos lo que nunca debe aparecer, como lista de sustantivos; va como prompt negativo si el proveedor
+     *                  lo admite.
+     * @param segundos  duración pedida del clip.
      */
-    record SolicitudDeClip(byte[] foto, String tipoFoto, String instruccion, String prohibiciones, int segundos) {
+    record SolicitudDeClip(byte[] foto, String tipoFoto, String prompt, String negativos, int segundos) {
     }
 
     sealed interface EstadoDeClip permits EnCurso, Listo, Fallido {

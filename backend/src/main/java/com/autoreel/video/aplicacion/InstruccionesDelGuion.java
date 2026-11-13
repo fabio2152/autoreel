@@ -32,9 +32,15 @@ final class InstruccionesDelGuion {
         valores.put("palabrasProhibidas",
                 datos.palabrasProhibidas().isEmpty() ? "ninguna" : String.join(", ", datos.palabrasProhibidas()));
         valores.put("tono", paquete.vocabulario().tono(datos.estilo()));
-        valores.put("plantilla", plantilla(paquete));
+        valores.put("plantilla", plantilla(datos, paquete));
         valores.put("movimientos", movimientos(datos, paquete));
+        valores.put("minimoPlanosCamara3d", String.valueOf(paquete.movimientos().minimoPlanosCamara3d()));
         valores.put("distritoHashtag", datos.distritoHashtag());
+        valores.put("hashtagsBase", String.join(" ", paquete.plantillaVideo().hashtagsBase()));
+        valores.put("maxPalabrasFrase", String.valueOf(paquete.plantillaVideo().cierre().maxPalabras()));
+        valores.put("maximoCaracteresCierre", String.valueOf(paquete.plantillaVideo().maximoCaracteresPrecio()));
+        valores.put("maximoCaracteresUbicacion",
+                String.valueOf(paquete.plantillaVideo().maximoCaracteresUbicacion()));
         valores.put("nombreNegocio", datos.nombreNegocio());
         valores.put("estilo", datos.estiloTexto());
         valores.put("especialidad", datos.especialidad());
@@ -63,8 +69,8 @@ final class InstruccionesDelGuion {
     }
 
     /**
-     * Esquema de la respuesta: los planos con IA, la descripción y los hashtags. Los movimientos van como lista
-     * cerrada; los largos los revisa el validador.
+     * Esquema de la respuesta: los planos con IA, los textos del cierre, la descripción y los hashtags. Los
+     * movimientos van como lista cerrada; los largos y el contenido los revisa el validador.
      */
     static String esquema(DatosDelGuion datos, PaqueteNicho paquete, ObjectMapper json) {
         List<PlanoPlantilla> planos = paquete.plantillaVideo().planosConIa();
@@ -77,14 +83,23 @@ final class InstruccionesDelGuion {
                         "movimiento", Map.of("type", "string", "enum", movimientos),
                         "texto", Map.of("type", "string")),
                 "required", List.of("orden", "movimiento", "texto"));
+        Map<String, Object> textoOpcional = Map.of("type", List.of("string", "null"));
+        Map<String, Object> cierre = Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "precio", textoOpcional,
+                        "frase", Map.of("type", "string"),
+                        "ubicacion", textoOpcional),
+                "required", List.of("precio", "frase", "ubicacion"));
         Map<String, Object> esquema = Map.of(
                 "type", "object",
                 "properties", Map.of(
                         "planos", Map.of("type", "array", "items", plano,
                                 "minItems", planos.size(), "maxItems", planos.size()),
+                        "cierre", cierre,
                         "descripcion", Map.of("type", "string"),
                         "hashtags", Map.of("type", "array", "items", Map.of("type", "string"))),
-                "required", List.of("planos", "descripcion", "hashtags"));
+                "required", List.of("planos", "cierre", "descripcion", "hashtags"));
         return json.writeValueAsString(esquema);
     }
 
@@ -111,24 +126,35 @@ final class InstruccionesDelGuion {
                 hashtags.add(hashtag.asString());
             }
         }
-        return Optional.of(new GuionPropuesto(planos, texto(raiz.path("descripcion")), hashtags));
+        JsonNode cierre = raiz.path("cierre");
+        GuionPropuesto.CierrePropuesto cierrePropuesto = cierre.isObject()
+                ? new GuionPropuesto.CierrePropuesto(texto(cierre.path("precio")), texto(cierre.path("frase")),
+                        texto(cierre.path("ubicacion")))
+                : null;
+        return Optional.of(new GuionPropuesto(planos, cierrePropuesto, texto(raiz.path("descripcion")), hashtags));
     }
 
-    private static String plantilla(PaqueteNicho paquete) {
+    private static String plantilla(DatosDelGuion datos, PaqueteNicho paquete) {
+        List<Movimiento> movimientos = paquete.movimientos().para(datos.tipoVideo());
         List<String> lineas = new ArrayList<>();
         for (PlanoPlantilla plano : paquete.plantillaVideo().planosConIa()) {
+            String sugerido = movimientos.stream().anyMatch(m -> m.id().equals(plano.movimientoDeRespaldo()))
+                    ? " Movimiento sugerido: " + plano.movimientoDeRespaldo() + "." : "";
             lineas.add("- Plano " + plano.orden() + " (" + plano.nombre() + "): foto " + plano.foto()
                     + ", " + plano.segundos() + " segundos, texto en pantalla de máximo " + plano.maxPalabras()
-                    + " palabras.");
+                    + " palabras." + sugerido);
         }
         PlanoPlantilla cierre = paquete.plantillaVideo().cierre();
-        lineas.add("- Plano " + cierre.orden() + " (" + cierre.nombre() + "): lo arma el sistema; no lo escribas.");
+        lineas.add("- Plano " + cierre.orden() + " (" + cierre.nombre() + "): " + cierre.segundos()
+                + " segundos con el logo; tú escribes el objeto \"cierre\" y el sistema le agrega el llamado a la "
+                + "acción.");
         return String.join("\n", lineas);
     }
 
     private static String movimientos(DatosDelGuion datos, PaqueteNicho paquete) {
         return String.join("; ", paquete.movimientos().para(datos.tipoVideo()).stream()
-                .map(movimiento -> movimiento.id() + " (" + movimiento.descripcion() + ")")
+                .map(movimiento -> movimiento.id() + " (" + movimiento.descripcion()
+                        + (movimiento.camara3d() ? "; cámara 3D" : "") + ")")
                 .toList());
     }
 

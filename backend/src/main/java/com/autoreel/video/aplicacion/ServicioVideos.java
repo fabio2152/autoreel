@@ -96,9 +96,9 @@ public class ServicioVideos {
     }
 
     /**
-     * Cambia el texto o la foto de un plano, o el precio del cierre, en el storyboard o en la revisión. V21: un texto
-     * por encima del límite se rechaza con el máximo. Los textos que escribe el usuario no pasan por la RN-22.
-     * En la revisión, un texto o un precio solo recomponen (RN-29, V25); una foto nueva regenera ese clip (8.4).
+     * Cambia el texto o la foto de un plano, o el precio o la frase del cierre, en el storyboard o en la revisión.
+     * V21: un texto por encima del límite se rechaza con el máximo. Los textos que escribe el usuario no pasan por la
+     * RN-22. En la revisión, un texto, un precio o una frase solo recomponen (RN-29, V25); una foto nueva regenera ese clip (8.4).
      */
     @Transactional
     public VideoVista editarPlano(Long negocioId, Long videoId, int orden, SolicitudPlano solicitud) {
@@ -119,7 +119,8 @@ public class ServicioVideos {
             editarCierre(plano, solicitud, plantilla, datos);
         } else {
             PlanoPlantilla dePlantilla = plantilla.plano(orden);
-            if (solicitud.precio() != null || (solicitud.texto() == null && solicitud.foto() == null)) {
+            if (solicitud.precio() != null || solicitud.frase() != null
+                    || (solicitud.texto() == null && solicitud.foto() == null)) {
                 throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Envía el texto o la foto nueva del plano.");
             }
             if (solicitud.texto() != null) {
@@ -159,8 +160,9 @@ public class ServicioVideos {
     }
 
     /**
-     * Reintentar un video que terminó en ERROR al generarse (por ejemplo, si el proveedor de IA falló). Como el
-     * video del día se devolvió (RN-27), el reintento lo vuelve a consumir.
+     * Reintentar un video que terminó en ERROR. Si falló al escribir su guion, vuelve a esperarlo sin consumir el video
+     * del día. Si falló al generarse (por ejemplo, si el proveedor de IA falló), como el video del día se devolvió
+     * (RN-27), el reintento lo vuelve a consumir.
      */
     @Transactional
     public VideoVista reintentar(Long negocioId, Long videoId) {
@@ -168,6 +170,10 @@ public class ServicioVideos {
         if (!video.reintentable()) {
             throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_REINTENTABLE",
                     "Este video no se puede reintentar. Crea otro desde el inicio.");
+        }
+        if (video.falloEnElGuion()) {
+            video.reintentarGuion(reloj.instant());
+            return vista(video);
         }
         if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
             throw iaNoDisponible();
@@ -271,19 +277,35 @@ public class ServicioVideos {
         return video;
     }
 
+    /** En el cierre se cambian el precio y la frase; un texto vacío quita el que se envía. */
     private void editarCierre(Plano plano, SolicitudPlano solicitud, PlantillaVideo plantilla,
             LectorDeDatosDelVideo.DatosDelVideo datos) {
-        if (solicitud.precio() == null || solicitud.texto() != null || solicitud.foto() != null) {
-            throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "En el cierre solo se puede cambiar el precio.");
+        if ((solicitud.precio() == null && solicitud.frase() == null) || solicitud.texto() != null
+                || solicitud.foto() != null) {
+            throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA",
+                    "En el cierre solo se pueden cambiar el precio y la frase.");
         }
-        String precio = solicitud.precio().strip();
-        if (precio.length() > plantilla.maximoCaracteresPrecio()) {
-            throw new ExcepcionDeNegocio("PRECIO_MUY_LARGO", "El precio admite hasta "
-                    + plantilla.maximoCaracteresPrecio() + " caracteres.");
+        int maximo = plantilla.maximoCaracteresPrecio();
+        if (solicitud.precio() != null) {
+            String precio = solicitud.precio().strip();
+            if (precio.length() > maximo) {
+                throw new ExcepcionDeNegocio("PRECIO_MUY_LARGO", "El precio admite hasta " + maximo + " caracteres.");
+            }
+            exigirDibujable(precio);
+            exigirSinProhibidas(precio, datos);
+            plano.cambiarPrecio(precio.isEmpty() ? null : precio);
         }
-        exigirDibujable(precio);
-        exigirSinProhibidas(precio, datos);
-        plano.cambiarPrecio(precio.isEmpty() ? null : precio);
+        if (solicitud.frase() != null) {
+            String frase = solicitud.frase().strip();
+            int maxPalabras = plantilla.cierre().maxPalabras();
+            if (frase.length() > maximo || Texto.contarPalabras(frase) > maxPalabras) {
+                throw new ExcepcionDeNegocio("FRASE_MUY_LARGA", "La frase admite hasta " + maxPalabras
+                        + " palabras y " + maximo + " caracteres, para que se lea en el video.");
+            }
+            exigirDibujable(frase);
+            exigirSinProhibidas(frase, datos);
+            plano.cambiarFrase(frase.isEmpty() ? null : frase);
+        }
     }
 
     private String textoValido(String texto, int maxPalabras, LectorDeDatosDelVideo.DatosDelVideo datos) {
@@ -363,9 +385,9 @@ public class ServicioVideos {
                 new VideoVista.PlanDelVideo(video.getPlanAplicado().getNombre(),
                         video.getPlanAplicado().getVideosPorDia(),
                         video.getPlanAplicado().getRegeneracionesPorVideo()),
-                video.isGuionDeRespaldo() ? plantilla.avisoDeRespaldo() : null, planos, cierre,
+                planos, cierre,
                 video.getDescripcionPublicacion(), video.getHashtags(), ValidadorDeGuion.MAXIMO_PUBLICACION, fotos,
-                video.getFechaCreacion(), generacion(video));
+                video.getFechaCreacion(), video.inicioDelGuion(), generacion(video));
     }
 
     private VideoVista.GeneracionVista generacion(Video video) {
@@ -375,7 +397,8 @@ public class ServicioVideos {
                 new VideoVista.ConsumoVista(hoy.usados(), hoy.porDia(), hoy.puedeAprobar()),
                 archivos.urlDeLectura(video.getClaveFinal()), video.getRegeneracionesUsadas(),
                 proveedores.videoDisponible(video.getModeloVideoUsado()), video.getAvisoRevision(),
-                video.getEstado() == EstadoVideo.ERROR ? video.getMotivoError() : null, video.reintentable());
+                video.getEstado() == EstadoVideo.ERROR ? video.getMotivoError() : null, video.reintentable(),
+                video.reintentable() && !video.falloEnElGuion());
     }
 
     private VideoVista.CierreVista cierre(Plano plano, PlantillaVideo plantilla, PerfilNegocio perfil,
@@ -383,7 +406,8 @@ public class ServicioVideos {
         PlanoPlantilla dePlantilla = plantilla.cierre();
         String whatsapp = guion.canales().contains(CamposDelPerfil.CANAL_WHATSAPP) ? guion.whatsapp() : null;
         return new VideoVista.CierreVista(plano.getOrden(), dePlantilla.nombre(), dePlantilla.segundos(),
-                plano.getPrecio(), plantilla.maximoCaracteresPrecio(), plano.getLlamado(), plano.getUbicacion(),
+                plano.getPrecio(), plantilla.maximoCaracteresPrecio(), plano.getFrase(), dePlantilla.maxPalabras(),
+                plano.getLlamado(), plano.getUbicacion(),
                 whatsapp, archivos.urlDeLectura(perfil.getLogoClave()), perfil.getColorPrimario(),
                 perfil.getColorSecundario(), archivos.urlDeLectura(perfil.getFotoLocalClave()));
     }

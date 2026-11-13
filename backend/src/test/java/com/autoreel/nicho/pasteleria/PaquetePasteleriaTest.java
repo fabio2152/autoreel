@@ -11,6 +11,7 @@ import java.util.Map;
 
 import com.autoreel.nicho.dominio.GuionChat;
 import com.autoreel.nicho.dominio.GuionChat.PasoChat;
+import com.autoreel.nicho.dominio.Movimientos;
 import com.autoreel.nicho.dominio.Temporada;
 import com.autoreel.nicho.dominio.ValidadorDeRespuestas;
 import org.junit.jupiter.api.Test;
@@ -145,5 +146,32 @@ class PaquetePasteleriaTest {
         respuestas.remove("horario");
         assertThatThrownBy(() -> ValidadorDeRespuestas.exigirCompletas(preguntas, respuestas))
                 .hasMessageContaining("Horario");
+    }
+
+    @Test
+    void conservaLosMovimientosGuardadosYTraeLosDeCamara3D() {
+        Movimientos movimientos = paquete.movimientos();
+
+        // Los videos ya guardados usan los ids viejos: si uno desaparece, su generación falla.
+        for (String id : List.of("ACERCAMIENTO_LENTO", "ALEJAMIENTO_LENTO", "DESPLAZAMIENTO_LATERAL", "BRILLO_GLASEADO",
+                "AZUCAR_CAYENDO", "VAPOR_SUAVE", "LUZ_CALIDA", "ORBITA_FRONTAL", "ARCO_HEROICO", "MACRO_DETALLE",
+                "GRUA_REVELADO", "PARALAJE_LATERAL", "DIAGONAL_ENFOQUE")) {
+            assertThat(movimientos.buscar(id)).as(id).isPresent();
+        }
+        assertThat(movimientos.para("PRODUCTO_ESTRELLA")).extracting(Movimientos.Movimiento::id)
+                .doesNotContain("VAPOR_SUAVE").contains("ORBITA_FRONTAL");
+        assertThat(movimientos.prohibiciones()).doesNotContain("15 degrees");
+    }
+
+    @Test
+    void armaElPromptDelClipConLaPlantillaDeTomaYLasProhibiciones() {
+        Movimientos movimientos = paquete.movimientos();
+        Movimientos.Movimiento orbita = movimientos.buscar("ORBITA_FRONTAL").orElseThrow();
+
+        String prompt = movimientos.promptDeToma(orbita);
+
+        assertThat(prompt).contains(orbita.instruccion()).endsWith(movimientos.prohibiciones())
+                .doesNotContain(Movimientos.MARCA_INSTRUCCION);
+        assertThat(movimientos.negativos()).contains("hands", "text", "logo");
     }
 }
