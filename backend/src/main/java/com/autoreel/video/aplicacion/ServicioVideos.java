@@ -158,6 +158,25 @@ public class ServicioVideos {
         return vista(video);
     }
 
+    /**
+     * Reintentar un video que terminó en ERROR al generarse (por ejemplo, si el proveedor de IA falló). Como el
+     * video del día se devolvió (RN-27), el reintento lo vuelve a consumir.
+     */
+    @Transactional
+    public VideoVista reintentar(Long negocioId, Long videoId) {
+        Video video = conEstado(negocioId, videoId, EstadoVideo.ERROR);
+        if (!video.reintentable()) {
+            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_REINTENTABLE",
+                    "Este video no se puede reintentar. Crea otro desde el inicio.");
+        }
+        if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
+            throw iaNoDisponible();
+        }
+        java.time.LocalDate dia = consumo.consumir(negocioId, video.getPlanAplicado().getVideosPorDia());
+        video.reintentar(dia, reloj.instant());
+        return vista(video);
+    }
+
     /** RF-24, RN-28 (V26): pedir otro clip para un plano; una regeneración que falla no se cobra. */
     @Transactional
     public VideoVista regenerar(Long negocioId, Long videoId, int orden) {
@@ -356,7 +375,7 @@ public class ServicioVideos {
                 new VideoVista.ConsumoVista(hoy.usados(), hoy.porDia(), hoy.puedeAprobar()),
                 archivos.urlDeLectura(video.getClaveFinal()), video.getRegeneracionesUsadas(),
                 proveedores.videoDisponible(video.getModeloVideoUsado()), video.getAvisoRevision(),
-                video.getEstado() == EstadoVideo.ERROR ? video.getMotivoError() : null);
+                video.getEstado() == EstadoVideo.ERROR ? video.getMotivoError() : null, video.reintentable());
     }
 
     private VideoVista.CierreVista cierre(Plano plano, PlantillaVideo plantilla, PerfilNegocio perfil,

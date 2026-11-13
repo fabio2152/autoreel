@@ -6,6 +6,7 @@ import { ErrorApi } from '../api/cliente'
 import {
   aprobarStoryboard,
   aprobarVideo,
+  reintentarVideo,
   CLAVE_VIDEOS,
   claveVideo,
   contarPalabras,
@@ -134,6 +135,7 @@ function Storyboard({ video }: { video: Video }) {
   })
   const crear = useMutation({ mutationFn: () => aprobarStoryboard(video.id), onSuccess: guardar })
   const aprobar = useMutation({ mutationFn: () => aprobarVideo(video.id), onSuccess: guardar })
+  const reintentar = useMutation({ mutationFn: () => reintentarVideo(video.id), onSuccess: guardar })
   const descargar = useMutation({
     mutationFn: () => enlaceDeDescarga(video.id),
     onSuccess: (url) => window.location.assign(url),
@@ -159,7 +161,8 @@ function Storyboard({ video }: { video: Video }) {
       {video.estado === 'DESCARTADO' && <Aviso>Descartaste esta propuesta.</Aviso>}
       {video.estado === 'ERROR' && (
         <Aviso tipo="error">
-          {video.generacion.motivoError ?? 'No pudimos preparar este video.'} Crea otro desde el inicio.
+          {video.generacion.motivoError ?? 'No pudimos preparar este video.'}
+          {video.generacion.puedeReintentar ? ' Puedes reintentarlo abajo.' : ' Crea otro desde el inicio.'}
         </Aviso>
       )}
       {video.avisoDeRespaldo && video.estado === 'STORYBOARD' && <Aviso>{video.avisoDeRespaldo}</Aviso>}
@@ -231,6 +234,26 @@ function Storyboard({ video }: { video: Video }) {
             Descargar
           </Boton>
           <p className="text-center text-xs text-stone-500">Muy pronto podrás publicarlo en Instagram desde aquí.</p>
+        </div>
+      )}
+      {video.estado === 'ERROR' && video.generacion.puedeReintentar && (
+        <div className="space-y-2">
+          {reintentar.isError && <Aviso tipo="error">{mensajeDeError(reintentar.error)}</Aviso>}
+          <Boton
+            className="w-full"
+            cargando={reintentar.isPending}
+            disabled={!videosHoy.puedeAprobar || !video.generacion.iaDisponible}
+            onClick={() => reintentar.mutate()}
+          >
+            Reintentar
+          </Boton>
+          <p className="text-center text-xs text-stone-500">
+            {!video.generacion.iaDisponible
+              ? 'Por ahora no podemos crear clips con IA. Inténtalo en un rato.'
+              : videosHoy.puedeAprobar
+                ? `Usarás ${videosHoy.porDia === 1 ? 'tu video de hoy' : `1 de tus ${videosHoy.porDia} videos de hoy`}.`
+                : 'Ya usaste tu video de hoy. Mañana tienes uno nuevo.'}
+          </p>
         </div>
       )}
       {!editable && (

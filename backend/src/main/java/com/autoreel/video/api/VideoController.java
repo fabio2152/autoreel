@@ -47,6 +47,12 @@ public class VideoController {
         return servicio.aprobarStoryboard(usuario.negocioId(), id);
     }
 
+    /** Reintentar un video que falló al generarse. Vuelve a consumir el video del día (RN-26). */
+    @PostMapping("/{id}/reintentar")
+    public VideoVista reintentar(@AuthenticationPrincipal UsuarioAutenticado usuario, @PathVariable Long id) {
+        return servicio.reintentar(usuario.negocioId(), id);
+    }
+
     /** RF-24: otro clip para un plano (RN-28). */
     @PostMapping("/{id}/planos/{orden}/regenerar")
     public VideoVista regenerar(@AuthenticationPrincipal UsuarioAutenticado usuario, @PathVariable Long id,
