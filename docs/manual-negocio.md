@@ -213,7 +213,7 @@ Debajo del título dice: "Opcional: ayúdanos a que tus videos suenen a ti." Pue
 |---|---|---|
 | **¿Qué te diferencia?** (opcional) | Una frase, hasta 80 caracteres. Lo que te distingue de otras pastelerías. | "Recetas de la abuela con fruta de temporada" |
 | **Palabras o temas que nunca quieres en tus videos** (opcional) | Sepáralos con comas, hasta 300 caracteres. | "barato, oferta, dieta" |
-| **Foto del local** (opcional) | Tu vitrina o tu fachada, en vertical. La usamos de fondo al final del video. Si no la subes, usaremos tus colores. Sigue las mismas reglas que las [fotos de productos](#8-cómo-tomar-buenas-fotos). Para quitarla, toca **Quitar**. | — |
+| **Foto del local** (opcional) | Tu vitrina o tu fachada, en vertical. La usamos de fondo al final del video. Si no la subes, usaremos tus colores. Sigue las mismas reglas que las [fotos de productos](#8-cómo-tomar-buenas-fotos), salvo el tamaño: basta con **480 px** en el lado más corto. Para quitarla, toca **Quitar**. | — |
 
 Toca **Terminar**.
 

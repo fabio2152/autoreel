@@ -13,7 +13,7 @@ public enum PropositoArchivo {
     LOGO("logo", Set.of("image/png"), 5),
     /** RN-11: JPG, PNG o WebP de hasta 10 MB, con el lado menor de al menos 720 px. */
     FOTO_PRODUCTO("foto_producto", Set.of("image/jpeg", "image/png", "image/webp"), 10),
-    /** Fondo del plano de cierre (1080 × 1920): mismas reglas que las fotos de productos. */
+    /** Fondo del plano de cierre: mismos tipos y peso que las fotos de productos, con el lado menor de al menos 480 px. */
     FOTO_LOCAL("foto_local", Set.of("image/jpeg", "image/png", "image/webp"), 10);
 
     private static final Map<String, String> EXTENSIONES =
