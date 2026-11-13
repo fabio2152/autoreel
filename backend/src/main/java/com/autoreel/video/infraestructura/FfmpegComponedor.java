@@ -1,5 +1,6 @@
 package com.autoreel.video.infraestructura;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -43,11 +44,27 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
     static final int BORDE_DERECHO = 900;
     static final int CENTRO_X = (MARGEN_IZQUIERDO + BORDE_DERECHO) / 2;
     static final int ANCHO_UTIL = BORDE_DERECHO - MARGEN_IZQUIERDO;
-    /** Los textos de los planos empiezan en la mitad inferior, sobre la zona de la descripción. */
-    static final int Y_TEXTO_PLANO = 1100;
-    static final double FUNDIDO_AL_CIERRE = 0.4;
+    /** Borde inferior del texto de los planos: tercio inferior, sin tapar el producto ni la descripción de Instagram. */
+    static final int BASE_TEXTO_PLANO = 1470;
+    /** Alto de la franja oscura degradada que va bajo el texto de los planos. */
+    static final int ALTO_FRANJA = 860;
+    /**
+     * Fundido entre planos. Los planos con foto duran lo suyo (el clip de IA no alcanza para alargarlos sin congelar el
+     * último cuadro) y el cierre, que es un fondo fijo, absorbe las transiciones para que el total siga exacto (RN-31).
+     */
+    static final double TRANSICION = 0.3;
+    /** Los textos aparecen subiendo con un fundido y se desvanecen antes de la transición. */
+    static final double RETRASO_DEL_TEXTO = 0.3;
+    static final double ENTRADA = 0.35;
+    static final double ESCALON = 0.1;
+    static final double SALIDA = 0.3;
+    static final int SUBIDA = 40;
+    /** Centro vertical del bloque del cierre (logo, texto principal, llamado, ubicación y WhatsApp). */
+    static final int CENTRO_DEL_CIERRE = 900;
+    static final int DIAMETRO_LOGO = 300;
     static final double FUNDIDO_DE_MUSICA = 1.5;
-
+    private static final String CONTORNO =
+            ":borderw=2:bordercolor=black@0.35:shadowx=0:shadowy=4:shadowcolor=black@0.55";
     /**
      * @param ruta          ejecutable de FFmpeg ({@code FFMPEG_PATH}); por defecto, el del PATH.
      * @param tiempoMaximo  tiempo máximo de una composición.
@@ -108,79 +125,75 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
     List<String> preparar(Path carpeta, Composicion composicion) throws IOException {
         Files.write(carpeta.resolve("fuente.ttf"), composicion.tipografia());
         DisenoDeTextos diseno = new DisenoDeTextos(composicion.tipografia());
-        List<String> entradas = new ArrayList<>();
+        Entradas entradas = new Entradas();
         List<String> filtros = new ArrayList<>();
-        int total = 0;
-        int indice = 0;
         List<PlanoAComponer> planos = composicion.planos().stream()
                 .sorted(Comparator.comparingInt(PlanoAComponer::orden)).toList();
+        CierreAComponer cierre = composicion.cierre();
+        int total = cierre.segundos();
+
+        Files.write(carpeta.resolve("franja.png"), GraficosDelVideo.franjaInferior(ANCHO, ALTO_FRANJA, 0.62f));
+        StringBuilder franjas = new StringBuilder("[" + entradas.agregar("-i", "franja.png") + ":v]format=rgba,split="
+                + planos.size());
+        for (int i = 0; i < planos.size(); i++) {
+            franjas.append("[franja").append(i).append("]");
+        }
+        filtros.add(franjas.toString());
+
+        // Cada plano dura lo suyo; el siguiente entra fundiéndose sobre su último tramo.
+        String ultimoArchivo = null;
         for (int i = 0; i < planos.size(); i++) {
             PlanoAComponer plano = planos.get(i);
-            String cadena;
+            double largo = plano.segundos();
+            String origen;
             if (plano.clip() != null) {
-                String archivo = "clip" + plano.orden() + ".mp4";
-                Files.write(carpeta.resolve(archivo), plano.clip());
-                entradas.addAll(List.of("-i", archivo));
-                cadena = "[" + indice + ":v]scale=" + ANCHO + ":" + ALTO + ":force_original_aspect_ratio=increase,"
-                        + "crop=" + ANCHO + ":" + ALTO + ",setsar=1,fps=" + CUADROS_POR_SEGUNDO + ","
-                        + "tpad=stop_mode=clone:stop_duration=" + plano.segundos() + ","
-                        + "trim=duration=" + plano.segundos() + ",setpts=PTS-STARTPTS,format=yuv420p";
+                ultimoArchivo = "clip" + plano.orden() + ".mp4";
+                Files.write(carpeta.resolve(ultimoArchivo), plano.clip());
+                origen = "[" + entradas.agregar("-i", ultimoArchivo) + ":v]" + clip(largo);
             } else {
-                String archivo = "foto" + plano.orden() + ".jpg";
-                Files.write(carpeta.resolve(archivo), plano.foto());
-                entradas.addAll(List.of("-i", archivo));
-                cadena = "[" + indice + ":v]" + acercamiento(plano.segundos(), 0.12);
+                ultimoArchivo = "foto" + plano.orden() + ".jpg";
+                Files.write(carpeta.resolve(ultimoArchivo), plano.foto());
+                origen = "[" + entradas.agregar("-i", ultimoArchivo) + ":v]" + acercamiento(largo, 0.12);
             }
-            indice++;
-            cadena += textosDelPlano(carpeta, diseno, plano);
-            if (i == planos.size() - 1) {
-                cadena += ",fade=t=out:st=" + decimal(plano.segundos() - FUNDIDO_AL_CIERRE) + ":d="
-                        + decimal(FUNDIDO_AL_CIERRE);
-            }
-            filtros.add(cadena + "[v" + i + "]");
+            filtros.add(origen + "[base" + i + "]");
+            filtros.add("[base" + i + "][franja" + i + "]overlay=x=0:y=" + (ALTO - ALTO_FRANJA)
+                    + textosDelPlano(carpeta, diseno, plano) + segmento() + "[v" + i + "]");
             total += plano.segundos();
         }
 
-        CierreAComponer cierre = composicion.cierre();
-        Files.write(carpeta.resolve("cierre.jpg"), cierre.fondo());
-        entradas.addAll(List.of("-i", "cierre.jpg"));
-        String fondo = "[" + indice + ":v]" + acercamiento(cierre.segundos(), cierre.fondoEsFoto() ? 0.05 : 0)
-                + (cierre.fondoEsFoto() ? ",colorchannelmixer=rr=0.6:gg=0.6:bb=0.6" : "");
-        indice++;
-        if (cierre.logo() != null) {
-            Files.write(carpeta.resolve("logo.png"), cierre.logo());
-            entradas.addAll(List.of("-i", "logo.png"));
-            filtros.add("[" + indice + ":v]scale=w=360:h=360:force_original_aspect_ratio=decrease,format=rgba[logo]");
-            filtros.add(fondo + "[fondo]");
-            fondo = "[fondo][logo]overlay=x=" + CENTRO_X + "-w/2:y=470-h/2,format=yuv420p";
-            indice++;
-        }
-        filtros.add(fondo + textosDelCierre(carpeta, diseno, cierre) + ",fade=t=in:st=0:d="
-                + decimal(FUNDIDO_AL_CIERRE) + "[v" + planos.size() + "]");
-        total += cierre.segundos();
+        // El cierre dura lo suyo más una transición por plano: así el total sigue siendo el de la plantilla.
+        double largoDelCierre = cierre.segundos() + planos.size() * TRANSICION;
+        filtros.addAll(cierre(carpeta, diseno, cierre, largoDelCierre, entradas, ultimoArchivo,
+                "v" + planos.size()));
 
-        StringBuilder union = new StringBuilder();
-        for (int i = 0; i <= planos.size(); i++) {
-            union.append("[v").append(i).append("]");
+        // Fundidos encadenados: cada uno empieza una transición antes del final de lo que va del video.
+        String anterior = "v0";
+        double inicio = 0;
+        for (int i = 1; i <= planos.size(); i++) {
+            inicio += planos.get(i - 1).segundos() - TRANSICION;
+            String salida = i == planos.size() ? "v" : "x" + i;
+            filtros.add("[" + anterior + "][v" + i + "]xfade=transition=fade:duration=" + decimal(TRANSICION)
+                    + ":offset=" + decimal(inicio) + (i == planos.size() ? ",format=yuv420p" : "") + "[" + salida
+                    + "]");
+            anterior = salida;
         }
-        filtros.add(union + "concat=n=" + (planos.size() + 1) + ":v=1:a=0,format=yuv420p[v]");
 
+        int musica;
         if (composicion.musica() != null) {
             Files.write(carpeta.resolve("musica.m4a"), composicion.musica());
-            entradas.addAll(List.of("-i", "musica.m4a"));
+            musica = entradas.agregar("-i", "musica.m4a");
         } else {
-            entradas.addAll(List.of("-f", "lavfi", "-t", String.valueOf(total), "-i",
-                    "anullsrc=r=44100:cl=stereo"));
+            musica = entradas.agregar("-f", "lavfi", "-t", String.valueOf(total), "-i", "anullsrc=r=44100:cl=stereo");
         }
-        filtros.add("[" + indice + ":a]aresample=44100,apad,atrim=duration=" + total + ",asetpts=PTS-STARTPTS,"
+        filtros.add("[" + musica + ":a]aresample=44100,apad,atrim=duration=" + total + ",asetpts=PTS-STARTPTS,"
                 + "afade=t=out:st=" + decimal(total - FUNDIDO_DE_MUSICA) + ":d=" + decimal(FUNDIDO_DE_MUSICA) + "[a]");
 
         List<String> comando = new ArrayList<>(List.of(propiedades.ruta(), "-nostdin", "-hide_banner", "-nostats",
                 "-loglevel", "error", "-y"));
-        comando.addAll(entradas);
+        comando.addAll(entradas.argumentos);
         comando.addAll(List.of("-filter_complex", String.join(";", filtros),
                 "-map", "[v]", "-map", "[a]",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                 "-r", String.valueOf(CUADROS_POR_SEGUNDO),
                 "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
                 "-movflags", "+faststart", "-threads", String.valueOf(propiedades.hilos()),
@@ -188,74 +201,208 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
         return comando;
     }
 
+    /** Las entradas de FFmpeg, numeradas en el orden en que se agregan. */
+    private static final class Entradas {
+
+        private final List<String> argumentos = new ArrayList<>();
+        private int cantidad;
+
+        /** @return el número de la entrada, para referirse a ella en el filtro. */
+        int agregar(String... opciones) {
+            argumentos.addAll(List.of(opciones));
+            return cantidad++;
+        }
+    }
+
+    /** El clip de IA (720p) llevado a 1080×1920 con un escalado nítido, y alargado con su último cuadro si falta. */
+    private static String clip(double segundos) {
+        return "scale=" + ANCHO + ":" + ALTO + ":force_original_aspect_ratio=increase:flags=lanczos,"
+                + "crop=" + ANCHO + ":" + ALTO + ",setsar=1,unsharp=5:5:0.5:5:5:0,fps=" + CUADROS_POR_SEGUNDO + ","
+                + "tpad=stop_mode=clone:stop_duration=" + decimal(segundos) + ","
+                + "trim=duration=" + decimal(segundos) + ",setpts=PTS-STARTPTS,format=yuv420p";
+    }
+
     /** Una imagen fija como video, con un acercamiento lento (0 = sin movimiento). */
-    private static String acercamiento(int segundos, double zoom) {
-        int cuadros = segundos * CUADROS_POR_SEGUNDO;
+    private static String acercamiento(double segundos, double zoom) {
+        long cuadros = Math.round(segundos * CUADROS_POR_SEGUNDO);
         return "scale=" + (ANCHO * 2) + ":" + (ALTO * 2) + ",setsar=1,"
                 + "zoompan=z='1+" + decimal(zoom) + "*on/" + cuadros + "':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
                 + ":d=" + cuadros + ":s=" + ANCHO + "x" + ALTO + ":fps=" + CUADROS_POR_SEGUNDO
-                + ",trim=duration=" + segundos + ",setpts=PTS-STARTPTS,format=yuv420p";
+                + ",trim=duration=" + decimal(segundos) + ",setpts=PTS-STARTPTS,format=yuv420p";
     }
 
+    /** Mismo formato y base de tiempo en todos los tramos: xfade lo exige. */
+    private static String segmento() {
+        return ",setsar=1,fps=" + CUADROS_POR_SEGUNDO + ",format=yuv420p";
+    }
+
+    /** Texto del plano en el tercio inferior, centrado y creciendo hacia arriba desde la base. */
     private String textosDelPlano(Path carpeta, DisenoDeTextos diseno, PlanoAComponer plano) throws IOException {
         String texto = Texto.soloDibujable(plano.texto());
-        if (texto == null || texto.isEmpty()) {
+        if (vacio(texto)) {
             return "";
         }
         DisenoDeTextos.Bloque bloque = diseno.repartir(texto, ANCHO_UTIL - 40, 3, 76, 68, 60, 52);
+        int alto = diseno.altoDeLinea(bloque.tamano());
+        int y = BASE_TEXTO_PLANO - alto * bloque.lineas().size();
         StringBuilder filtros = new StringBuilder();
-        int y = Y_TEXTO_PLANO;
         for (int i = 0; i < bloque.lineas().size(); i++) {
             String archivo = "plano" + plano.orden() + "-" + i + ".txt";
             escribirTexto(carpeta, archivo, bloque.lineas().get(i));
-            filtros.append(",drawtext=fontfile=fuente.ttf:textfile=").append(archivo)
-                    .append(":expansion=none:fontcolor=white:fontsize=").append(bloque.tamano())
-                    .append(":x=").append(CENTRO_X).append("-text_w/2:y=").append(y)
-                    .append(":box=1:boxcolor=black@0.45:boxborderw=18");
-            y += Math.round(bloque.tamano() * 1.45f);
+            filtros.append(texto(archivo, bloque.tamano(), "white", y, RETRASO_DEL_TEXTO + i * ESCALON,
+                    plano.segundos() - TRANSICION)).append(CONTORNO);
+            y += alto;
         }
         return filtros.toString();
     }
 
-    private String textosDelCierre(Path carpeta, DisenoDeTextos diseno, CierreAComponer cierre) throws IOException {
-        record Linea(String texto, int maximoLineas, int[] tamanos) {
+    /**
+     * El cierre: de fondo, la foto del local o el último cuadro del último plano desenfocado; encima, la insignia del
+     * logo, el texto principal, el llamado en una píldora del color de marca y la ubicación y el WhatsApp, que
+     * entran escalonados.
+     *
+     * @param segundos      lo que dura el tramo del cierre, con las transiciones que absorbe.
+     * @param ultimoArchivo el clip o la foto del último plano, para el fondo sin foto del local.
+     */
+    private List<String> cierre(Path carpeta, DisenoDeTextos diseno, CierreAComponer cierre, double segundos,
+            Entradas entradas, String ultimoArchivo, String salida) throws IOException {
+        List<String> filtros = new ArrayList<>();
+        if (cierre.fotoDelLocal() != null) {
+            Files.write(carpeta.resolve("local.jpg"), cierre.fotoDelLocal());
+            filtros.add("[" + entradas.agregar("-i", "local.jpg") + ":v]" + acercamiento(segundos, 0.05)
+                    + ",colorchannelmixer=rr=0.55:gg=0.55:bb=0.55[fondo]");
+        } else {
+            // Un solo cuadro (el del final del último plano), desenfocado y oscurecido, durante todo el cierre.
+            int entrada = ultimoArchivo.endsWith(".mp4") ? entradas.agregar("-sseof", "-0.3", "-i", ultimoArchivo)
+                    : entradas.agregar("-i", ultimoArchivo);
+            filtros.add("[" + entrada + ":v]scale=" + ANCHO + ":" + ALTO + ":force_original_aspect_ratio=increase,"
+                    + "crop=" + ANCHO + ":" + ALTO + ",setsar=1,trim=end_frame=1,gblur=sigma=36,"
+                    + "colorchannelmixer=rr=0.5:gg=0.5:bb=0.5,vignette,fps=" + CUADROS_POR_SEGUNDO + ","
+                    + "tpad=stop_mode=clone:stop_duration=" + decimal(segundos) + ",trim=duration="
+                    + decimal(segundos) + ","
+                    + "setpts=PTS-STARTPTS,format=yuv420p[fondo]");
         }
-        List<Linea> lineas = new ArrayList<>();
-        agregar(lineas, cierre.precio(), texto -> new Linea(texto, 2, new int[] {96, 84, 72, 60}));
-        agregar(lineas, cierre.llamado(), texto -> new Linea(texto, 2, new int[] {68, 60, 52}));
-        String ubicacion = Texto.soloDibujable(cierre.ubicacion());
+        String actual = "fondo";
+
+        // Medidas de cada pieza, para centrar el bloque entero en la pantalla.
+        String principal = Texto.soloDibujable(cierre.textoPrincipal());
+        DisenoDeTextos.Bloque bloquePrincipal = vacio(principal) ? null
+                : diseno.repartir(principal, ANCHO_UTIL, 2, 112, 100, 88, 76);
         String llamado = Texto.soloDibujable(cierre.llamado());
+        int rellenoX = 44;
+        int rellenoY = 20;
+        DisenoDeTextos.Bloque bloqueLlamado = vacio(llamado) ? null
+                : diseno.repartir(llamado, ANCHO_UTIL - 2 * rellenoX, 2, 62, 56, 50);
+        List<String> pequenas = new ArrayList<>();
+        String ubicacion = Texto.soloDibujable(cierre.ubicacion());
         // "Te esperamos en Miraflores" ya dice el distrito.
-        if (ubicacion != null && !ubicacion.isEmpty() && (llamado == null || !llamado.contains(ubicacion))) {
-            lineas.add(new Linea(ubicacion, 1, new int[] {56, 48}));
+        if (!vacio(ubicacion) && (llamado == null || !llamado.contains(ubicacion))) {
+            pequenas.add(ubicacion);
         }
-        agregar(lineas, cierre.whatsapp(), texto -> new Linea(texto, 1, new int[] {56, 48}));
+        String whatsapp = Texto.soloDibujable(cierre.whatsapp());
+        if (!vacio(whatsapp)) {
+            pequenas.add(whatsapp);
+        }
+        int tamanoPequeno = pequenas.stream()
+                .mapToInt(texto -> diseno.repartir(texto, ANCHO_UTIL, 1, 50, 44).tamano()).min().orElse(50);
 
-        StringBuilder filtros = new StringBuilder();
-        int y = 760;
-        int numero = 0;
-        for (Linea linea : lineas) {
-            DisenoDeTextos.Bloque bloque = diseno.repartir(linea.texto(), ANCHO_UTIL, linea.maximoLineas(),
-                    linea.tamanos());
-            for (String texto : bloque.lineas()) {
-                String archivo = "cierre-" + numero++ + ".txt";
-                escribirTexto(carpeta, archivo, texto);
-                filtros.append(",drawtext=fontfile=fuente.ttf:textfile=").append(archivo)
-                        .append(":expansion=none:fontcolor=white:fontsize=").append(bloque.tamano())
-                        .append(":x=").append(CENTRO_X).append("-text_w/2:y=").append(y)
-                        .append(":borderw=3:bordercolor=black@0.6:shadowx=2:shadowy=2:shadowcolor=black@0.4");
-                y += Math.round(bloque.tamano() * 1.3f);
-            }
-            y += 36;
+        int altoLogo = cierre.logo() == null ? 0 : DIAMETRO_LOGO + 56;
+        int altoPrincipal = bloquePrincipal == null ? 0
+                : diseno.altoDeLinea(bloquePrincipal.tamano()) * bloquePrincipal.lineas().size() + 44;
+        int altoPildora = bloqueLlamado == null ? 0
+                : diseno.altoDeLinea(bloqueLlamado.tamano()) * bloqueLlamado.lineas().size() + 2 * rellenoY;
+        int altoPequenas = pequenas.isEmpty() ? 0 : 40 + (diseno.altoDeLinea(tamanoPequeno) + 6) * pequenas.size();
+        int y = Math.max(260, CENTRO_DEL_CIERRE - (altoLogo + altoPrincipal + altoPildora + altoPequenas) / 2);
+
+        if (cierre.logo() != null) {
+            Files.write(carpeta.resolve("insignia.png"), GraficosDelVideo.insignia(cierre.logo(), DIAMETRO_LOGO));
+            int lado = DIAMETRO_LOGO + 2 * GraficosDelVideo.MARGEN_DE_SOMBRA;
+            int entrada = entradas.agregar("-loop", "1", "-framerate", String.valueOf(CUADROS_POR_SEGUNDO),
+                    "-t", decimal(segundos), "-i", "insignia.png");
+            double aparece = 0.2;
+            filtros.add("[" + entrada + ":v]format=rgba,fade=t=in:st=" + decimal(aparece) + ":d=0.50:alpha=1,"
+                    + "scale=w='" + lado + "*(0.8+0.2*" + avance(aparece, 0.5) + ")':h=-1:eval=frame[logo]");
+            filtros.add("[" + actual + "][logo]overlay=x=" + CENTRO_X + "-w/2:y=" + (y + DIAMETRO_LOGO / 2)
+                    + "-h/2[conlogo]");
+            actual = "conlogo";
+            y += altoLogo;
         }
-        return filtros.toString();
+
+        StringBuilder textos = new StringBuilder();
+        int numero = 0;
+        if (bloquePrincipal != null) {
+            int alto = diseno.altoDeLinea(bloquePrincipal.tamano());
+            for (int i = 0; i < bloquePrincipal.lineas().size(); i++) {
+                String archivo = "cierre-" + numero++ + ".txt";
+                escribirTexto(carpeta, archivo, bloquePrincipal.lineas().get(i));
+                textos.append(texto(archivo, bloquePrincipal.tamano(), "white", y, 0.45 + i * ESCALON, 0))
+                        .append(":borderw=3:bordercolor=black@0.4:shadowx=0:shadowy=6:shadowcolor=black@0.6");
+                y += alto;
+            }
+            y += 44;
+        }
+        if (bloqueLlamado != null) {
+            Color marca = GraficosDelVideo.color(cierre.colorDeMarca());
+            int alto = diseno.altoDeLinea(bloqueLlamado.tamano());
+            int ancho = bloqueLlamado.lineas().stream()
+                    .mapToInt(linea -> diseno.ancho(linea, bloqueLlamado.tamano())).max().orElse(0) + 2 * rellenoX;
+            Files.write(carpeta.resolve("pildora.png"), GraficosDelVideo.pildora(ancho, altoPildora, marca));
+            int entrada = entradas.agregar("-loop", "1", "-framerate", String.valueOf(CUADROS_POR_SEGUNDO),
+                    "-t", decimal(segundos), "-i", "pildora.png");
+            double aparece = 0.75;
+            filtros.add("[" + entrada + ":v]format=rgba,fade=t=in:st=" + decimal(aparece) + ":d="
+                    + decimal(ENTRADA) + ":alpha=1[pildora]");
+            filtros.add("[" + actual + "][pildora]overlay=x=" + CENTRO_X + "-w/2:y='" + y + "+" + SUBIDA
+                    + "*pow(1-" + avance(aparece, ENTRADA) + "\\,2)'[conpildora]");
+            actual = "conpildora";
+            String colorDelTexto = GraficosDelVideo.colorDeTextoSobre(marca);
+            int yTexto = y + rellenoY;
+            for (String linea : bloqueLlamado.lineas()) {
+                String archivo = "cierre-" + numero++ + ".txt";
+                escribirTexto(carpeta, archivo, linea);
+                textos.append(texto(archivo, bloqueLlamado.tamano(), colorDelTexto, yTexto, aparece, 0));
+                yTexto += alto;
+            }
+            y += altoPildora;
+        }
+        if (!pequenas.isEmpty()) {
+            y += 40;
+            int alto = diseno.altoDeLinea(tamanoPequeno);
+            for (int i = 0; i < pequenas.size(); i++) {
+                String archivo = "cierre-" + numero++ + ".txt";
+                escribirTexto(carpeta, archivo, pequenas.get(i));
+                textos.append(texto(archivo, tamanoPequeno, "white@0.92", y, 0.95 + i * ESCALON, 0))
+                        .append(CONTORNO);
+                y += alto + 6;
+            }
+        }
+        filtros.add("[" + actual + "]format=yuv420p" + textos + segmento() + "[" + salida + "]");
+        return filtros;
     }
 
-    private static <T> void agregar(List<T> lineas, String texto, java.util.function.Function<String, T> crear) {
-        String limpio = Texto.soloDibujable(texto);
-        if (limpio != null && !limpio.isEmpty()) {
-            lineas.add(crear.apply(limpio));
-        }
+    /**
+     * Una línea de texto animada: entra con un fundido mientras sube {@link #SUBIDA} píxeles y, si tiene fin, se
+     * desvanece antes de él.
+     *
+     * @param y   borde superior de la línea, según las medidas de la tipografía ({@code y_align=font}).
+     * @param fin segundo en que el texto ya no se ve; 0 si se queda hasta el final.
+     */
+    private static String texto(String archivo, int tamano, String color, int y, double inicio, double fin) {
+        String aparicion = avance(inicio, ENTRADA);
+        String alfa = fin > 0 ? "min(" + aparicion + "\\,clip((" + decimal(fin) + "-t)/" + decimal(SALIDA)
+                + "\\,0\\,1))" : aparicion;
+        return ",drawtext=fontfile=fuente.ttf:textfile=" + archivo + ":expansion=none:fontcolor=" + color
+                + ":fontsize=" + tamano + ":x=" + CENTRO_X + "-text_w/2:y_align=font"
+                + ":y='" + y + "+" + SUBIDA + "*pow(1-" + aparicion + "\\,2)':alpha='" + alfa + "'";
+    }
+
+    /** De 0 a 1 entre {@code inicio} y {@code inicio + duracion}, con frenado suave al final. */
+    private static String avance(double inicio, double duracion) {
+        return "(1-pow(1-clip((t-" + decimal(inicio) + ")/" + decimal(duracion) + "\\,0\\,1)\\,3))";
+    }
+
+    private static boolean vacio(String texto) {
+        return texto == null || texto.isEmpty();
     }
 
     /** UTF-8 sin BOM y sin salto de línea al final: drawtext dibujaría el salto. */

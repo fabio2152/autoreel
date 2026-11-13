@@ -2,7 +2,7 @@
 
 Guía de uso del **panel de administración de AutoReel** (`/admin`). Explica cómo crear negocios, entregarles su acceso, cobrarles, configurar la IA y darles soporte.
 
-> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) y la **fase 8** (despliegue en AWS) están **pendientes** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
+> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). *Actualización del 2026-11-12:* con la **mejora de la calidad del video** (ADR 0021), **el guion tampoco tiene respaldo sin IA** (sección 18.2). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) y la **fase 8** (despliegue en AWS) están **pendientes** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
 
 ---
 
@@ -25,7 +25,7 @@ Guía de uso del **panel de administración de AutoReel** (`/admin`). Explica c�
 15. [Ajustes: integraciones y claves](#15-ajustes-integraciones-y-claves)
 16. [Ajustes: planes](#16-ajustes-planes)
 17. [Entrar como el negocio](#17-entrar-como-el-negocio)
-18. [IA del guion: Gemini, respaldo y costos](#18-ia-del-guion-gemini-respaldo-y-costos)
+18. [IA del guion: Gemini, reintentos y costos](#18-ia-del-guion-gemini-reintentos-y-costos)
 19. [IA del video: Gemini Omni Flash, Veo y FFmpeg](#19-ia-del-video-gemini-omni-flash-veo-y-ffmpeg)
 20. [Negocio de ejemplo (perfil dev)](#20-negocio-de-ejemplo-perfil-dev)
 21. [Mensajes de error frecuentes](#21-mensajes-de-error-frecuentes)
@@ -721,7 +721,7 @@ Los modelos se agrupan en **Video (clips)** y **Texto (guion)**. Cada tarjeta mu
 **Activar y desactivar.**
 - **Activar** exige que la clave del modelo esté configurada; si no, verás "Configura la credencial *clave* antes de activar el modelo." Pruébalo antes de activarlo.
 - **Desactivar** no se permite si el modelo lo usa un plan activo o un plan con negocios (RN-48): "El plan *Lite* usa este modelo. Asígnale otro modelo antes de desactivarlo." Cambia primero el modelo del plan (sección 16).
-- Un modelo inactivo no se puede asignar a un plan. Si un plan quedara con un modelo inactivo o sin clave, sus guiones usarían el respaldo (sección 18.2) y sus videos no se podrían crear (sección 19.5).
+- Un modelo inactivo no se puede asignar a un plan. Si un plan quedara con un modelo inactivo o sin clave, sus propuestas no se podrían escribir (quedarían en error tras 5 minutos de reintentos, sección 18.2) y sus videos no se podrían crear (sección 19.5).
 
 **Agregar o editar un modelo** (RN-56). Sirve para usar un modelo nuevo **de un proveedor que ya tiene adaptador** (por ejemplo, Veo 3.1 Fast), sin programar. Un proveedor nuevo sí requiere programar su adaptador: ver `docs/guias/nuevo-proveedor-ia.md`.
 
@@ -825,7 +825,7 @@ Pulsa **Volver al panel** en la franja amarilla (dice "Volviendo…" mientras ta
 
 ---
 
-## 18. IA del guion: Gemini, respaldo y costos
+## 18. IA del guion: Gemini, reintentos y costos
 
 Al terminar el chat de un negocio, AutoReel escribe la propuesta de su video (el guion y el storyboard) con el **modelo de texto** del plan que rige para ese negocio. En el plan **Lite** es **Gemini** (`gemini-3.8-flash`, adaptador `GEMINI`), en Google AI Studio.
 
@@ -833,31 +833,32 @@ Al terminar el chat de un negocio, AutoReel escribe la propuesta de su video (el
 
 Gemini usa la clave de **Google AI Studio** (secreto `autoreel/gemini`), la misma de los clips. Pégala en **Ajustes → Integraciones y claves** (sección 15.3) o escríbela en `GEMINI_API_KEY` del `.env`.
 
-**Comprobar que funciona:** pulsa **Probar conexión** en el modelo **Gemini** (sección 15.4). En un video real, la propuesta **no** muestra el aviso "Preparamos una propuesta básica…" y en la base de datos el video tiene `guion_de_respaldo = false` e `intentos_guion` de 1 a 3.
+**Comprobar que funciona:** pulsa **Probar conexión** en el modelo **Gemini** (sección 15.4). En un video real, la propuesta llega a **Por revisar** en unos segundos y en la base de datos el video tiene `intentos_guion` de 1 a 3 y `motivo_error` vacío.
 
 - No hace falta tocar `GEMINI_URL` (por defecto, `https://generativelanguage.googleapis.com`): existe para que las pruebas apunten a un servidor simulado. Los tiempos de espera son de 5 s para conectar y 30 s para la respuesta (`autoreel.ia.gemini` en `application.yml`).
 
-### 18.2 El guion de respaldo
+### 18.2 Sin guion de respaldo: reintentos y error
 
-**El guion sí tiene respaldo sin IA** (RN-25). Si Gemini no está disponible, la propuesta se arma con el **guion de respaldo**: textos sencillos hechos con las respuestas del chat, el producto y los textos fijos del paquete del nicho, siempre revisados con las mismas reglas que el guion de la IA. No se registra ningún costo si no se llamó a Gemini.
+*Cambio del 2026-11-12 (ADR 0021).* Hasta esa fecha, si Gemini no estaba disponible, la propuesta se armaba con un **guion de respaldo**: textos sencillos copiados de las respuestas del chat, con el aviso "Preparamos una propuesta básica…" y el motivo en `video.motivo_respaldo`. Se quitó porque copiaba al negocio. Hoy **toda propuesta la escribe la IA**. Si Gemini falla:
 
-El negocio ve su propuesta con el aviso: "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto." Puede editarla como cualquier otra. El aviso no menciona errores ni la IA, y el negocio no ve el motivo: solo lo ves tú, en la columna `video.motivo_respaldo`.
-
-> **Ojo: con AI Studio, sin clave tampoco hay clips.** Gemini y Gemini Omni Flash usan la misma clave. Sin ella, el negocio recibe una propuesta básica, pero el botón **Crear mi video** queda desactivado (sección 19.5).
-
-| `motivo_respaldo` | Cuándo ocurre | ¿Aviso de integración? | ¿Costo registrado? |
+| Situación | Qué pasa | ¿Aviso de integración? | ¿Costo registrado? |
 |---|---|---|---|
-| `SIN_CREDENCIAL` | No hay clave de AI Studio en Ajustes ni en `GEMINI_API_KEY`. | Sí (`CREDENCIAL_INVALIDA`) | No |
-| `CREDENCIAL_INVALIDA` | Gemini rechaza la clave (respuesta 401 o 403). | Sí | No |
-| `CONFIGURACION_INVALIDA` | Gemini responde 400 o 404 (por ejemplo, el identificador del modelo no existe). | Sí | No |
-| `PROVEEDOR_NO_DISPONIBLE` | Gemini no responde a tiempo, hay un error de red, responde 429 (límite de uso) o 5xx, o falla algo inesperado. | Sí (`NO_DISPONIBLE`) | Solo las respuestas correctas anteriores |
-| `MODELO_INACTIVO` | El modelo de texto está inactivo, no es de texto, no cobra por solicitud o su adaptador no existe en el código (RN-56). | Sí (`CONFIGURACION_INVALIDA`) | No |
-| `GUION_INVALIDO` | Gemini respondió 3 veces (o hasta cumplir 60 s) y ningún guion pasó las reglas RN-21 a RN-24. | No: el registro muestra "Guion inválido del video …" en nivel INFO | Sí, una vez por respuesta |
-| `PROCESO_INTERRUMPIDO` | El backend se reinició (o falló) mientras escribía el guion. A los 3 minutos, la tarea vuelve a tomar el video y usa el respaldo sin llamar a Gemini. | No | Solo las respuestas anteriores |
+| No hay clave de AI Studio en Ajustes ni en `GEMINI_API_KEY` | El video sigue en **Preparando propuesta** y se vuelve a intentar cada **45 s**. Pasados **5 minutos**, pasa a `ERROR` con "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato." | Sí (`CREDENCIAL_INVALIDA`) | No |
+| Gemini rechaza la clave (401 o 403), responde 400 o 404, no responde a tiempo, hay un error de red, responde 429 o 5xx (por ejemplo, la facturación de AI Studio), o falla algo inesperado en el adaptador | Igual: reintentos cada 45 s durante 5 minutos y luego `ERROR` | Sí, con el tipo del error | Solo las respuestas correctas anteriores |
+| El modelo de texto está inactivo, no es de texto, no cobra por solicitud o su adaptador no existe en el código (RN-56) | Igual | Sí (`CONFIGURACION_INVALIDA`) | No |
+| Gemini respondió 3 veces (o hasta cumplir 60 s) y ningún guion pasó las reglas RN-21 a RN-24 | `ERROR` con "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo." El registro muestra "Guion inválido del video …" en nivel INFO | No | Sí, una vez por respuesta |
+| El backend se reinició (o falló) mientras escribía el guion | A los 3 minutos, la tarea vuelve a tomar el video y **llama a Gemini otra vez** | No | Las respuestas anteriores y las nuevas |
+| El producto ya no existe o no tiene fotos | `ERROR` definitivo (`video.error_definitivo = true`): no se llama a Gemini y no se ofrece **Reintentar** | No | No |
+| Falla algo nuestro (no de Gemini) | `ERROR` con "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo." No se reintenta solo. En el registro: "No se pudo escribir el guion del video" | No | Solo las respuestas anteriores |
 
-- Un error del proveedor **no se reintenta**: va directo al respaldo, para que el negocio no espere.
-- La tarea que escribe los guiones (`ProcesadorDeGuiones`) revisa cada **3 segundos** los videos en `GUION_PENDIENTE`. Ningún video queda esperando para siempre: si algo falla a mitad, termina con el respaldo.
-- Si al terminar el producto ya no tiene fotos, el video pasa a `ERROR` con el motivo en `video.motivo_error`, y el negocio ve "No pudimos preparar esta propuesta".
+- **El video del día nunca se consume en esta etapa**: se consume al aprobar el storyboard.
+- **El negocio puede tocar Reintentar** en un video con error de guion (salvo el definitivo). Vuelve a "Preparando propuesta" con un plazo nuevo de 5 minutos y **no usa su video del día**.
+- La tarea que escribe los guiones (`ProcesadorDeGuiones`) revisa cada **3 segundos** los videos en `GUION_PENDIENTE` cuya espera ya pasó. Ningún video queda esperando para siempre: a los 5 minutos de reintentos termina en `ERROR`.
+- **Qué hacer si ves avisos de integración del modelo Gemini:** pulsa **Probar conexión**, revisa la clave y la facturación de AI Studio, y avísale al negocio que reintente su propuesta.
+
+> **Ojo: con AI Studio, sin clave no hay ni propuesta ni clips.** Gemini y Gemini Omni Flash usan la misma clave. Sin ella, la propuesta queda en error y el botón **Crear mi video** queda desactivado (sección 19.5).
+
+En los videos creados antes del 2026-11-12, las columnas `video.guion_de_respaldo` y `video.motivo_respaldo` siguen guardadas (motivos `SIN_CREDENCIAL`, `CREDENCIAL_INVALIDA`, `CONFIGURACION_INVALIDA`, `PROVEEDOR_NO_DISPONIBLE`, `MODELO_INACTIVO`, `GUION_INVALIDO` o `PROCESO_INTERRUMPIDO`). Los videos nuevos siempre tienen `guion_de_respaldo = false`.
 
 ### 18.3 Avisos de integración
 
@@ -871,7 +872,7 @@ ERROR ... AvisoDeIntegracionEnPanel : Integración con error: modelo Gemini (GEM
 ```
 
 - Cada línea dice el modelo, su adaptador, el tipo de falla (`CREDENCIAL_INVALIDA`, `CONFIGURACION_INVALIDA` o `NO_DISPONIBLE`) y el detalle. **Nunca incluye la clave.**
-- Busca también "No se pudo escribir el guion del video", que deja la tarea programada si algo falla de forma inesperada.
+- Busca también "No se pudo escribir el guion del video", que deja la tarea programada si algo falla de forma inesperada, y "Falla inesperada del modelo de texto".
 
 ### 18.4 Costos del guion
 
@@ -886,7 +887,7 @@ Cada respuesta correcta de Gemini **se registra como costo aunque el guion no si
 | `costo_usd` | El costo de referencia del modelo por guion: **US$ 0.01** para Gemini |
 | `fecha_hora` | Momento de la llamada (UTC) |
 
-El mismo costo se suma en `video.costo_estimado`, y `video.intentos_guion` cuenta las respuestas. El guion de un video cuesta entre US$ 0 (respaldo sin llamar a Gemini) y US$ 0.03 (tres intentos). Es una **estimación** con el costo de referencia del modelo, no la factura de Google. Las llamadas que fallan (4xx, 5xx, tiempo de espera) o que no se hacen por falta de clave no se registran.
+El mismo costo se suma en `video.costo_estimado`, y `video.intentos_guion` cuenta las respuestas. El guion de un video cuesta entre US$ 0 (Gemini no respondió) y US$ 0.03 (tres intentos); cada **Reintentar** de la propuesta puede sumar hasta US$ 0.03 más. Es una **estimación** con el costo de referencia del modelo, no la factura de Google. Las llamadas que fallan (4xx, 5xx, tiempo de espera) o que no se hacen por falta de clave no se registran.
 
 Los costos se ven en la página **Costos** (sección 14) y en el detalle del negocio (sección 7). Para revisar un caso puntual en desarrollo, puedes consultar la base de datos local:
 
@@ -895,9 +896,9 @@ docker compose exec postgres psql -U autoreel -d autoreel   # desde la raíz; us
 ```
 
 ```sql
--- Últimos videos: estado, respaldo del guion, costo y error
-select id, negocio_id, estado, guion_de_respaldo, motivo_respaldo, intentos_guion, costo_estimado,
-       motivo_error, fecha_creacion
+-- Últimos videos: estado, intentos del guion, costo y error
+select id, negocio_id, estado, intentos_guion, guion_iniciado_en, error_definitivo, costo_estimado,
+       motivo_error, guion_de_respaldo, fecha_creacion
 from video order by id desc limit 20;
 ```
 

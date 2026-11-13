@@ -1,6 +1,6 @@
 # ADR 0016 — Composición del video con FFmpeg como proceso externo
 
-- **Estado:** Aceptada; el acercamiento de respaldo para los clips dejó de usarse (ADR 0020)
+- **Estado:** Aceptada; el acercamiento de respaldo para los clips dejó de usarse (ADR 0020); fundidos entre planos y cierre sin degradado (ADR 0021)
 - **Fecha:** 2026-11-04
 
 ## Contexto

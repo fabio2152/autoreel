@@ -196,7 +196,7 @@ public class ServicioGeneracion {
         conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.prepararEnvio(reloj.instant()));
         try {
             String idTarea = generador.iniciar(trabajo.modelo(), credencial, new SolicitudDeClip(foto, "image/jpeg",
-                    movimiento.instruccion(), trabajo.movimientos().prohibiciones(), segundos));
+                    trabajo.movimientos().promptDeToma(movimiento), trabajo.movimientos().negativos(), segundos));
             conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.enviado(idTarea));
             return false;
         } catch (ErrorDeProveedor e) {

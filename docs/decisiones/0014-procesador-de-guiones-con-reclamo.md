@@ -1,6 +1,6 @@
 # ADR 0014 — Un solo procesador de guiones, con reclamo en la base de datos
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; modificada por el ADR 0021 (sin guion de respaldo: si el proveedor falla, el guion se reintenta solo durante 5 minutos y luego queda en ERROR; un reclamo vencido vuelve a llamar a la IA)
 - **Fecha:** 2026-11-04
 
 ## Contexto

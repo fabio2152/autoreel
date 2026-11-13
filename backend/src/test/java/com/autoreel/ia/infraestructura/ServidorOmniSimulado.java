@@ -19,7 +19,8 @@ import com.sun.net.httpserver.HttpServer;
 /**
  * Servidor HTTP que responde como la API de interacciones de Gemini (Gemini Omni Flash). Las respuestas de crear y
  * consultar se programan en orden; sin respuestas programadas, crear devuelve una interacción terminada con el video
- * (4 segundos de tokens de video a 720p) y consultar también. Cualquier otra ruta (por ejemplo, el guion) responde 404.
+ * (4 segundos de tokens de video a 720p) y consultar también. El guion (generateContent, con la misma clave de AI
+ * Studio) responde {@link #GUION}; cualquier otra ruta responde 404.
  */
 public final class ServidorOmniSimulado implements AutoCloseable {
 
@@ -33,6 +34,15 @@ public final class ServidorOmniSimulado implements AutoCloseable {
     public static final byte[] CLIP = "clip-omni-de-prueba".getBytes(StandardCharsets.UTF_8);
     /** 4 segundos a 720p (5.792 tokens por segundo). */
     public static final int TOKENS_DE_VIDEO = 4 * 5792;
+    /** Un guion válido para la Torta Tres Leches con "Fresas frescas de Huaral" de un negocio de Miraflores. */
+    public static final String GUION = """
+            {"planos":[
+              {"orden":1,"movimiento":"MACRO_DETALLE","texto":"Un antojo de fresas frescas"},
+              {"orden":2,"movimiento":"ORBITA_FRONTAL","texto":"Torta Tres Leches de casa"},
+              {"orden":3,"movimiento":"PARALAJE_LATERAL","texto":"Cada porción con fresas de Huaral"}],
+             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
+             "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
+             "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
 
     private final HttpServer servidor;
     private final Deque<Respuesta> creaciones = new ConcurrentLinkedDeque<>();
@@ -124,6 +134,8 @@ public final class ServidorOmniSimulado implements AutoCloseable {
             Respuesta programada = consultas.poll();
             respuesta = programada != null ? programada
                     : new Respuesta(200, terminada(ruta.substring(ruta.lastIndexOf('/') + 1)));
+        } else if (metodo.equals("POST") && ruta.endsWith(":generateContent")) {
+            respuesta = new Respuesta(200, ServidorGeminiSimulado.cuerpoConTexto(GUION));
         } else {
             respuesta = new Respuesta(404, "{\"error\":{\"code\":\"not_found\",\"message\":\"sin ruta\"}}");
         }

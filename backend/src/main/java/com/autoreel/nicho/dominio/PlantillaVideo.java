@@ -6,44 +6,27 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Plantilla del video de 15 segundos (sección 7.4): cuatro planos fijos, el último sin IA.
+ * Plantilla del video de 15 segundos (sección 7.4): cuatro planos fijos; el último (cierre) no tiene clip de IA.
  *
- * @param llamados           llamado a la acción por canal del onboarding, en orden de prioridad; "{distrito}" se
- *                           reemplaza por el distrito del negocio.
- * @param ganchosDeRespaldo  texto fijo del gancho por tipo de video, para el guion de respaldo (RN-25).
- * @param descripcionDeRespaldo     descripción del respaldo con los datos del usuario ({producto}, {especial},
- *                                  {llamado}).
- * @param descripcionFijaDeRespaldo descripción sin datos del usuario, si la anterior no pasa el validador.
- * @param tipografias        archivo de la carpeta {@code fuentes/} del paquete para cada estilo (P-05).
+ * @param llamados                  llamado a la acción por canal del onboarding, en orden de prioridad; "{distrito}"
+ *                                  se reemplaza por el distrito del negocio.
+ * @param hashtagsBase              hashtags del nicho que se le sugieren al modelo de texto.
+ * @param maximoCaracteresPrecio    largo máximo del precio y de la frase del cierre.
+ * @param maximoCaracteresUbicacion largo máximo de la ubicación que propone la IA para el cierre.
+ * @param tipografias               archivo de la carpeta {@code fuentes/} del paquete para cada estilo (P-05).
  */
 public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, String> llamados,
-        Map<String, String> ganchosDeRespaldo, String descripcionDeRespaldo, String descripcionFijaDeRespaldo,
-        List<String> hashtagsBase,
-        int maximoCaracteresPrecio, Map<String, String> tipografias, String avisoDeRespaldo) {
+        List<String> hashtagsBase, int maximoCaracteresPrecio, int maximoCaracteresUbicacion,
+        Map<String, String> tipografias) {
 
     /**
      * @param foto                 foto del producto que usa el plano (DETALLE, ENTERO o PORCION); vacía en el cierre.
-     * @param conIa                el cierre no usa IA: lo arma el sistema.
-     * @param movimientoDeRespaldo movimiento del guion de respaldo.
-     * @param respaldoDesde        de dónde sale el texto del guion de respaldo, en orden de preferencia.
-     * @param textoDeRespaldo      texto fijo si ningún texto del usuario sirve para el plano.
+     * @param maxPalabras          del texto en pantalla; en el cierre, de la frase.
+     * @param conIa                el cierre no usa clip de IA: lo arma el sistema con los textos que propone la IA.
+     * @param movimientoDeRespaldo movimiento que se le sugiere al modelo para este plano.
      */
     public record PlanoPlantilla(int orden, String nombre, String foto, int maxPalabras, int segundos,
-            boolean conIa, String movimientoDeRespaldo, List<FuenteDeRespaldo> respaldoDesde,
-            String textoDeRespaldo) {
-
-        public PlanoPlantilla {
-            respaldoDesde = respaldoDesde == null ? List.of() : List.copyOf(respaldoDesde);
-        }
-    }
-
-    /** Datos del usuario que el guion de respaldo puede poner en un plano. */
-    public enum FuenteDeRespaldo {
-        /** El gancho fijo del tipo de video ({@code ganchosDeRespaldo}). */
-        GANCHO_DEL_TIPO,
-        PRODUCTO,
-        ESPECIAL,
-        DESCRIPCION_PRODUCTO
+            boolean conIa, String movimientoDeRespaldo) {
     }
 
     public PlantillaVideo {
@@ -57,7 +40,7 @@ public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, 
                 .orElseThrow(() -> new IllegalArgumentException("No existe el plano " + orden));
     }
 
-    /** Planos que escribe la IA (todos menos el cierre). */
+    /** Planos con clip de IA (todos menos el cierre). */
     public List<PlanoPlantilla> planosConIa() {
         return planos.stream().filter(PlanoPlantilla::conIa).toList();
     }
@@ -79,25 +62,20 @@ public record PlantillaVideo(List<PlanoPlantilla> planos, LinkedHashMap<String, 
         return llamadosPara(canales, distrito).stream().findFirst();
     }
 
-    public void validar(List<Opcion> canalesDelOnboarding, List<Opcion> tiposDeVideo, List<Opcion> estilos) {
+    public void validar(List<Opcion> canalesDelOnboarding, List<Opcion> estilos) {
         estilos.forEach(estilo -> exigir(tipografias.containsKey(estilo.valor()),
                 "falta la tipografía del estilo " + estilo.valor()));
         exigir(planos.size() == 4, "la plantilla debe tener 4 planos");
         exigir(planos.stream().filter(p -> !p.conIa()).count() == 1, "debe haber un solo plano sin IA (el cierre)");
         for (PlanoPlantilla plano : planosConIa()) {
             exigir(plano.foto() != null && plano.maxPalabras() > 0, "plano " + plano.orden() + " sin foto o sin límite");
-            exigir(plano.textoDeRespaldo() != null && !plano.textoDeRespaldo().isBlank(),
-                    "plano " + plano.orden() + " sin texto de respaldo");
         }
+        exigir(cierre().maxPalabras() > 0, "falta el máximo de palabras de la frase del cierre");
         canalesDelOnboarding.forEach(canal -> exigir(llamados.containsKey(canal.valor()),
                 "falta el llamado del canal " + canal.valor()));
-        tiposDeVideo.forEach(tipo -> exigir(ganchosDeRespaldo.containsKey(tipo.valor()),
-                "falta el gancho de respaldo de " + tipo.valor()));
         exigir(hashtagsBase.size() >= 3 && hashtagsBase.size() <= 6, "debe haber entre 3 y 6 hashtags base");
-        exigir(descripcionDeRespaldo != null && descripcionFijaDeRespaldo != null
-                && !descripcionFijaDeRespaldo.contains("{producto}") && !descripcionFijaDeRespaldo.contains("{especial}"),
-                "faltan las descripciones de respaldo o la fija usa datos del usuario");
         exigir(maximoCaracteresPrecio > 0, "falta el máximo de caracteres del precio");
+        exigir(maximoCaracteresUbicacion > 0, "falta el máximo de caracteres de la ubicación");
     }
 
     private static void exigir(boolean condicion, String problema) {

@@ -1,6 +1,6 @@
 # ADR 0020: Sin respaldo sin IA para los clips
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; modificada por el ADR 0021 (el guion de respaldo tampoco se mantiene)
 - **Fecha:** 2026-11-06
 - **Modifica:** la sección 8.5 de la especificación (plan de respaldo), RN-30, V24 y el uso del acercamiento descrito en el ADR 0016.
 

@@ -27,7 +27,7 @@ public class ProcesadorDeGuiones {
             try {
                 guiones.procesar(videoId);
             } catch (RuntimeException e) {
-                // El reclamo vence y el siguiente intento usa el guion de respaldo.
+                // El reclamo vence y el video se vuelve a intentar dentro de su plazo.
                 log.error("No se pudo escribir el guion del video {}", videoId, e);
             }
         }

@@ -13,9 +13,12 @@ AutoReel usa dos modelos de IA por video: uno de **texto**, que escribe el guion
 > - Desde **Proveedores de Google** (2026-11-05, ADR 0017) hay **dos caminos de Google**: Google AI Studio (activo: `GEMINI` y `GEMINI_OMNI`, con una sola clave) y Google Cloud (listo e inactivo: `GEMINI_CLOUD` y `VEO`, con una cuenta de servicio).
 > - Desde la **fase 7** existen la pantalla **Ajustes → Integraciones y claves** (agregar, editar, probar, activar y desactivar modelos), el método `probar` en los dos puertos, las **credenciales pegadas en el panel** (`AlmacenDeSecretos`, ADR 0018) y la notificación `INTEGRACION_CON_ERROR` (RN-57). Los planes eligen sus modelos en **Ajustes → Planes**.
 > - Desde la **revisión del flujo del negocio** **ya no hay respaldo sin IA para los clips** (sección 8.5 de la especificación): si un clip no se consigue, el video ya no se arma con el acercamiento de FFmpeg (sección 2.9).
+> - Desde la **mejora de la calidad del video** (2026-11-12, ADR 0021):
+>   - **El guion tampoco tiene respaldo sin IA.** Si el proveedor de texto falla, `ServicioGuion` reintenta solo cada 45 s durante 5 minutos y luego deja el video en `ERROR`, con "Reintentar" (sección 2.5).
+>   - `SolicitudDeClip` lleva el **prompt completo** (`prompt`), armado con el paquete de nicho, y los **`negativos`**, en lugar de `instruccion` y `prohibiciones` (sección 5).
 > - AWS Secrets Manager llega en la **fase 8**.
 >
-> **Credenciales reales:** la clave de Google AI Studio ya se probó con "Probar conexión" para Gemini y Gemini Omni Flash. Sin `GEMINI_API_KEY` (ni una clave pegada en el panel), el storyboard usa el guion de respaldo (RN-25) y "Crear mi video" queda desactivado, porque no hay modelo de video disponible.
+> **Credenciales reales:** la clave de Google AI Studio ya se probó con "Probar conexión" para Gemini y Gemini Omni Flash. Sin `GEMINI_API_KEY` (ni una clave pegada en el panel), la propuesta no se puede escribir: desde el 2026-11-12 no hay guion de respaldo, y queda en error tras 5 minutos de reintentos. "Crear mi video" queda desactivado, porque no hay modelo de video disponible.
 
 ---
 
@@ -125,7 +128,7 @@ Son los valores de las migraciones. Desde la fase 7 el administrador puede cambi
 | `ServicioPlanes` | `facturacion/aplicacion/ServicioPlanes.java` | Ajustes → Planes: asigna a cada plan sus modelos de texto y de video (RN-47). |
 | `ResolutorDePlanEfectivo` | `facturacion/aplicacion/ResolutorDePlanEfectivo.java` | El plan que rige hoy para el negocio, con sus modelos ya cargados: el de su suscripción o el de un beneficio temporal vigente (RN-50). |
 | `ServicioCostos` | `costos/aplicacion/ServicioCostos.java` | Guarda un `registro_costo` por llamada (RN-32): `costo_referencial × cantidad`. `registrarSolicitud` exige un modelo `POR_SOLICITUD`. |
-| `ServicioGuion` | `video/aplicacion/ServicioGuion.java` | Usa todo lo anterior: hasta 3 intentos, plazo de 60 s, costo por respuesta, aviso y respaldo (sección 2.5). |
+| `ServicioGuion` | `video/aplicacion/ServicioGuion.java` | Usa todo lo anterior: hasta 3 intentos, plazo de 60 s, costo por respuesta, aviso y, si el proveedor falla, reintentos cada 45 s durante 5 minutos y luego `ERROR` (sección 2.5; hasta el 2026-11-12, el guion de respaldo). |
 
 ### 2.4 Los adaptadores de texto
 
@@ -169,9 +172,9 @@ En las pruebas (`application-test.yml`), las URL apuntan a una dirección que no
 
 Los adaptadores distinguen dos clases de problema:
 
-**1. Fallas del proveedor: lanzan `ErrorDeProveedor`.** No se reintentan. `ServicioGuion` llama a `AvisoDeIntegracion.avisar(...)` (log y notificación en el panel) y usa el guion de respaldo.
+**1. Fallas del proveedor: lanzan `ErrorDeProveedor`.** El adaptador no las reintenta. `ServicioGuion` llama a `AvisoDeIntegracion.avisar(...)` (log y notificación en el panel) y, desde el 2026-11-12 (ADR 0021), deja el video en `GUION_PENDIENTE` para **volver a intentarlo a los 45 s**. Pasados **5 minutos** desde el inicio del guion, el video pasa a `ERROR` ("No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato.") y el negocio puede tocar "Reintentar" sin gastar su video del día. Hasta esa fecha se usaba el guion de respaldo, con el motivo en `video.motivo_respaldo`.
 
-| Respuesta del proveedor | `ErrorDeProveedor.Tipo` | `video.motivo_respaldo` | ¿Se cobra? |
+| Respuesta del proveedor | `ErrorDeProveedor.Tipo` | Antes del 2026-11-12: `video.motivo_respaldo` | ¿Se cobra? |
 |---|---|---|---|
 | 401, 403 | `CREDENCIAL_INVALIDA` | `CREDENCIAL_INVALIDA` | No |
 | 400, 404 | `CONFIGURACION_INVALIDA` | `CONFIGURACION_INVALIDA` | No |
@@ -187,16 +190,16 @@ En Google Cloud, un JSON de cuenta sin `private_key`, `client_email` o `project_
 
 Un JSON mal formado, o un guion que no pasa `ValidadorDeGuion` (RN-21 a RN-24), también cuenta como intento inválido.
 
-**Antes de llamar**, `ServicioGuion` revisa dos cosas, y si fallan usa el respaldo sin llamar ni cobrar:
+**Antes de llamar**, `ServicioGuion` revisa dos cosas. Si fallan, no llama ni cobra y, desde el 2026-11-12, trata el caso como una falla del proveedor: reintento a los 45 s y `ERROR` pasados 5 minutos.
 
-| Situación | Aviso | `video.motivo_respaldo` |
+| Situación | Aviso | Antes del 2026-11-12: `video.motivo_respaldo` |
 |---|---|---|
 | `FabricaDeProveedores.guionista(modelo)` vuelve vacío: el modelo no es `TEXTO`, no está `ACTIVO`, no es `POR_SOLICITUD` o su adaptador no existe | `CONFIGURACION_INVALIDA` | `MODELO_INACTIVO` |
 | `ProveedorDeSecretos.obtener(nombre_secreto)` vuelve vacío | `CREDENCIAL_INVALIDA` | `SIN_CREDENCIAL` |
 
-Si los 3 intentos fallan, o ya pasaron 60 s cuando tocaba empezar otro, el motivo es `GUION_INVALIDO`. El aviso al negocio en el storyboard no dice "error" ni "IA": usa el `avisoDeRespaldo` del paquete de nicho. El `motivo_respaldo` queda en la base de datos y en el registro; el panel no lo muestra, pero la falla del proveedor sí llega a la campana.
+Si los 3 intentos fallan, o ya pasaron 60 s cuando tocaba empezar otro, el video pasa a `ERROR` con "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo." (antes, el respaldo con el motivo `GUION_INVALIDO`). La falla del proveedor llega a la campana del panel.
 
-**El guion de respaldo se mantiene** (RN-25): a diferencia de los clips, un guion sin IA sigue siendo útil, porque el negocio lo revisa y lo edita en el storyboard.
+**Ya no hay guion de respaldo** (ADR 0021, 2026-11-12). Copiaba los textos del negocio, y el usuario prefirió esperar a la IA. Por eso un adaptador de texto nuevo debe clasificar bien sus errores: un `ErrorDeProveedor` se reintenta solo, y una `RespuestaDelModelo.sinTexto` cuenta como intento inválido.
 
 ### 2.6 Piezas del lado del video
 
@@ -220,7 +223,7 @@ Usa la API de interacciones de Google AI Studio (ADR 0017), con la URL y el tiem
   - `input`: la foto (`type: "image"`, `data` en base64 y `mime_type`) y el texto de la instrucción.
   - `response_format`: `type: "video"`, `aspect_ratio`, `resolution` y `duration` (los segundos del clip, por ejemplo `"4s"`).
   - `background` (según `segundoPlano`) y `store: true`.
-  - **Omni no admite prompt negativo:** el texto lleva el movimiento de `movimientos.json` y, al final, "Never show: " con las `prohibiciones` del paquete de nicho.
+  - **Omni no admite prompt negativo:** desde el 2026-11-12 el texto es el `prompt` de la solicitud (armado con el paquete de nicho) más, al final, "Avoid: " con los `negativos`. Antes, el adaptador escribía su propio envoltorio ("Animate this exact photo…" y "Never show: …" con las `prohibiciones`).
 - **Modo síncrono (por defecto):** la respuesta de la creación ya trae el video. El adaptador la guarda en memoria (hasta 30 resultados) y la entrega en la consulta siguiente, sin volver a pedirla. Si el proceso se reinicia antes, la consulta la pide otra vez con `GET {url}/v1beta/interactions/{id}`.
 - **Modo en segundo plano** (`segundoPlano: true`): la creación devuelve el `id` y se consulta con `GET {url}/v1beta/interactions/{id}`. Google no lo documenta para video; queda como opción.
 - **Consultar:** `status` distinto de `completed`, `failed`, `cancelled` o `incomplete` es `EnCurso`. `completed` con un contenido `type: "video"` en `steps[*].content[*]` es `Listo`. Cualquier otro final, o un video que llega como dirección en lugar de `data`, es `Fallido` (puede ser su filtro de contenido).
@@ -243,8 +246,8 @@ Errores: 401 y 403 son `CREDENCIAL_INVALIDA`; 400 y 404, `CONFIGURACION_INVALIDA
 ### 2.8 El adaptador `VeoGeneradorDeClips` (`VEO`)
 
 - **Crear la tarea:** con `GoogleCloud.llamar(...)`, `POST {base}/v1/projects/{proyecto}/locations/{region}/publishers/google/models/{identificador_modelo}:predictLongRunning`, con `Authorization: Bearer {token}`.
-  - `instances[0]`: `prompt` (la `instruccion` del movimiento, en inglés, de `movimientos.json`) e `image` (`bytesBase64Encoded` y `mimeType`).
-  - `parameters`: `aspectRatio`, `durationSeconds`, `sampleCount: 1`, `negativePrompt` (las `prohibiciones` de `movimientos.json`), `personGeneration: "dont_allow"`, `generateAudio`, `resolution` y `resizeMode`.
+  - `instances[0]`: `prompt` (desde el 2026-11-12, el prompt completo de la solicitud, el mismo que recibe Omni; antes, solo la `instruccion` del movimiento) e `image` (`bytesBase64Encoded` y `mimeType`).
+  - `parameters`: `aspectRatio`, `durationSeconds`, `sampleCount: 1`, `negativePrompt` (los `negativos` de `movimientos.json`; se omite si están vacíos), `personGeneration: "dont_allow"`, `generateAudio`, `resolution` y `resizeMode`.
   - Devuelve el `name` de la operación, que se guarda en `plano.id_tarea_proveedor`.
 - **Consultar:** `POST …:fetchPredictOperation` con `{"operationName": …}`.
   - Sin `done`: `EnCurso`.
@@ -398,7 +401,7 @@ Entonces:
 - Si usa **otra credencial**, elige un nombre nuevo, por ejemplo `autoreel/gemini-pro`, ponlo en "Clave que usa" y pega el valor en su tarjeta. **No hace falta tocar `application.yml`.** Solo si quieres que también pueda venir del `.env`:
   1. Agrega `"[autoreel/gemini-pro]": ${GEMINI_PRO_API_KEY:}` bajo `autoreel.secretos` (o una ruta bajo `autoreel.secretos-en-archivo` si es un archivo).
   2. Agrega `GEMINI_PRO_API_KEY=` vacía a `.env.example` y el valor real solo a tu `.env`.
-- Sin credencial, el modelo no se puede activar. Si un modelo activo se queda sin ella, el guion usa el respaldo (`SIN_CREDENCIAL`) y no se pueden crear videos con ese modelo de video.
+- Sin credencial, el modelo no se puede activar. Si un modelo activo se queda sin ella, el guion no se puede escribir (desde el 2026-11-12, reintentos durante 5 minutos y luego `ERROR`; antes, el respaldo `SIN_CREDENCIAL`) y no se pueden crear videos con ese modelo de video.
 - **Nunca** escribas la clave en el código ni en la base de datos (regla 6 de la sección 0).
 
 ### 3.4 Comprobar que funciona
@@ -406,9 +409,9 @@ Entonces:
 1. **"Probar conexión"** en la tarjeta del modelo debe decir "La conexión funciona.".
 2. Con el modelo asignado al plan del negocio de ejemplo, completa un chat y abre **"Ver mi propuesta"** (texto), o pulsa **"Crear mi video"** (video). Con "Entrar como el negocio" (ADR 0019) lo haces sin salir del panel.
 3. En la base de datos:
-   - **Texto:** el video debe tener `guion_de_respaldo = false` y `motivo_respaldo` nulo, y un `registro_costo` con `concepto = 'GUION'` por cada respuesta del modelo.
+   - **Texto:** el video debe llegar a `STORYBOARD` con `motivo_error` nulo, y tener un `registro_costo` con `concepto = 'GUION'` por cada respuesta del modelo.
    - **Video:** los planos deben quedar `LISTO`, con un `registro_costo` con `concepto = 'CLIP'` por cada clip.
-4. Si algo falla, revisa la campana del panel (`INTEGRACION_CON_ERROR`), `video.motivo_respaldo` o `video.motivo_error`, y el log (`Integración con error: modelo …`, `… se quedó sin clip: …`). La página **Costos** muestra lo registrado por negocio y por mes.
+4. Si algo falla, revisa la campana del panel (`INTEGRACION_CON_ERROR`), `video.motivo_error` (o `video.motivo_respaldo` en videos anteriores al 2026-11-12), y el log (`Integración con error: modelo …`, `… se quedó sin clip: …`). La página **Costos** muestra lo registrado por negocio y por mes.
 
 ### 3.5 Ejemplo de video: Veo 3.1 Fast, solo con datos
 
@@ -522,7 +525,7 @@ Lo que el adaptador **no** hace, porque ya lo hacen `ServicioGuion` y `ServicioI
 - reintentar (hasta 3 intentos y plazo total de 60 s, RN-25);
 - validar el guion (`ValidadorDeGuion`);
 - registrar el costo (`ServicioCostos`, una vez por cada respuesta 2xx);
-- avisar al administrador (`AvisoDeIntegracion`) y armar el guion de respaldo;
+- avisar al administrador (`AvisoDeIntegracion`) y programar el siguiente intento cuando el proveedor falla (desde el 2026-11-12; antes, armar el guion de respaldo);
 - guardar el resultado de la prueba (`ultima_prueba`, `ultima_prueba_exitosa`, `ultima_prueba_mensaje`);
 - abrir transacciones: el adaptador se llama fuera de toda transacción del guion.
 
@@ -590,7 +593,8 @@ public class RunwayGeneradorDeClips implements GeneradorDeClips {
     @Override
     public String iniciar(ModeloIA modelo, String credencial, SolicitudDeClip solicitud) {
         // 1. Petición con modelo.getIdentificadorModelo(), la credencial, solicitud.foto() (JPEG 9:16 ya
-        //    normalizado), solicitud.instruccion(), solicitud.prohibiciones() y solicitud.segundos().
+        //    normalizado), solicitud.prompt() tal cual, solicitud.negativos() (como prompt negativo, o
+        //    al final del prompt si el proveedor no lo admite) y solicitud.segundos().
         //    Parámetros desde modelo.getParametros(), nunca valores fijos.
         // 2. Errores HTTP y de red -> throw new ErrorDeProveedor(tipo, mensaje sin la clave, causa).
         // 3. Devuelve el identificador de la tarea del proveedor (cabe en varchar(500)).
@@ -622,8 +626,8 @@ El contrato del puerto:
 | `modelo` | La fila de `modelo_ia` guardada en el video (`modelo_video_usado_id`), o la que se prueba en el panel. Usa `getIdentificadorModelo()` y `getParametros()`. |
 | `credencial` | El secreto ya resuelto por `ProveedorDeSecretos`: una clave, o el contenido de un JSON (sección 3.3). |
 | `SolicitudDeClip.foto` y `tipoFoto` | La foto del plano ya normalizada por `PreparadorDeFotos`: JPEG de 1080×1920 (9:16), con la orientación aplicada y sin metadatos. |
-| `SolicitudDeClip.instruccion` | La `instruccion` en inglés del movimiento elegido, de `movimientos.json` del paquete de nicho. |
-| `SolicitudDeClip.prohibiciones` | Las `prohibiciones` de `movimientos.json`. Si el proveedor no admite una instrucción negativa, agrégalas a la instrucción, como Omni. |
+| `SolicitudDeClip.prompt` | Desde el 2026-11-12 (antes `instruccion`). El **prompt completo** en inglés, armado por `Movimientos.promptDeToma` con el paquete de nicho: la `plantillaDeToma` con la `instruccion` del movimiento y las `prohibiciones` en frases. **Envíalo tal cual**: el adaptador no agrega texto propio del nicho. |
+| `SolicitudDeClip.negativos` | Desde el 2026-11-12 (antes `prohibiciones`). Los `negativos` de `movimientos.json`: lo que nunca debe aparecer, como lista de sustantivos. Si el proveedor admite un prompt negativo, van ahí (como Veo); si no, agrégalos al final del prompt (Omni: "Avoid: …"). Si vienen vacíos, no los envíes. |
 | `SolicitudDeClip.segundos` | `parametros.duracionClipSegundos` del modelo (4 por defecto). Es la cantidad que se cobra si `Listo` no informa otra. |
 
 | Método y salida | Cuándo |

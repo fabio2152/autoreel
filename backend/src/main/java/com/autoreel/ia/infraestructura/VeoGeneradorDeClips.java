@@ -42,7 +42,9 @@ public class VeoGeneradorDeClips implements GeneradorDeClips {
         parametros.put("aspectRatio", GoogleCloud.parametro(modelo, "relacionAspecto", "9:16"));
         parametros.put("durationSeconds", solicitud.segundos());
         parametros.put("sampleCount", 1);
-        parametros.put("negativePrompt", solicitud.prohibiciones());
+        if (solicitud.negativos() != null && !solicitud.negativos().isBlank()) {
+            parametros.put("negativePrompt", solicitud.negativos());
+        }
         parametros.put("personGeneration", "dont_allow");
         parametros.put("generateAudio", modelo.getParametros() != null
                 && Boolean.TRUE.equals(modelo.getParametros().get("generarAudio")));
@@ -50,7 +52,7 @@ public class VeoGeneradorDeClips implements GeneradorDeClips {
         parametros.put("resizeMode", GoogleCloud.parametro(modelo, "ajuste", "crop"));
         Map<String, Object> cuerpo = Map.of(
                 "instances", List.of(Map.of(
-                        "prompt", solicitud.instruccion(),
+                        "prompt", solicitud.prompt(),
                         "image", Map.of("bytesBase64Encoded", Base64.getEncoder().encodeToString(solicitud.foto()),
                                 "mimeType", solicitud.tipoFoto()))),
                 "parameters", parametros);

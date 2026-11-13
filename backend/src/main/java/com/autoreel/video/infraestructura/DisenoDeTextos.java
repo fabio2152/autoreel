@@ -62,6 +62,17 @@ final class DisenoDeTextos {
         return new Bloque(lineas, tamano);
     }
 
+    /** Ancho en píxeles de una línea con esa letra. */
+    int ancho(String linea, int tamano) {
+        return medidas(tamano).stringWidth(linea);
+    }
+
+    /** Alto de una línea (ascendente más descendente de la tipografía), el que usa drawtext con y_align=font. */
+    int altoDeLinea(int tamano) {
+        FontMetrics medidas = medidas(tamano);
+        return medidas.getAscent() + medidas.getDescent();
+    }
+
     private static List<String> lineas(List<String> palabras, int ancho, FontMetrics medidas) {
         List<String> lineas = new ArrayList<>();
         StringBuilder actual = new StringBuilder();

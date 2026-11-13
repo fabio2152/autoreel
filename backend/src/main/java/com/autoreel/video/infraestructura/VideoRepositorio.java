@@ -35,16 +35,13 @@ public interface VideoRepositorio extends JpaRepository<Video, Long> {
     @Query("select v from Video v where v.negocioId = :negocioId order by v.fechaCreacion desc, v.id desc")
     List<Video> listarDeNegocio(Long negocioId, Limit limite);
 
-    /** Videos esperando su guion que nadie está procesando, del más antiguo al más nuevo. */
+    /** Videos esperando su guion, sin procesar ni en espera de su siguiente intento, del más antiguo al más nuevo. */
     @Query("""
             select v.id from Video v
             where v.estado = com.autoreel.video.dominio.EstadoVideo.GUION_PENDIENTE
               and (v.guionReclamadoHasta is null or v.guionReclamadoHasta < :ahora)
             order by v.fechaCreacion, v.id""")
     List<Long> pendientesDeGuion(Instant ahora, Limit limite);
-
-    @Query("select v.guionReclamadoHasta from Video v where v.id = :id")
-    Optional<Instant> reclamadoHasta(Long id);
 
     /** Toma el video para escribir su guion; devuelve 1 solo si nadie lo tenía tomado. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)

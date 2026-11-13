@@ -12,6 +12,12 @@ Paso a paso para agregar un rubro nuevo a AutoReel (por ejemplo, cafeterías o f
 > - Las fotos del producto se aceptan desde **720 px** en el lado menor (RN-11).
 > - Los clips ya no tienen respaldo sin IA (sección 8.5 de la especificación).
 >
+> **Cambios de la mejora de la calidad del video (2026-11-12, ADR 0021):**
+> - **Sin guion de respaldo.** `plantilla.json` ya no lleva `respaldoDesde`, `textoDeRespaldo`, `ganchosDeRespaldo`, `descripcionDeRespaldo`, `descripcionFijaDeRespaldo` ni `avisoDeRespaldo`. Con `FAIL_ON_UNKNOWN_PROPERTIES`, dejarlos hace fallar el arranque.
+> - `plantilla.json` suma `maximoCaracteresUbicacion`. El `maxPalabras` del cierre es ahora el de la **frase** que escribe la IA, y el `movimientoDeRespaldo` es el movimiento **sugerido** al modelo (sección 4.4).
+> - `movimientos.json` suma `plantillaDeToma`, `negativos`, `minimoPlanosCamara3d` y `camara3d` por movimiento, y `prohibiciones` pasa a frases para el final del prompt. El prompt completo del modelo de video sale del paquete (sección 4.5).
+> - `guion.md` pide el objeto **`cierre`** (precio, frase y ubicación) y tiene marcadores nuevos (sección 4.7).
+>
 > Otros nichos están **fuera del alcance del MVP** (sección 21; RF-33 es de prioridad F). La guía existe para que el diseño quede listo para crecer. Decisiones de fondo: ADR 0011 (contenido en JSON), ADR 0012 (agrupación de mensajes), ADR 0013 (el MVP no usa temporadas), ADR 0014 (procesador de guiones), ADR 0016 (composición con FFmpeg) y ADR 0017 (proveedores de Google).
 
 ---
@@ -35,13 +41,13 @@ Por eso, un nicho nuevo es **otro paquete**: una clase que implementa `PaqueteNi
 | `RegistroDeNichos` | `nicho/dominio/RegistroDeNichos.java` | `@Component` que recibe **todos los beans `PaqueteNicho`**. Expone `todos()` (lista de `Nicho`), `buscar(id)` (`Optional`) y `de(id)` (para un negocio existente; si falta, 500 `NICHO_DESCONOCIDO`). Define la constante `PASTELERIA`. |
 | `GuionChat` | `nicho/dominio/GuionChat.java` | Record del guion del chat (sección 4.3): límites de caracteres, respuestas negativas, mensajes fijos y pasos (`PasoChat`, `TipoPaso`, `Condicion`, `Sugerencia`). `validar()` revisa su forma al arrancar; `esNegativa(texto)`, `paso(id)` y `siguiente(id)` los usa el chat. Desde la revisión del flujo, `PasoChat` tiene `ejemplo` y `opcionLibre`, con `admiteTexto()` y `claveLibre()`. Común a todos los nichos. |
 | `PlantillaVideo`, `Movimientos`, `Vocabulario` | `nicho/dominio/` | Records que se leen de `plantilla.json`, `movimientos.json` y `vocabulario.json` (secciones 4.4 a 4.6). `PlantillaVideo.validar(...)` revisa la plantilla al arrancar. |
-| `Texto` | `nicho/dominio/Texto.java` | Reglas de texto comunes: `normalizar` (minúsculas, sin tildes, conserva la "ñ"), `contieneFrase` (una frase prohibida como secuencia de palabras completas), `contarPalabras` (cuenta lo que tiene al menos una letra o un número: "S/ 65" son 2), `tieneCaracteresNoDibujables` y `soloDibujable`. Desde la fase 5, lo dibujable es una **lista blanca**: U+0020–007E, U+00A0–00FF (incluye á, ñ, ¿, ¡) y ‘ ’ “ ” – — … €; todo lo demás (emojis, saltos de línea, otros alfabetos) no se puede dibujar. Las usan el validador, el guion de respaldo, la edición del storyboard y la composición. |
+| `Texto` | `nicho/dominio/Texto.java` | Reglas de texto comunes: `normalizar` (minúsculas, sin tildes, conserva la "ñ"), `contieneFrase` (una frase prohibida como secuencia de palabras completas), `contarPalabras` (cuenta lo que tiene al menos una letra o un número: "S/ 65" son 2), `tieneCaracteresNoDibujables` y `soloDibujable`. Desde la fase 5, lo dibujable es una **lista blanca**: U+0020–007E, U+00A0–00FF (incluye á, ñ, ¿, ¡) y ‘ ’ “ ” – — … €; todo lo demás (emojis, saltos de línea, otros alfabetos) no se puede dibujar. Las usan el validador, la edición del storyboard y la composición (y, hasta el 2026-11-12, el guion de respaldo). |
 | `PistaDelNicho` | `nicho/dominio/PistaDelNicho.java` | `record PistaDelNicho(estilo, nombre, archivo, duracionSegundos, licencia)`: una pista de `musica.json` (sección 4.8). |
 | `PaquetePasteleria` | `nicho/pasteleria/PaquetePasteleria.java` | `@Component` que lee y valida al arrancar los ocho archivos de `nichos/pasteleria/`, las tipografías de `fuentes/` y que existan las pistas de `musica/`. |
 | Archivos del paquete | `backend/src/main/resources/nichos/pasteleria/` | `onboarding.json` (estilos y preguntas), `temporadas.json`, `chat.json` (guion del chat), `plantilla.json` (planos del video y tipografías), `movimientos.json`, `vocabulario.json`, `musica.json` (pistas por estilo) y `guion.md` (instrucciones del modelo de texto); las carpetas `fuentes/` (TTF con su licencia OFL) y `musica/` (pistas `.m4a`). |
 | `BibliotecaMusical` | `video/aplicacion/BibliotecaMusical.java` | Al arrancar, sube al almacenamiento las pistas de todos los paquetes (`musica/{nicho}/{archivo}`) y crea las filas que falten en `pista_musical` (migración `V6__generacion.sql`). Al aprobar el storyboard elige una pista activa del estilo del negocio y la guarda en `video.pista_musical_id`, para que recomponer use la misma. |
-| Generación y composición | `video/aplicacion/`, `video/infraestructura/` | Genéricas: `ServicioGeneracion` toma la `instruccion` y las `prohibiciones` de `movimientos.json` para el modelo de video (sin respaldo sin IA: un plano sin clip deja el video en `ERROR`, o conserva el clip anterior en una regeneración); `ServicioComposicion` y `FfmpegComponedor` usan los `segundos` de la plantilla, los `llamados`, la tipografía del estilo y la pista. No tienen nada de Pastelería. |
-| Guion y storyboard | `video/aplicacion/`, `video/dominio/` | Genéricos: `InstruccionesDelGuion` llena `guion.md` y arma el esquema JSON de la respuesta; `ValidadorDeGuion` (RN-21 a RN-24) y `GuionDeRespaldo` (RN-25) leen la plantilla, los movimientos y el vocabulario del paquete; `ServicioVideos` aplica los mismos límites al editar el storyboard. No tienen nada de Pastelería. |
+| Generación y composición | `video/aplicacion/`, `video/infraestructura/` | Genéricas: `ServicioGeneracion` pide a `Movimientos.promptDeToma` el prompt de cada clip (desde el 2026-11-12: la `plantillaDeToma` con la `instruccion` del movimiento y las `prohibiciones`) y le pasa los `negativos` al modelo de video (sin respaldo sin IA: un plano sin clip deja el video en `ERROR`, o conserva el clip anterior en una regeneración); `ServicioComposicion` y `FfmpegComponedor` usan los `segundos` de la plantilla, los `llamados`, la tipografía del estilo y la pista. No tienen nada de Pastelería. |
+| Guion y storyboard | `video/aplicacion/`, `video/dominio/` | Genéricos: `InstruccionesDelGuion` llena `guion.md` y arma el esquema JSON de la respuesta; `ValidadorDeGuion` (RN-21 a RN-24; desde el 2026-11-12 también el cierre y la variedad de movimientos) lee la plantilla, los movimientos y el vocabulario del paquete (`GuionDeRespaldo` se borró el 2026-11-12); `ServicioVideos` aplica los mismos límites al editar el storyboard. No tienen nada de Pastelería. |
 | Motor del chat | `chat/aplicacion/ServicioChat.java`, `chat/dominio/` | Genérico: recorre los pasos de `guionDelChat()` en orden, agrupa los textos (`AgrupadorDeMensajes`, ADR 0012) y los revisa con `EvaluadorDeRespuesta`. Un texto escrito en un paso `BOTONES` con `opcionLibre` lo atiende `escribirEnBotones` (sección 4.3). No tiene nada de Pastelería. |
 | Conversaciones guardadas | Migración `V4__chat.sql` | `conversacion.paso_actual` (id del paso, `varchar(40)`) y `conversacion.respuestas` (`jsonb`, por id de paso, más `<id>Libre` cuando el negocio escribió en un paso de botones). |
 | `NichoController` | `nicho/api/NichoController.java` | `GET /api/nicho/configuracion` (rol NEGOCIO): el paquete del negocio de la sesión. |
@@ -53,7 +59,7 @@ Por eso, un nicho nuevo es **otro paquete**: una clase que implementa `PaqueteNi
 | Nicho inmutable | (ningún endpoint) | RN-40: ninguna operación cambia el nicho de un negocio ya creado. |
 | Pruebas | `backend/src/test/java/com/autoreel/nicho/pasteleria/PaquetePasteleriaTest.java` | Temporadas vigentes y próximas, validación de respuestas (incluida una opción escrita en "Otros", `aceptaUnaOpcionEscritaEnOtros`) y un guion del chat mal armado que falla (`unGuionDelChatMalArmadoFallaAlArrancar`), con los archivos reales. |
 | | `backend/src/test/java/com/autoreel/chat/ChatIntegracionTest.java` | Entre otras, `enLaPrimeraPreguntaSePuedeEscribirElTipoDeVideo`: el texto escrito en `tipoVideo` se guarda en `tipoVideoLibre` y el paso queda con su `opcionLibre`. |
-| | `backend/src/test/java/com/autoreel/video/dominio/` | `ValidadorDeGuionTest` y `GuionDeRespaldoTest` usan el paquete real de Pastelería: si un cambio en `plantilla.json` o `vocabulario.json` rompe una regla, fallan. |
+| | `backend/src/test/java/com/autoreel/video/dominio/` | `ValidadorDeGuionTest` (con el armador `Guiones`) usa el paquete real de Pastelería: si un cambio en `plantilla.json`, `movimientos.json` o `vocabulario.json` rompe una regla, falla. `PaquetePasteleriaTest` revisa además los 13 movimientos y el prompt de `ORBITA_FRONTAL`. |
 | | `backend/src/test/java/com/autoreel/video/infraestructura/FfmpegComponedorTest.java` | Compone con FFmpeg real y la tipografía real del paquete, con textos difíciles (`%`, `\`, `:`, comillas, `¿`, `¡`, `ñ`), y verifica el formato con `ffprobe` (V23). |
 
 **El frontend es genérico salvo dos detalles**, que hay que revisar al agregar un nicho:
@@ -93,7 +99,7 @@ public interface PaqueteNicho {
     List<Pregunta> preguntasOnboarding();     // preguntas de los pasos 2 y 3
     List<Temporada> temporadas();             // temporadas y fechas especiales
     GuionChat guionDelChat();                 // preguntas del chat del video del día
-    PlantillaVideo plantillaVideo();          // planos del video, llamados y textos de respaldo
+    PlantillaVideo plantillaVideo();          // planos del video, llamados y límites del cierre
     Movimientos movimientos();                // movimientos de cámara permitidos
     Vocabulario vocabulario();                // tonos, frases prohibidas y palabras de promoción
     String instruccionesGuion();              // guion.md, con marcadores {así}
@@ -114,9 +120,9 @@ public interface PaqueteNicho {
 
 - Los métodos por defecto son comunes: un paquete nuevo solo implementa los trece abstractos.
 - Quien llama a `temporadasVigentes` y `fechasEspecialesProximas` pasa `LocalDate.now(reloj)` con el `Clock` de `America/Lima` (`ConfiguracionReloj`). Hoy solo `NichoController` usa `temporadasVigentes` (las manda en `GET /api/nicho/configuracion`, aunque ninguna pantalla las muestra). **El MVP no usa temporadas** (ADR 0013): el carrusel no se ordena por temporada, no hay botón "Fecha especial" y, desde el 2026-11-06, el catálogo tampoco las pide ni las muestra. Los dos cálculos quedan listos, con sus pruebas, para cuando se retomen (V13 y RF-31; sección 10 de `docs/plan-de-desarrollo.md`).
-- Quién usa cada método: `ServicioPerfil` (`admiteEstilo` → `ESTILO_INVALIDO`; `preguntasOnboarding` con `ValidadorDeRespuestas`), `ServicioCatalogo` (`admiteTemporada` → `TEMPORADA_INVALIDA`), `ServicioChat` (`guionDelChat`), `NichoController`, `ServicioGestionNegocios` y, desde la fase 4, el módulo `video`. `LectorDeDatosDelVideo` toma el paquete del negocio con `RegistroDeNichos.de(...)`; `InstruccionesDelGuion`, `ValidadorDeGuion`, `GuionDeRespaldo`, `ServicioGuion` y `ServicioVideos` usan `plantillaVideo`, `movimientos`, `vocabulario` e `instruccionesGuion`.
+- Quién usa cada método: `ServicioPerfil` (`admiteEstilo` → `ESTILO_INVALIDO`; `preguntasOnboarding` con `ValidadorDeRespuestas`), `ServicioCatalogo` (`admiteTemporada` → `TEMPORADA_INVALIDA`), `ServicioChat` (`guionDelChat`), `NichoController`, `ServicioGestionNegocios` y, desde la fase 4, el módulo `video`. `LectorDeDatosDelVideo` toma el paquete del negocio con `RegistroDeNichos.de(...)`; `InstruccionesDelGuion`, `ValidadorDeGuion`, `ServicioGuion` y `ServicioVideos` usan `plantillaVideo`, `movimientos`, `vocabulario` e `instruccionesGuion`.
 - Desde la fase 5:
-  - `ServicioGeneracion` usa `movimientos` (la `instruccion` del movimiento de cada plano y las `prohibiciones`) para el modelo de video.
+  - `ServicioGeneracion` usa `movimientos` para el modelo de video: desde el 2026-11-12, `promptDeToma(movimiento)` y `negativos()` (antes, la `instruccion` y las `prohibiciones`).
   - `ServicioComposicion` usa `plantillaVideo` (segundos y llamados) y `tipografia(estilo)`. Si el estilo del negocio no existe en el paquete, usa la del primer estilo.
   - `BibliotecaMusical` usa `pistas()` y `leerPista(...)` al arrancar (sección 4.8).
 - `tipografia(estilo)` devuelve **bytes**, no una ruta: dentro del JAR no hay ruta de archivo, y FFmpeg la recibe escrita en su carpeta temporal (ADR 0016). `PaquetePasteleria` lee las tipografías una sola vez, al arrancar, y lanza `IllegalArgumentException` si se pide un estilo sin tipografía.
@@ -374,45 +380,36 @@ Pasos reales de Pastelería: `tipoVideo` (BOTONES: `PRODUCTO_ESTRELLA`, `PROMOCI
 
 ### 4.4 `plantilla.json`
 
-La plantilla fija del video de 15 segundos (sección 7.4, ADR 0003): cuatro planos, de los que la IA escribe tres y el sistema arma el cierre. Se lee como `PlantillaVideo`. Versión real de Pastelería, abreviada:
+La plantilla fija del video de 15 segundos (sección 7.4, ADR 0003): cuatro planos. La IA escribe los textos de los tres primeros y, desde el 2026-11-12, los del cierre; el sistema arma el cierre con ellos y el llamado. Se lee como `PlantillaVideo`. Versión real de Pastelería:
 
 ```json
 {
   "planos": [
     { "orden": 1, "nombre": "Gancho", "foto": "DETALLE", "maxPalabras": 6, "segundos": 3, "conIa": true,
-      "movimientoDeRespaldo": "ACERCAMIENTO_LENTO", "respaldoDesde": ["GANCHO_DEL_TIPO"],
-      "textoDeRespaldo": "Un antojo que no espera" },
+      "movimientoDeRespaldo": "MACRO_DETALLE" },
     { "orden": 2, "nombre": "Producto", "foto": "ENTERO", "maxPalabras": 5, "segundos": 4, "conIa": true,
-      "movimientoDeRespaldo": "DESPLAZAMIENTO_LATERAL", "respaldoDesde": ["PRODUCTO"],
-      "textoDeRespaldo": "Hecho para compartir" },
+      "movimientoDeRespaldo": "ORBITA_FRONTAL" },
     { "orden": 3, "nombre": "Relleno", "foto": "PORCION", "maxPalabras": 7, "segundos": 4, "conIa": true,
-      "movimientoDeRespaldo": "LUZ_CALIDA", "respaldoDesde": ["ESPECIAL", "DESCRIPCION_PRODUCTO"],
-      "textoDeRespaldo": "Cada porción con mucho cariño" },
-    { "orden": 4, "nombre": "Cierre", "maxPalabras": 0, "segundos": 4, "conIa": false }
+      "movimientoDeRespaldo": "PARALAJE_LATERAL" },
+    { "orden": 4, "nombre": "Cierre", "maxPalabras": 6, "segundos": 4, "conIa": false }
   ],
   "llamados": {
     "WHATSAPP": "Pide por WhatsApp",
     "DELIVERY": "Pídelo por delivery",
     "TIENDA": "Te esperamos en {distrito}"
   },
-  "ganchosDeRespaldo": {
-    "PRODUCTO_ESTRELLA": "Nuestro favorito de siempre",
-    "PROMOCION": "Una promoción para darte gusto",
-    "TORTAS_POR_ENCARGO": "Tu torta hecha a medida",
-    "RECIEN_HORNEADO": "Recién salido del horno"
-  },
-  "descripcionDeRespaldo": "Hoy te presentamos {producto}. {especial} {llamado}.",
-  "descripcionFijaDeRespaldo": "Hoy te presentamos uno de nuestros favoritos, hecho con mucho cariño. {llamado}.",
   "hashtagsBase": ["#pasteleria", "#postres", "#reposteria", "#dulces", "#antojo"],
   "maximoCaracteresPrecio": 40,
+  "maximoCaracteresUbicacion": 40,
   "tipografias": {
     "CASERO": "Nunito-ExtraBold.ttf",
     "ELEGANTE": "PlayfairDisplay-Bold.ttf",
     "DIVERTIDO": "Fredoka-SemiBold.ttf"
-  },
-  "avisoDeRespaldo": "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto."
+  }
 }
 ```
+
+Hasta el 2026-11-12 la plantilla traía además los textos del guion de respaldo (`respaldoDesde` y `textoDeRespaldo` por plano, `ganchosDeRespaldo`, `descripcionDeRespaldo`, `descripcionFijaDeRespaldo` y `avisoDeRespaldo`). Se quitaron con el respaldo (ADR 0021), y hoy un campo de esos hace fallar el arranque.
 
 #### Cada plano (`PlanoPlantilla`)
 
@@ -421,58 +418,84 @@ La plantilla fija del video de 15 segundos (sección 7.4, ADR 0003): cuatro plan
 | `orden` | Posición del plano (1 a 4). Es la clave de `plano.orden` y de `PUT /api/videos/{id}/planos/{orden}`. |
 | `nombre` | Nombre visible en el storyboard y en las instrucciones del modelo ("Gancho"). |
 | `foto` | Foto del producto que usa el plano: `DETALLE`, `ENTERO` o `PORCION` (`TipoFoto`). El cierre no lleva. |
-| `maxPalabras` | Máximo de palabras del texto en pantalla (RN-21), contadas con `Texto.contarPalabras`. Lo revisan el validador, el respaldo y el storyboard (400 `TEXTO_MUY_LARGO`, V21); el frontend muestra el contador. En el cierre vale 0. |
+| `maxPalabras` | Máximo de palabras del texto en pantalla (RN-21), contadas con `Texto.contarPalabras`. Lo revisan el validador y el storyboard (400 `TEXTO_MUY_LARGO`, V21); el frontend muestra el contador. **En el cierre** (desde el 2026-11-12) es el máximo de la **frase** que escribe la IA (6 en Pastelería; 400 `FRASE_MUY_LARGA` al editarla); debe ser mayor que 0. |
 | `segundos` | Duración del plano. Se le dice al modelo en las instrucciones, y la composición recorta cada clip a esa duración. El video final dura la **suma** de los segundos de los cuatro planos: debe dar 15 (RN-31). |
-| `conIa` | `true` en los planos que escribe la IA. **Exactamente uno** es `false`: el cierre, que arma el sistema con el precio literal del usuario, el llamado y el distrito. |
-| `movimientoDeRespaldo` | `id` de `movimientos.json` que usa el guion de respaldo. |
-| `respaldoDesde` | De dónde saca su texto el guion de respaldo, en orden de preferencia: `GANCHO_DEL_TIPO` (el de `ganchosDeRespaldo`), `PRODUCTO` (el nombre), `ESPECIAL` (la respuesta del chat) o `DESCRIPCION_PRODUCTO`. Usa el primero que, recortado, quede limpio (al menos 2 palabras y sin nada prohibido). |
-| `textoDeRespaldo` | Texto fijo si ninguna fuente sirve. |
+| `conIa` | `true` en los planos con clip de IA. **Exactamente uno** es `false`: el cierre, que no tiene clip. Desde el 2026-11-12 sus textos (precio, frase y ubicación) los escribe la IA y el sistema agrega el llamado; antes usaba el precio literal del usuario y el distrito. |
+| `movimientoDeRespaldo` | `id` de `movimientos.json`. Desde el 2026-11-12 es el **movimiento sugerido** del plano: el prompt del guion lo muestra como "Movimiento sugerido" si el movimiento se admite en el tipo de video, para cuando el modelo no tenga una razón clara para elegir otro. Conviene que sea de cámara 3D. El nombre se conserva del guion de respaldo, que lo usaba. |
 
 #### Campos de la raíz
 
 | Campo | Significado |
 |---|---|
 | `llamados` | Llamado a la acción del cierre por **opción de la pregunta `canales`** del onboarding. El orden del archivo es la prioridad: el cierre usa el primero que el negocio tenga, no el orden en que marcó los canales. `{distrito}` se reemplaza por el distrito del negocio. |
-| `ganchosDeRespaldo` | Gancho fijo del respaldo por **opción del paso `tipoVideo`** del chat. |
-| `descripcionDeRespaldo` | Descripción del respaldo con datos del usuario: `{producto}`, `{especial}` (su primera oración) y `{llamado}`. Si no pasa el validador, se prueba sin `{especial}` y luego la fija. |
-| `descripcionFijaDeRespaldo` | Descripción sin datos del usuario; solo admite `{llamado}`. |
-| `hashtagsBase` | Entre 3 y 6 hashtags del rubro, con la forma `#palabra`. El respaldo les agrega el del distrito; el validador exige entre 5 y 8 en total (RN-24). |
-| `maximoCaracteresPrecio` | Máximo del precio del cierre. Si lo escrito en el chat pasa de este largo, se propone recortado en el límite de una palabra; al editarlo en el storyboard, uno más largo responde 400 `PRECIO_MUY_LARGO`. |
+| `hashtagsBase` | Entre 3 y 6 hashtags del rubro, con la forma `#palabra`. Se le sugieren al modelo (`{hashtagsBase}` en `guion.md`); el validador exige entre 5 y 8 en total, con al menos uno del distrito (RN-24). |
+| `maximoCaracteresPrecio` | Máximo del precio **y de la frase** del cierre (40). Lo revisa el validador en lo que escribe la IA (`{maximoCaracteresCierre}` en `guion.md`); al editarlos en el storyboard, uno más largo responde 400 `PRECIO_MUY_LARGO` o `FRASE_MUY_LARGA`. |
+| `maximoCaracteresUbicacion` | Desde el 2026-11-12. Máximo de la ubicación que propone la IA para el cierre (40), un lugar más preciso que el distrito. Debe ser mayor que 0. |
 | `tipografias` | Desde la fase 5. Archivo de la carpeta `fuentes/` del paquete para **cada `valor` de estilo** de `onboarding.json` (sección 4.8). Todos los textos del video de ese estilo (planos y cierre) se dibujan con ella. |
-| `avisoDeRespaldo` | Lo que ve el negocio en el storyboard cuando se usó el guion de respaldo. Sin "error" ni "IA". |
 
 ### 4.5 `movimientos.json`
 
-La lista cerrada de movimientos de cámara (sección 7.5). Se lee como `Movimientos`. Ejemplo abreviado:
+La lista cerrada de movimientos de cámara (sección 7.5) y, desde el 2026-11-12 (ADR 0021), **el prompt completo del modelo de video**. Así ningún adaptador tiene texto propio del nicho. Se lee como `Movimientos`. Ejemplo abreviado de Pastelería:
 
 ```json
 {
+  "plantillaDeToma": "Use the photo as the exact first frame. A single continuous shot from a premium cinematic dessert commercial, 24fps film look, warm soft light. {instruccion} The product itself keeps exactly its shape, colors, frosting and decorations from the photo while the camera moves through the real 3D space around it. ...",
+  "prohibiciones": "Do not add hands, people, faces, knives, utensils, text, letters, logos, props or decorations that are not in the photo; the only additions allowed are the ones the shot above describes. Do not morph, melt, redecorate or duplicate the product. No digital zoom: the camera physically moves. ...",
+  "negativos": "hands, fingers, people, faces, knife, utensils, text, letters, subtitles, watermark, logo, extra props, duplicate product, ...",
+  "minimoPlanosCamara3d": 2,
   "movimientos": [
     {
+      "id": "ORBITA_FRONTAL",
+      "descripcion": "La cámara gira alrededor del producto en un arco suave",
+      "camara3d": true,
+      "instruccion": "The camera performs a slow, smooth 60-degree arc shot around the front of the product at table height, keeping it centered, 85mm lens, shallow depth of field, the background shifting with natural parallax and creamy bokeh."
+    },
+    {
       "id": "ACERCAMIENTO_LENTO",
-      "descripcion": "La cámara se acerca muy despacio",
-      "instruccion": "Very slow, smooth camera push-in toward the product."
+      "descripcion": "La cámara avanza hacia el producto y se siente la profundidad",
+      "instruccion": "The camera dollies forward steadily toward the product at table height, a physical camera move and not a zoom, ..."
     },
     {
       "id": "VAPOR_SUAVE",
-      "descripcion": "Vapor tenue (solo horneados o bebidas calientes)",
-      "instruccion": "Faint wisps of steam rising from the product.",
+      "descripcion": "Vapor tenue mientras la cámara rodea el producto (solo recién horneados)",
+      "camara3d": true,
+      "instruccion": "Faint wisps of steam rise from the freshly baked product while the camera slowly arcs about 30 degrees around it ...",
       "soloTiposVideo": ["RECIEN_HORNEADO"]
     }
-  ],
-  "prohibiciones": "No people, no hands, no faces, no knives or moving utensils, no text, letters or logos, ..."
+  ]
 }
 ```
 
+**Campos de la raíz:**
+
 | Campo | Significado |
 |---|---|
-| `id` | Lo que elige el modelo y se guarda en `plano.movimiento`. **Es contrato:** los videos guardados lo usan. |
-| `descripcion` | El movimiento en palabras simples. Se muestra en el storyboard y se le da al modelo junto al `id`. |
-| `instruccion` | Instrucción en inglés para el modelo de video. `ServicioGeneracion` la envía tal cual como `prompt` del clip del plano. |
-| `soloTiposVideo` | Opcional. Si tiene valores (opciones de `tipoVideo`), el movimiento solo se ofrece en esos tipos de video: queda fuera del esquema de la respuesta y el validador lo rechaza en los demás. |
-| `prohibiciones` | Lo que nunca debe aparecer en un clip. Va con cada clip como instrucción negativa (`negativePrompt` en Veo); un adaptador cuyo proveedor no la admita la agrega a la instrucción, como Gemini Omni Flash, el modelo de video del plan Lite ("Never show: …"). |
+| `plantillaDeToma` | Desde el 2026-11-12. El envoltorio en inglés común a todos los clips. **Debe contener `{instruccion}`**, que se reemplaza por la `instruccion` del movimiento. Describe el estilo de la toma (en Pastelería, un comercial de postres en una sola toma continua) y ancla el producto: la foto es el primer cuadro y el producto no cambia mientras la cámara se mueve. |
+| `prohibiciones` | Lo que nunca debe aparecer, **en frases**. Desde el 2026-11-12 va **al final del prompt** de cada clip (antes iba como instrucción negativa). Si un movimiento agrega algo a propósito (azúcar, vapor), dilo: en Pastelería, "the only additions allowed are the ones the shot above describes". |
+| `negativos` | Desde el 2026-11-12. Lo mismo, como **lista de sustantivos** separados por comas, para el prompt negativo: `negativePrompt` en Veo, y "Avoid: …" al final del prompt en Gemini Omni Flash, que no lo admite. |
+| `minimoPlanosCamara3d` | Desde el 2026-11-12. Cuántos planos de un video, como mínimo, usan un movimiento con `camara3d: true` (2 en Pastelería). Lo exige el validador y lo dice `guion.md` (`{minimoPlanosCamara3d}`). Opcional: sin el campo vale 0. |
 
-Pastelería tiene los 7 de la sección 7.5: `ACERCAMIENTO_LENTO`, `ALEJAMIENTO_LENTO`, `DESPLAZAMIENTO_LATERAL`, `BRILLO_GLASEADO`, `AZUCAR_CAYENDO`, `VAPOR_SUAVE` (solo `RECIEN_HORNEADO`) y `LUZ_CALIDA`.
+**Cada movimiento:**
+
+| Campo | Significado |
+|---|---|
+| `id` | Lo que elige el modelo y se guarda en `plano.movimiento`. **Es contrato:** los videos guardados y "Reintentar" lo usan, y `ServicioGeneracion` falla con un id que no existe. No borres ni renombres un id: reescribe su `descripcion` e `instruccion`. |
+| `descripcion` | El movimiento en palabras simples. Se muestra en el storyboard y se le da al modelo junto al `id` (con "; cámara 3D" si corresponde). |
+| `instruccion` | La toma de cámara en inglés. `Movimientos.promptDeToma(movimiento)` la pone en la `plantillaDeToma` y agrega las `prohibiciones`; `ServicioGeneracion` envía ese texto como `prompt` del clip, el mismo para cualquier adaptador. |
+| `camara3d` | Desde el 2026-11-12. `true` si la cámara rodea, sube o cruza el producto (órbita, arco, grúa, paralaje, diagonal), y no solo se acerca, se aleja o se desliza. Opcional (`false` si falta). |
+| `soloTiposVideo` | Opcional. Si tiene valores (opciones de `tipoVideo`), el movimiento solo se ofrece en esos tipos de video: queda fuera del esquema de la respuesta y el validador lo rechaza en los demás. |
+
+Pastelería tiene **13 movimientos**:
+
+- **De cámara 3D:** `ORBITA_FRONTAL` (arco de 60°), `ARCO_HEROICO` (toma baja, 45°), `MACRO_DETALLE` (entra hasta la textura, 20°), `GRUA_REVELADO`, `PARALAJE_LATERAL` (45°), `DIAGONAL_ENFOQUE`, y los efectos con un arco de unos 30°: `BRILLO_GLASEADO`, `AZUCAR_CAYENDO`, `VAPOR_SUAVE` (solo `RECIEN_HORNEADO`) y `LUZ_CALIDA`.
+- **Simples:** `ACERCAMIENTO_LENTO`, `ALEJAMIENTO_LENTO` y `DESPLAZAMIENTO_LATERAL`, escritos como movimientos reales de la cámara (*dolly*, *slider*), no como zoom.
+
+Al escribir los movimientos de un nicho nuevo:
+
+- Una sola cámara por toma y arcos de **60° como máximo**: con una sola foto, una vuelta completa obliga al modelo a inventar el lado oculto y deforma el producto.
+- Escribe "the product", no el nombre de un producto, para que sirva con cualquier foto del catálogo.
+- Pide un movimiento visible ("clearly visible, smooth and steady"): con instrucciones tímidas, los modelos devuelven casi una foto quieta.
+- Revisa el prompt completo de un movimiento con una prueba (como `PaquetePasteleriaTest`) y con 2 o 3 clips reales antes de darlo por bueno.
 
 ### 4.6 `vocabulario.json`
 
@@ -510,8 +533,13 @@ Las instrucciones base para el modelo de texto (sección 8.1), en Markdown y en 
 |---|---|
 | `{palabrasProhibidas}` | Las `palabrasProhibidas` del perfil, separadas por coma, o "ninguna". |
 | `{tono}` | `vocabulario.tonos` del estilo del negocio. |
-| `{plantilla}` | Una línea por plano, armada con `plantilla.json`: nombre, foto, segundos y máximo de palabras; el cierre, como "lo arma el sistema; no lo escribas". |
-| `{movimientos}` | Los movimientos permitidos para el tipo de video, como `ID (descripción)`. |
+| `{plantilla}` | Una línea por plano, armada con `plantilla.json`: nombre, foto, segundos, máximo de palabras y, desde el 2026-11-12, "Movimiento sugerido: …" (el `movimientoDeRespaldo`, si se admite en el tipo de video). El cierre, como "tú escribes el objeto `cierre` y el sistema le agrega el llamado a la acción" (antes: "lo arma el sistema; no lo escribas"). |
+| `{movimientos}` | Los movimientos permitidos para el tipo de video, como `ID (descripción)` o, si es de cámara 3D, `ID (descripción; cámara 3D)`. |
+| `{minimoPlanosCamara3d}` | Desde el 2026-11-12. `minimoPlanosCamara3d` de `movimientos.json`. |
+| `{maxPalabrasFrase}` | Desde el 2026-11-12. El `maxPalabras` del cierre en `plantilla.json`. |
+| `{maximoCaracteresCierre}` | Desde el 2026-11-12. `maximoCaracteresPrecio` de `plantilla.json` (precio y frase). |
+| `{maximoCaracteresUbicacion}` | Desde el 2026-11-12. `maximoCaracteresUbicacion` de `plantilla.json`. |
+| `{hashtagsBase}` | Desde el 2026-11-12. Los `hashtagsBase` de `plantilla.json`, separados por espacio. |
 | `{distritoHashtag}` | El distrito sin tildes ni espacios, para el hashtag obligatorio. |
 | `{nombreNegocio}`, `{estilo}` | El nombre del negocio y el texto de su estilo. |
 | `{especialidad}`, `{publico}` | Las opciones elegidas en el onboarding, con su texto ("Familias, Jóvenes"). |
@@ -523,7 +551,14 @@ Las instrucciones base para el modelo de texto (sección 8.1), en Markdown y en 
 
 Al escribir el `guion.md` de un nicho nuevo:
 
-- Pide **solo** los planos con IA, la descripción y los hashtags. El cierre no lo escribe el modelo.
+- Pide los planos con IA, **el objeto `cierre`**, la descripción y los hashtags. Desde el 2026-11-12 el esquema exige `cierre` con `precio` (texto o `null`), `frase` y `ubicacion` (texto o `null`). Explica cuándo va cada uno (en Pastelería, la sección `## Cierre (objeto "cierre")` de `guion.md`):
+  - el precio solo si el negocio escribió uno real con números, resumido con sus mismos números y moneda, y tomados solo de la respuesta del precio;
+  - la frase siempre;
+  - la ubicación solo con palabras del negocio.
+
+  El validador rechaza lo que no cumpla, y el error vuelve al modelo en el siguiente intento.
+- **Las respuestas del negocio son indicaciones, no textos para copiar.** Pídele al modelo que las reescriba como publicidad, que cumpla las instrucciones ("no menciones precio") sin mostrarlas y que use como material el mensaje que el negocio pide transmitir. Agrega ejemplos buenos y malos que no inventen productos ni sabores del nicho.
+- Dile qué papel cumple cada plano (en Pastelería: enganchar, presentar y rematar el antojo) y cómo elegir el movimiento según la foto, con el mínimo de cámara 3D.
 - No hace falta describir el formato JSON: el adaptador manda el esquema aparte (`InstruccionesDelGuion.esquema`).
 - Repite las reglas que el validador no puede revisar: no inventar sabores, ingredientes, premios ni tiempos de entrega.
 - Pide la descripción en unos 450 caracteres, para que quepa con los hashtags en los 600 de RN-24.
@@ -575,7 +610,7 @@ Desde la fase 5, el paquete trae lo que necesita la composición del video (secc
 
 ### 4.9 Qué valida el paquete al arrancar
 
-Los siete archivos JSON se leen con `FAIL_ON_UNKNOWN_PROPERTIES`: **un campo mal escrito** (por ejemplo, `"omitibe"`) hace fallar el arranque en lugar de ignorarse. Un JSON mal formado, un campo con otro tipo o un valor de enumeración desconocido (`tipo`, `clase`, `regla.tipo`, `sugerencia`, `respaldoDesde`) también lo hacen fallar, porque Jackson no puede leerlo; si falta un archivo, incluido `guion.md` o una tipografía nombrada en `tipografias`, el error es "No se pudo leer nichos/…".
+Los siete archivos JSON se leen con `FAIL_ON_UNKNOWN_PROPERTIES`: **un campo mal escrito** (por ejemplo, `"omitibe"`) hace fallar el arranque en lugar de ignorarse. Un JSON mal formado, un campo con otro tipo o un valor de enumeración desconocido (`tipo`, `clase`, `regla.tipo`, `sugerencia`) también lo hacen fallar, porque Jackson no puede leerlo; si falta un archivo, incluido `guion.md` o una tipografía nombrada en `tipografias`, el error es "No se pudo leer nichos/…".
 
 `PaquetePasteleria.validar()` lanza `IllegalStateException("Paquete de nicho Pastelería inválido: …")` y el backend no arranca si:
 
@@ -598,16 +633,15 @@ Los siete archivos JSON se leen con `FAIL_ON_UNKNOWN_PROPERTIES`: **un campo mal
 - un paso tiene `opcionLibre` y no es `BOTONES`, o su `opcionLibre` no es el `valor` de una de sus opciones ("la opción libre de … debe ser una de sus opciones");
 - un `obligatoriaSi` no apunta a un paso anterior, o usa un `valor` que no está entre las opciones de ese paso.
 
-`PlantillaVideo.validar(canales, tiposDeVideo, estilos)` lanza `IllegalStateException("Plantilla de video inválida: …")` si:
+`PlantillaVideo.validar(canales, estilos)` lanza `IllegalStateException("Plantilla de video inválida: …")` si (desde el 2026-11-12, sin los chequeos del guion de respaldo):
 
 - un estilo de `onboarding.json` no tiene su tipografía en `tipografias`;
 - no hay exactamente 4 planos, o no hay exactamente un plano con `conIa: false`;
-- un plano con IA no tiene `foto`, tiene `maxPalabras` 0 o le falta `textoDeRespaldo`;
+- un plano con IA no tiene `foto` o tiene `maxPalabras` 0;
+- el cierre tiene `maxPalabras` 0 (es el máximo de la frase);
 - una opción de la pregunta `canales` del onboarding no tiene su llamado en `llamados`;
-- una opción del paso `tipoVideo` del chat no tiene su gancho en `ganchosDeRespaldo`;
 - `hashtagsBase` no tiene entre 3 y 6 hashtags;
-- falta alguna de las dos descripciones de respaldo, o la fija usa `{producto}` o `{especial}`;
-- `maximoCaracteresPrecio` no es mayor que 0.
+- `maximoCaracteresPrecio` o `maximoCaracteresUbicacion` no es mayor que 0.
 
 `PaquetePasteleria.validarVideo()` agrega, con el mismo mensaje del paquete:
 
@@ -615,9 +649,11 @@ Los siete archivos JSON se leen con `FAIL_ON_UNKNOWN_PROPERTIES`: **un campo mal
 - un estilo no tiene ninguna pista en `musica.json`;
 - el `archivo` de una pista no existe en la carpeta `musica/`;
 - una pista declara `duracionSegundos` menor que 15;
-- el `movimientoDeRespaldo` de un plano no existe en `movimientos.json`;
-- un texto fijo (los ganchos, los `textoDeRespaldo`, la descripción fija y los llamados) usa una frase de `prohibidas` o de `prohibidasSalvoQueLasDeclareElProducto`: el respaldo debe cumplir el propio vocabulario del nicho;
-- `guion.md` está vacío.
+- el `movimientoDeRespaldo` (movimiento sugerido) de un plano no existe en `movimientos.json`;
+- un llamado usa una frase de `prohibidas` o de `prohibidasSalvoQueLasDeclareElProducto`: los textos fijos deben cumplir el propio vocabulario del nicho;
+- `guion.md` está vacío;
+- desde el 2026-11-12 (`validarMovimientos`): `plantillaDeToma` falta o no contiene `{instruccion}`; `prohibiciones` o `negativos` están vacíos; no hay movimientos; dos movimientos comparten `id`; a un movimiento le falta la `descripcion` o la `instruccion`;
+- `minimoPlanosCamara3d` es mayor que la cantidad de planos con IA, o es mayor que 0 y ningún movimiento con `camara3d: true` sirve para todos los tipos de video (sin `soloTiposVideo`).
 
 **Lo que no se valida al arrancar** y conviene revisar con una prueba:
 
@@ -625,9 +661,9 @@ Los siete archivos JSON se leen con `FAIL_ON_UNKNOWN_PROPERTIES`: **un campo mal
 - `ejemplo`: puede faltar o estar vacío, y no se revisa contra el vocabulario del nicho. En un paso sin caja de texto (`PRODUCTO`, o `BOTONES` sin `opcionLibre`) no se muestra;
 - que `foto` sea un `TipoFoto` existente: un valor mal escrito falla recién al crear los planos de un video, que termina en `ERROR`;
 - que los marcadores de `guion.md` estén bien escritos;
-- que los `id` de `movimientos.json` no se repitan y que `soloTiposVideo` use opciones reales de `tipoVideo`;
+- que `soloTiposVideo` use opciones reales de `tipoVideo` (desde el 2026-11-12 sí se valida que los `id` de `movimientos.json` no se repitan);
+- que haya suficientes movimientos de cámara 3D distintos para cada tipo de video: con `minimoPlanosCamara3d` 2, cada tipo necesita al menos uno, y el modelo puede repetirlo en dos planos;
 - la forma de `hashtagsBase` y que los `segundos` sumen 15: si no suman 15, el video sale con otra duración y no cumple RN-31;
-- que `avisoDeRespaldo` no esté vacío;
 - que cada archivo de `fuentes/` sea un TTF válido (falla recién al componer un video de ese estilo) y que dibuje todos los caracteres de la lista blanca;
 - que cada pista sea un audio válido y dure de verdad lo que dice `duracionSegundos`, y que su `estilo` sea uno de `onboarding.json` (una pista con un estilo que no existe se carga, pero nunca se elige).
 
@@ -653,8 +689,8 @@ Escribe, para el nuevo rubro, el equivalente a la sección 7 de la especificaci�
 - Los estilos de video y las preguntas del onboarding (pasos 2 y 3), y en cuáles selecciones conviene un "Otros" (`maxOtro`).
 - Las temporadas y fechas especiales, con su regla de fechas. Incluye una con id `TODO_EL_ANIO` (sección 2). Hoy no se usan (sección 4.2), pero el archivo es obligatorio.
 - Las preguntas del chat: los tipos de video (y si el negocio puede escribirlo, con `opcionLibre`), qué se pregunta del producto, cuáles son opcionales y cuáles son obligatorias según otra respuesta, un ejemplo de respuesta por pregunta y los mensajes fijos.
-- La plantilla de 4 planos: qué foto y cuántas palabras lleva cada uno, los llamados por canal, los ganchos y textos de respaldo, y los hashtags base.
-- Los movimientos seguros para ese tipo de producto y los tonos, frases prohibidas y palabras de promoción.
+- La plantilla de 4 planos: qué foto y cuántas palabras lleva cada uno, el movimiento sugerido, la frase del cierre, los llamados por canal y los hashtags base.
+- Los movimientos de cámara seguros para ese tipo de producto (cuáles son de cámara 3D), la plantilla de toma y las prohibiciones del prompt del modelo de video, y los tonos, frases prohibidas y palabras de promoción.
 - Las instrucciones del modelo de texto (`guion.md`).
 - Una tipografía por estilo, con licencia de uso comercial, y las pistas de música por estilo con su licencia (sección 4.8, P-02 y P-05).
 - Usa los ids que lee el guion (`tipoVideo`, `producto`, `especial`, `precio`, `extra`, y `canales`, `distrito` y las demás preguntas de la sección 2).
@@ -760,13 +796,13 @@ En `PaginaNegocios.tsx`, la columna **Nicho** solo traduce `PASTELERIA`: el nuev
 
 ### Paso 7. Probar
 
-1. Escribe una prueba como `PaquetePasteleriaTest`, con los archivos reales: temporadas vigentes y próximas en fechas límite, respuestas válidas e inválidas, y un guion del chat mal armado que debe fallar. Agrega pruebas como `GuionDeRespaldoTest` y `ValidadorDeGuionTest` con el paquete nuevo: el guion de respaldo debe pasar siempre el validador, también con un "especial" que traiga una frase prohibida. Revisa que el mensaje de `InstruccionesDelGuion.armar` no deje marcadores `{…}` sin reemplazar.
+1. Escribe una prueba como `PaquetePasteleriaTest`, con los archivos reales: temporadas vigentes y próximas en fechas límite, respuestas válidas e inválidas, y un guion del chat mal armado que debe fallar. Agrega pruebas como `ValidadorDeGuionTest` con el paquete nuevo: un guion bueno pasa, y un cierre con una instrucción como precio, un precio con otros números o una ubicación inventada no pasan. Revisa que el mensaje de `InstruccionesDelGuion.armar` no deje marcadores `{…}` sin reemplazar, y que `promptDeToma` de un movimiento no deje `{instruccion}`.
 2. Ejecuta `./mvnw verify`: si los JSON tienen un error, el contexto de Spring no arranca y fallan todas las pruebas de integración.
 3. Crea un negocio del nuevo nicho desde el panel. El selector **Nicho** debe mostrarlo.
 4. Entra como ese negocio (desde el panel, "Entrar como el negocio", ADR 0019) y completa el onboarding con las preguntas del paquete, incluido un "Otros" escrito en cada selección que lo tenga; registra productos con sus tres fotos (desde 720 px en el lado menor, RN-11).
 5. Abre el chat (Inicio) y recorre todas las preguntas: los botones de tipo de video y un tipo de video escrito (si hay `opcionLibre`), el ejemplo bajo cada caja de texto, el carrusel, "Subir uno nuevo hoy", una respuesta con "?", el aviso del botón "?", una respuesta negativa en una pregunta opcional y en una obligatoria por `obligatoriaSi`, y el resumen final. `ChatIntegracionTest` muestra cómo probarlo con `RelojAjustable`.
-6. Al terminar el chat, abre **"Ver mi propuesta"**: el storyboard debe mostrar los 4 planos con la foto, el movimiento en palabras simples y el texto de cada uno, y el cierre con el precio, el llamado y el distrito. Sin una clave de Google AI Studio (la de `GEMINI_API_KEY` o una pegada en **Ajustes → Integraciones y claves**) verás el guion de respaldo y el `avisoDeRespaldo` del paquete. Edita un texto por encima del máximo (`TEXTO_MUY_LARGO`) y con una frase prohibida (`PALABRA_PROHIBIDA`). `VideoIntegracionTest` muestra cómo probarlo con el servidor de Gemini simulado.
-7. Aprueba el storyboard y crea el video de punta a punta (`GeneracionIntegracionTest` muestra cómo, con Gemini Omni Flash simulado y un componedor de prueba). **Hace falta el modelo de video disponible:** sin su credencial, "Crear mi video" queda desactivado (409 `IA_NO_DISPONIBLE`), porque ya no hay respaldo sin IA para los clips. Revisa en el video final la tipografía de cada estilo, la música, los textos dentro de la zona segura y el cierre, y que los clips respeten los movimientos y las prohibiciones del paquete.
+6. Al terminar el chat, abre **"Ver mi propuesta"**: el storyboard debe mostrar los 4 planos con la foto, el movimiento en palabras simples y el texto de cada uno, y el cierre con el precio o la frase, el llamado y la ubicación. Sin una clave de Google AI Studio (la de `GEMINI_API_KEY` o una pegada en **Ajustes → Integraciones y claves**) ya no hay guion de respaldo (2026-11-12): la propuesta se reintenta 5 minutos y queda en error con "Reintentar". Edita un texto por encima del máximo (`TEXTO_MUY_LARGO`) y con una frase prohibida (`PALABRA_PROHIBIDA`). `VideoIntegracionTest` muestra cómo probarlo con el servidor de Gemini simulado.
+7. Aprueba el storyboard y crea el video de punta a punta (`GeneracionIntegracionTest` muestra cómo, con Gemini Omni Flash simulado y un componedor de prueba). **Hace falta el modelo de video disponible:** sin su credencial, "Crear mi video" queda desactivado (409 `IA_NO_DISPONIBLE`), porque ya no hay respaldo sin IA para los clips. Revisa en el video final la tipografía de cada estilo, la música, los textos dentro de la zona segura y el cierre, y que los clips respeten los movimientos y las prohibiciones del paquete (con 2 o 3 clips reales: un arco de cámara puede deformar algunos productos).
 8. Agrega un caso como `FfmpegComponedorTest` con la tipografía y una pista del paquete nuevo: `ffprobe` debe confirmar 15 s, 1080×1920, 30 fps, H.264 y AAC (V23). Necesita FFmpeg instalado (ADR 0016).
 
 ### Paso 8. Documentar
@@ -796,7 +832,7 @@ Agregar un nicho **no debe** requerir cambios en el chat, el guion, la generaci�
 
 - `plano.orden` y `plano.movimiento` guardan el `orden` de la plantilla y el `id` del movimiento. Si se renombra un movimiento, los storyboards guardados lo muestran con su `id` en lugar de la descripción. Renombrarlo exige una migración de datos.
 - El storyboard toma el nombre, los segundos y el máximo de palabras de cada plano de la plantilla actual. Bajar un `maxPalabras` no cambia los textos ya guardados, pero el negocio no podrá guardarlos de nuevo sin acortarlos.
-- Cambiar textos de respaldo, llamados, hashtags base, tonos o `guion.md` es seguro: solo afecta a los guiones que se escriban después. Una frase prohibida nueva también se aplica a las ediciones del storyboard desde ese momento.
+- Cambiar llamados, hashtags base, tonos o `guion.md` es seguro: solo afecta a los guiones que se escriban después. Cambiar la `plantillaDeToma`, las `prohibiciones`, los `negativos` o la `instruccion` de un movimiento afecta a los clips que se pidan después, también a las regeneraciones y a "Reintentar" de videos ya creados. Una frase prohibida nueva también se aplica a las ediciones del storyboard desde ese momento.
 
 **En la composición**, el video final se arma con el paquete desplegado en ese momento:
 

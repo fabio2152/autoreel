@@ -11,15 +11,15 @@ import com.autoreel.video.dominio.EstadoVideo;
  * El video en todas sus etapas (RF-21 a RF-25): storyboard, generación, revisión y aprobado. Mientras el guion está
  * pendiente, {@code planos} viene vacío.
  *
- * @param avisoDeRespaldo     texto para el usuario si se usó el guion de respaldo; vacío si lo escribió la IA.
  * @param fotosDelProducto    las fotos del producto, para cambiar la de un plano.
+ * @param inicioDelGuion      desde cuándo se está escribiendo el guion (la creación o el último "Reintentar").
  * @param maximoPublicacion   caracteres de la descripción con sus hashtags (RN-24).
  * @param generacion          consumo, regeneraciones y video final.
  */
 public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, ProductoDelVideo producto,
-        PlanDelVideo plan, String avisoDeRespaldo, List<PlanoVista> planos, CierreVista cierre, String descripcion,
+        PlanDelVideo plan, List<PlanoVista> planos, CierreVista cierre, String descripcion,
         List<String> hashtags, int maximoPublicacion, List<FotoVista> fotosDelProducto, Instant fechaCreacion,
-        GeneracionVista generacion) {
+        Instant inicioDelGuion, GeneracionVista generacion) {
 
     public record ProductoDelVideo(Long id, String nombre) {
     }
@@ -46,13 +46,17 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
     }
 
     /**
-     * El plano final, armado por el sistema: precio, llamado a la acción y ubicación sobre la foto del local o los
-     * colores de la marca (sección 7.4).
+     * El plano final: el precio (o, si no hay, la frase) que propuso la IA, el llamado a la acción y la ubicación
+     * sobre la foto del local o los colores de la marca (sección 7.4).
      *
-     * @param whatsapp número a mostrar si el negocio vende por WhatsApp.
+     * @param maximoCaracteresPrecio máximo del precio y de la frase.
+     * @param frase                  se muestra en grande cuando no hay precio.
+     * @param maxPalabrasFrase       palabras de la frase.
+     * @param whatsapp               número a mostrar si el negocio vende por WhatsApp.
      */
     public record CierreVista(int orden, String nombre, int segundos, String precio, int maximoCaracteresPrecio,
-            String llamado, String ubicacion, String whatsapp, String logo, String colorPrimario,
+            String frase, int maxPalabrasFrase, String llamado, String ubicacion, String whatsapp, String logo,
+            String colorPrimario,
             String colorSecundario, String fotoLocal) {
     }
 
@@ -63,10 +67,12 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
      * @param iaDisponible          si el modelo de video se puede usar ahora; si no, no se ofrece regenerar.
      * @param avisoRevision         por ejemplo, que no se pudo aplicar un cambio.
      * @param motivoError           si el video terminó en ERROR, en palabras simples.
-     * @param puedeReintentar       si el video falló al generarse y se puede volver a intentar.
+     * @param puedeReintentar       si el video falló (al escribir el guion o al generarse) y se puede volver a intentar.
+     * @param reintentoUsaVideoDelDia si reintentar vuelve a usar el video del día: solo si falló al generarse.
      */
     public record GeneracionVista(ConsumoVista videosHoy, String urlVideo, int regeneracionesUsadas,
-            boolean iaDisponible, String avisoRevision, String motivoError, boolean puedeReintentar) {
+            boolean iaDisponible, String avisoRevision, String motivoError, boolean puedeReintentar,
+            boolean reintentoUsaVideoDelDia) {
     }
 
     public record ConsumoVista(int usados, int porDia, boolean puedeAprobar) {

@@ -86,13 +86,13 @@ public class Video {
     private List<String> hashtags = new ArrayList<>();
 
     @Column(nullable = false)
-    private boolean guionDeRespaldo;
-
-    @Enumerated(EnumType.STRING)
-    private MotivoRespaldo motivoRespaldo;
-
-    @Column(nullable = false)
     private int intentosGuion;
+
+    /**
+     * Inicio de la escritura del guion en curso (al crear el video o al reintentarlo), para el plazo de los reintentos
+     * automáticos. Vacío en los videos creados antes del 2026-11-12: se usa la fecha de creación.
+     */
+    private Instant guionIniciadoEn;
 
     @Column(nullable = false)
     private BigDecimal costoEstimado = BigDecimal.ZERO;
@@ -100,6 +100,10 @@ public class Video {
     private Instant guionReclamadoHasta;
 
     private String motivoError;
+
+    /** El error no se arregla reintentando (por ejemplo, el producto ya no tiene fotos): no se ofrece "Reintentar". */
+    @Column(nullable = false)
+    private boolean errorDefinitivo;
 
     @Version
     private int version;
@@ -152,6 +156,7 @@ public class Video {
         this.modeloTextoUsado = plan.getModeloTexto();
         this.modeloVideoUsado = plan.getModeloVideo();
         this.opcionesProduccion = Map.copyOf(plan.getOpcionesProduccionPermitidas());
+        this.guionIniciadoEn = ahora;
         this.fechaCreacion = ahora;
         this.fechaActualizacion = ahora;
     }
@@ -173,23 +178,28 @@ public class Video {
         planos.add(Plano.conFoto(this, orden, tipoFoto, claveFoto, movimiento, texto));
     }
 
-    /** Agrega el cierre, armado por el sistema. */
-    public void agregarCierre(int orden, String precio, String llamado, String ubicacion) {
-        planos.add(Plano.cierre(this, orden, precio, llamado, ubicacion));
+    /** Agrega el cierre: precio o frase de la IA, llamado de la plantilla y ubicación. */
+    public void agregarCierre(int orden, String precio, String frase, String llamado, String ubicacion) {
+        planos.add(Plano.cierre(this, orden, precio, frase, llamado, ubicacion));
     }
 
-    /**
-     * Guarda el guion y deja el video listo para revisar.
-     *
-     * @param motivoRespaldo vacío si el guion lo escribió la IA.
-     */
+    /** Inicio del plazo de los reintentos automáticos del guion. */
+    public Instant inicioDelGuion() {
+        return guionIniciadoEn != null ? guionIniciadoEn : fechaCreacion;
+    }
+
+    /** El proveedor de texto falló: el video sigue esperando su guion y se vuelve a tomar desde {@code siguiente}. */
+    public void esperarSiguienteIntentoDeGuion(Instant siguiente, Instant ahora) {
+        this.guionReclamadoHasta = siguiente;
+        this.fechaActualizacion = ahora;
+    }
+
+    /** Guarda el guion que escribió la IA y deja el video listo para revisar. */
     public void mostrarStoryboard(String descripcion, List<String> hashtags, Map<String, Object> guionDelModelo,
-            MotivoRespaldo motivoRespaldo, Instant ahora) {
+            Instant ahora) {
         this.descripcionPublicacion = descripcion;
         this.hashtags = new ArrayList<>(hashtags);
         this.guion = guionDelModelo;
-        this.guionDeRespaldo = motivoRespaldo != null;
-        this.motivoRespaldo = motivoRespaldo;
         this.guionReclamadoHasta = null;
         this.estado = EstadoVideo.STORYBOARD;
         this.fechaActualizacion = ahora;
@@ -197,10 +207,17 @@ public class Video {
 
     public void marcarError(String motivo, Instant ahora) {
         this.motivoError = motivo.length() > 300 ? motivo.substring(0, 300) : motivo;
+        this.errorDefinitivo = false;
         this.guionReclamadoHasta = null;
         this.trabajoReclamadoHasta = null;
         this.estado = EstadoVideo.ERROR;
         this.fechaActualizacion = ahora;
+    }
+
+    /** Un error que no se arregla reintentando: el video no ofrece "Reintentar". */
+    public void marcarErrorDefinitivo(String motivo, Instant ahora) {
+        marcarError(motivo, ahora);
+        this.errorDefinitivo = true;
     }
 
     public void descartar(Instant ahora) {
@@ -223,9 +240,34 @@ public class Video {
         this.fechaActualizacion = ahora;
     }
 
-    /** Si el video falló después de aprobar el storyboard (sin clips o sin composición) y se puede reintentar. */
+    /**
+     * Si el video falló y se puede reintentar: al escribir el guion (sin storyboard ni consumo) o después de aprobar
+     * el storyboard (sin clips o sin composición).
+     */
     public boolean reintentable() {
-        return estado == EstadoVideo.ERROR && consumoFecha != null && !planosConFoto().isEmpty();
+        return falloEnElGuion() || (estado == EstadoVideo.ERROR && !errorDefinitivo && consumoFecha != null
+                && !planosConFoto().isEmpty());
+    }
+
+    /**
+     * Si el video terminó en ERROR antes de tener storyboard (no consumió el video del día) por algo que se puede
+     * arreglar reintentando.
+     */
+    public boolean falloEnElGuion() {
+        return estado == EstadoVideo.ERROR && !errorDefinitivo && consumoFecha == null && planos.isEmpty();
+    }
+
+    /** Reintentar un video cuyo guion no se pudo escribir: vuelve a esperar su guion, sin consumir el video del día. */
+    public void reintentarGuion(Instant ahora) {
+        if (!falloEnElGuion()) {
+            throw noReintentable();
+        }
+        this.motivoError = null;
+        this.intentosGuion = 0;
+        this.guionReclamadoHasta = null;
+        this.guionIniciadoEn = ahora;
+        this.estado = EstadoVideo.GUION_PENDIENTE;
+        this.fechaActualizacion = ahora;
     }
 
     /**
@@ -233,9 +275,8 @@ public class Video {
      * faltan; los que ya llegaron se conservan (no se vuelven a pagar).
      */
     public void reintentar(LocalDate dia, Instant ahora) {
-        if (!reintentable()) {
-            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_REINTENTABLE",
-                    "Este video no se puede reintentar. Crea otro desde el inicio.");
+        if (!reintentable() || falloEnElGuion()) {
+            throw noReintentable();
         }
         this.consumoFecha = dia;
         this.consumoDevuelto = false;
@@ -346,6 +387,11 @@ public class Video {
                 .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("Ese plano no existe."));
     }
 
+    private static ExcepcionDeNegocio noReintentable() {
+        return new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_REINTENTABLE",
+                "Este video no se puede reintentar. Crea otro desde el inicio.");
+    }
+
     private void exigirEstado(EstadoVideo esperado) {
         if (estado != esperado) {
             throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_EDITABLE", "Este video ya no se puede cambiar.");
@@ -408,14 +454,6 @@ public class Video {
         return hashtags;
     }
 
-    public boolean isGuionDeRespaldo() {
-        return guionDeRespaldo;
-    }
-
-    public MotivoRespaldo getMotivoRespaldo() {
-        return motivoRespaldo;
-    }
-
     public int getIntentosGuion() {
         return intentosGuion;
     }
@@ -424,12 +462,20 @@ public class Video {
         return costoEstimado;
     }
 
+    public Instant getGuionIniciadoEn() {
+        return guionIniciadoEn;
+    }
+
     public Instant getGuionReclamadoHasta() {
         return guionReclamadoHasta;
     }
 
     public String getMotivoError() {
         return motivoError;
+    }
+
+    public boolean isErrorDefinitivo() {
+        return errorDefinitivo;
     }
 
     public Instant getFechaCreacion() {

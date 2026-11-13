@@ -1,6 +1,6 @@
 # AutoReel — API REST
 
-> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google (V7) y la revisión del flujo del negocio (2026-11-06). Describe los endpoints que existen hoy en el código; los de Instagram (fase 6, en pausa) se marcan como **(futuro, fase 6)**. Arquitectura, flujo de seguridad, subida de archivos y agrupación de mensajes del chat: `docs/arquitectura.md`.
+> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google (V7) y la revisión del flujo del negocio (2026-11-06). *Actualización del 2026-11-12:* incluye `POST /api/videos/{id}/reintentar` (PR #12) y los cambios de la mejora de la calidad del video (ADR 0021): la `frase` del cierre, sin `avisoDeRespaldo` y "Reintentar" en la etapa del guion. Describe los endpoints que existen hoy en el código; los de Instagram (fase 6, en pausa) se marcan como **(futuro, fase 6)**. Arquitectura, flujo de seguridad, subida de archivos y agrupación de mensajes del chat: `docs/arquitectura.md`.
 
 ---
 
@@ -141,12 +141,12 @@ PUT() { curl -s -b $JAR -c $JAR -H "X-XSRF-TOKEN: $XSRF" -H "Content-Type: appli
 VIDEO=$(curl -s -b $JAR $API/api/chat/conversaciones/actual | jq .videoId)
 
 # 2. Consultar hasta que deje GUION_PENDIENTE (el procesador revisa cada 3 s)
-curl -s -b $JAR $API/api/videos/$VIDEO | jq '.estado, .avisoDeRespaldo, [.planos[].texto]'
+curl -s -b $JAR $API/api/videos/$VIDEO | jq '.estado, [.planos[].texto], .cierre.precio, .cierre.frase'
 
-# 3. Cambiar el texto del plano 1, la foto del plano 2 y el precio del cierre
+# 3. Cambiar el texto del plano 1, la foto del plano 2 y el precio y la frase del cierre
 PUT -d '{"texto":"Fresas recién llegadas hoy"}' $API/api/videos/$VIDEO/planos/1 | jq '.planos[0].texto'
 PUT -d '{"foto":{"tipo":"DETALLE"}}' $API/api/videos/$VIDEO/planos/2 | jq '.planos[1].foto.tipo'
-PUT -d '{"precio":"S/ 65"}' $API/api/videos/$VIDEO/planos/4 | jq '.cierre.precio'
+PUT -d '{"precio":"S/ 65","frase":"Recién salida del horno"}' $API/api/videos/$VIDEO/planos/4 | jq '.cierre.precio, .cierre.frase'
 
 # 4. Lista de "Mis videos"
 curl -s -b $JAR $API/api/videos | jq '.[] | {id, estado, producto}'
@@ -281,17 +281,18 @@ Todos usan el negocio de la sesión. Un video de otro negocio responde `404 NO_E
 |---|---|---|---|---|---|
 | `GET` | `/api/videos` | NEGOCIO | — | `200` `VideoResumen[]`: "Mis videos", los 50 más recientes (por `fechaCreacion` y luego `id`, de mayor a menor). Es el historial (RF-26) | — |
 | `GET` | `/api/videos/{id}` | NEGOCIO | — | `200` `VideoVista`. Mientras el video está en `GUION_PENDIENTE`, `planos` viene vacío, `cierre` en `null` y `hashtags` vacío: la pantalla vuelve a consultar. En `GENERANDO` y `COMPONIENDO` también vuelve a consultar (cada 5 s) | `NO_ENCONTRADO` |
-| `PUT` | `/api/videos/{id}/planos/{orden}` | NEGOCIO | `SolicitudPlano` (sección 4.6): en los planos 1 a 3, `texto`, `foto` o ambos; en el plano 4 (cierre), solo `precio` | `200` `VideoVista` con el cambio. En `LISTO` (fase 5), el video pasa a `COMPONIENDO` o a `GENERANDO` (ver abajo) | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` y `SIN_REGENERACIONES` (foto nueva en `LISTO`), `SOLICITUD_INVALIDA`, `TEXTO_VACIO`, `TEXTO_MUY_LARGO`, `CARACTER_NO_PERMITIDO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `FOTO_NO_DISPONIBLE` y los errores de archivos de la sección 5.2 |
+| `PUT` | `/api/videos/{id}/planos/{orden}` | NEGOCIO | `SolicitudPlano` (sección 4.6): en los planos 1 a 3, `texto`, `foto` o ambos; en el plano 4 (cierre), `precio`, `frase` (desde el 2026-11-12) o ambos | `200` `VideoVista` con el cambio. En `LISTO` (fase 5), el video pasa a `COMPONIENDO` o a `GENERANDO` (ver abajo) | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` y `SIN_REGENERACIONES` (foto nueva en `LISTO`), `SOLICITUD_INVALIDA`, `TEXTO_VACIO`, `TEXTO_MUY_LARGO`, `CARACTER_NO_PERMITIDO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `FRASE_MUY_LARGA`, `FOTO_NO_DISPONIBLE` y los errores de archivos de la sección 5.2 |
 | `POST` | `/api/videos/{id}/aprobar-storyboard` | NEGOCIO | — | `200` `VideoVista` con `estado: "GENERANDO"` y los planos 1 a 3 en `PENDIENTE`. "Crear mi video": consume el video del día (RN-26, V22). **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` (desde la revisión del 2026-11-06), `VIDEOS_DEL_DIA_AGOTADOS` |
 | `POST` | `/api/videos/{id}/planos/{orden}/regenerar` | NEGOCIO | — (`orden` de 1 a 3) | `200` `VideoVista` con `estado: "GENERANDO"`, ese plano en `PENDIENTE` y `regeneracionesUsadas` + 1 (RN-28, V26). El clip anterior se conserva hasta que llegue el nuevo. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE`, `SIN_REGENERACIONES` |
 | `POST` | `/api/videos/{id}/aprobar` | NEGOCIO | — | `200` `VideoVista` con `estado: "APROBADO"` (RF-24). La publicación llega en la fase 6. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE` |
 | `GET` | `/api/videos/{id}/descarga` | NEGOCIO | — | `200` `Descarga` `{url}`: enlace firmado al MP4 final, vence en **15 minutos** y baja como archivo (`Content-Disposition: attachment`) con el nombre `autoreel-{producto}-{id}.mp4` (RF-25). En `LISTO`, `APROBADO`, `PROGRAMADO` o `PUBLICADO`. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_DISPONIBLE` |
+| `POST` | `/api/videos/{id}/reintentar` | NEGOCIO | — | `200` `VideoVista`. Solo en `ERROR` con `generacion.puedeReintentar: true`. Si el video falló **al generarse** (PR #12), vuelve a `GENERANDO`, **consume el video del día** (RN-26) y pide solo los clips que faltan. Si falló **al escribir su guion** (desde el 2026-11-12, `reintentoUsaVideoDelDia: false`), vuelve a `GUION_PENDIENTE` con un plazo nuevo de 5 minutos, **sin consumir** el video del día y sin exigir la IA de video | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE` (fuera de `ERROR`), `VIDEO_NO_REINTENTABLE`, `IA_NO_DISPONIBLE` y `VIDEOS_DEL_DIA_AGOTADOS` (solo si falló al generarse) |
 | `POST` | `/api/videos/{id}/descartar` | NEGOCIO | — | `200` `VideoVista` con `estado: "DESCARTADO"`. El video no se borra: sigue en "Mis videos". Desde la fase 5 también desde `LISTO`; el video del día ya usado **no se devuelve** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE` |
 
 - **Se edita o descarta en `STORYBOARD` y, desde la fase 5, en `LISTO` (revisión).** En cualquier otro estado (también mientras el guion está pendiente o el video se genera), `PUT` y `descartar` responden `409 VIDEO_NO_EDITABLE`. `aprobar-storyboard` solo acepta `STORYBOARD`; `regenerar` y `aprobar`, solo `LISTO`. Todas las que modifican bloquean la fila del video (`PESSIMISTIC_WRITE`) hasta el fin de la transacción.
 - **Aprobar el storyboard (RN-26, V22).** Primero exige el modelo de video del video disponible (`FabricaDeProveedores.videoDisponible`: activo, con adaptador y con credencial); si no, `409 IA_NO_DISPONIBLE` sin consumir nada, porque desde la revisión del 2026-11-06 no hay respaldo sin IA para los clips. Después, `ServicioConsumo` crea (si falta) y bloquea la fila de `consumo_diario` del negocio para el **día de Lima**. Si `videos_generados` ya llegó a `videosPorDia` del plan aplicado al video (RN-54), responde `409 VIDEOS_DEL_DIA_AGOTADOS`; si no, suma 1, guarda `video.consumo_fecha`, elige la pista de música por el estilo del negocio (`video.pista_musical_id`, la misma para cada recomposición) y deja el video en `GENERANDO`. Los videos no usados no se acumulan: al día siguiente el contador empieza en 0.
 - **Cambios en la revisión (`PUT` en `LISTO`):**
-  - Un **texto** o un **precio** solo vuelven a componer: el video pasa a `COMPONIENDO` sin gastar regeneraciones ni videos del día (RN-29, V25).
+  - Un **texto**, un **precio** o una **frase** solo vuelven a componer: el video pasa a `COMPONIENDO` sin gastar regeneraciones ni videos del día (RN-29, V25).
   - Una **foto** nueva regenera ese clip y **cuenta como una regeneración** (`Video.regenerarPlano`, la misma puerta que `/regenerar`); con texto y foto en la misma solicitud cuenta una sola. Sin regeneraciones restantes, `409 SIN_REGENERACIONES` y no se guarda nada.
   - Una foto nueva **sin la IA disponible** (`iaDisponible: false`) responde `409 IA_NO_DISPONIBLE` y no se guarda nada (desde la revisión del 2026-11-06; antes el plano usaba el acercamiento de FFmpeg). El frontend desactiva el cambio de foto en la revisión.
 - **Regenerar (RN-28).** Con la IA no disponible (sin credencial, modelo inactivo o sin adaptador), `409 IA_NO_DISPONIBLE`; con las regeneraciones del plan agotadas (`regeneracionesPorVideo`, 3 en Lite), `409 SIN_REGENERACIONES`. Un `orden` que no es un plano con foto (por ejemplo, el 4) responde `404 NO_ENCONTRADO` ("Ese plano no existe."). **Una regeneración que falla no se cobra:** se descuenta al pedirla y, si el plano no consigue el clip nuevo, el plano conserva su clip anterior, la regeneración se devuelve y la vista trae `generacion.avisoRevision` ("No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.").
@@ -301,9 +302,16 @@ Todos usan el negocio de la sesión. Un video de otro negocio responde `404 NO_E
   - Con los tres planos en `LISTO` (o `RESPALDO`, en videos anteriores), el video pasa a `COMPONIENDO`. `ServicioComposicion` arma el MP4 con `ComponedorDeVideo` (`FfmpegComponedor`: 1080×1920, 30 fps, H.264 y AAC, 15 s exactos, V23), lo guarda en `video.clave_final` y deja el video en `LISTO`.
   - **Si la primera composición falla 2 veces**, el video pasa a `ERROR` con `motivo_error` y se **devuelve el video del día** en el día de Lima del error, una sola vez (RN-27, V27). Si falla una **recomposición** (un cambio en la revisión), el video vuelve a `LISTO` con su MP4 anterior y `avisoRevision`.
   - La tarea se apaga con `autoreel.tareas.activas=false` (lo hace el perfil `test`). Detalle en `docs/arquitectura.md`.
-- **Cómo se escribe el guion** (sin endpoint): la tarea `ProcesadorDeGuiones` (`@Scheduled`, cada 3 s, propiedad `autoreel.tareas.guiones-cada`) toma hasta 5 videos en `GUION_PENDIENTE` y los reclama 3 minutos con un `UPDATE` condicional, así dos ejecuciones nunca escriben el mismo. `ServicioGuion` llama al modelo de texto del video hasta 3 veces (RN-25) dentro de un plazo de 60 s, pasa cada respuesta por `ValidadorDeGuion` (RN-21 a RN-24) y, si no logra un guion válido, el proveedor falla o no hay credencial, usa el **guion de respaldo** (`guionDeRespaldo`). Luego crea los 4 planos y deja el video en `STORYBOARD`. Si un reclamo vence sin terminar (por ejemplo, el backend se reinició), el siguiente intento usa el respaldo directamente. Si el producto ya no tiene fotos, el video queda en `ERROR`. La tarea se apaga con `autoreel.tareas.activas=false` (lo hace el perfil `test`). Detalle en `docs/arquitectura.md`.
+- **Cómo se escribe el guion** (sin endpoint): la tarea `ProcesadorDeGuiones` (`@Scheduled`, cada 3 s, propiedad `autoreel.tareas.guiones-cada`) toma hasta 5 videos en `GUION_PENDIENTE` y los reclama 3 minutos con un `UPDATE` condicional, así dos ejecuciones nunca escriben el mismo. `ServicioGuion` llama al modelo de texto del video hasta 3 veces (RN-25) dentro de un plazo de 60 s, pasa cada respuesta por `ValidadorDeGuion` (RN-21 a RN-24) y crea los 4 planos (el cierre con el precio, la frase y la ubicación que propone la IA, desde el 2026-11-12) y deja el video en `STORYBOARD`. **Desde el 2026-11-12 no hay guion de respaldo** (ADR 0021):
+  - Si el proveedor falla, no hay credencial o el modelo no se puede usar, el video sigue en `GUION_PENDIENTE` y se reintenta cada 45 s; pasados 5 minutos desde `inicioDelGuion`, pasa a `ERROR` ("No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato.").
+  - Tres respuestas inválidas: `ERROR` ("No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo.").
+  - Si el producto ya no tiene fotos: `ERROR` definitivo, sin llamar al modelo y con `puedeReintentar: false`.
+  - Si un reclamo vence sin terminar (por ejemplo, el backend se reinició), el siguiente ciclo vuelve a llamar a la IA.
+  - Un `ERROR` del guion se reintenta con `POST .../reintentar` sin consumir el video del día.
+  - Antes, en todos estos casos (salvo sin fotos) se usaba el guion de respaldo.
+  - La tarea se apaga con `autoreel.tareas.activas=false` (lo hace el perfil `test`). Detalle en `docs/arquitectura.md`.
 
-**Agregados a la sección 13 de la especificación:** el cuerpo de `PUT .../planos/{orden}` (texto, foto por tipo o por clave subida, precio del cierre), y el campo `videoId` en `ConversacionVista`. En la fase 5: `PUT .../planos/{orden}` y `descartar` también en `LISTO`, la forma `{url}` de `descarga` y el objeto `generacion` de `VideoVista` (`docs/plan-fase-5.md`).
+**Agregados a la sección 13 de la especificación:** el cuerpo de `PUT .../planos/{orden}` (texto, foto por tipo o por clave subida, precio y, desde el 2026-11-12, frase del cierre), y el campo `videoId` en `ConversacionVista`. Desde el PR #12, `POST .../reintentar`. En la fase 5: `PUT .../planos/{orden}` y `descartar` también en `LISTO`, la forma `{url}` de `descarga` y el objeto `generacion` de `VideoVista` (`docs/plan-fase-5.md`).
 
 ### 3.6 Administración: pagos, plan y beneficios de un negocio (fase 7)
 
@@ -707,20 +715,20 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
   "tipoVideo": "Promoción",
   "producto": { "id": 7, "nombre": "Torta Tres Leches de Fresa" },
   "plan": { "nombre": "Lite", "videosPorDia": 1, "regeneracionesPorVideo": 3 },
-  "avisoDeRespaldo": null,
   "planos": [
     { "orden": 1, "nombre": "Gancho", "segundos": 3,
       "foto": { "tipo": "DETALLE", "url": "..." },
-      "movimiento": { "id": "ACERCAMIENTO_LENTO", "descripcion": "La cámara se acerca muy despacio" },
+      "movimiento": { "id": "MACRO_DETALLE", "descripcion": "La cámara entra hasta un primer plano de la textura y la decoración" },
       "texto": "Fresas recién llegadas hoy", "maxPalabras": 6, "estado": null, "usoRespaldo": false },
     { "orden": 2, "nombre": "Producto", "segundos": 4, "foto": { "tipo": "ENTERO", "url": "..." },
-      "movimiento": { "id": "DESPLAZAMIENTO_LATERAL", "descripcion": "La cámara se desliza un poco hacia un lado" },
+      "movimiento": { "id": "ORBITA_FRONTAL", "descripcion": "La cámara gira alrededor del producto en un arco suave" },
       "texto": "Torta Tres Leches de Fresa", "maxPalabras": 5, "estado": null, "usoRespaldo": false },
     { "orden": 3, "nombre": "Relleno", "segundos": 4, "foto": { "tipo": "PORCION", "url": "..." },
-      "movimiento": { "id": "LUZ_CALIDA", "descripcion": "La luz cálida cambia lentamente" },
+      "movimiento": { "id": "PARALAJE_LATERAL", "descripcion": "La cámara se desplaza de lado mientras rodea el producto, con profundidad" },
       "texto": "Capas húmedas con crema batida", "maxPalabras": 7, "estado": null, "usoRespaldo": false }
   ],
-  "cierre": { "orden": 4, "nombre": "Cierre", "segundos": 4, "precio": "S/ 65", "maximoCaracteresPrecio": 40,
+  "cierre": { "orden": 4, "nombre": "Cierre", "segundos": 4, "precio": "S/ 65 la torta entera",
+              "maximoCaracteresPrecio": 40, "frase": "Tu antojo te espera", "maxPalabrasFrase": 6,
               "llamado": "Pide por WhatsApp", "ubicacion": "Miraflores", "whatsapp": "+51987654321",
               "logo": "...", "colorPrimario": "#be123c", "colorSecundario": "#fde68a", "fotoLocal": null },
   "descripcion": "Hoy te presentamos nuestra Torta Tres Leches de Fresa...",
@@ -729,13 +737,16 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
   "fotosDelProducto": [ { "tipo": "ENTERO", "url": "..." }, { "tipo": "DETALLE", "url": "..." },
                         { "tipo": "PORCION", "url": "..." } ],
   "fechaCreacion": "2026-11-04T15:01:10Z",
+  "inicioDelGuion": "2026-11-04T15:01:10Z",
   "generacion": {
     "videosHoy": { "usados": 0, "porDia": 1, "puedeAprobar": true },
     "urlVideo": null,
     "regeneracionesUsadas": 0,
     "iaDisponible": true,
     "avisoRevision": null,
-    "motivoError": null
+    "motivoError": null,
+    "puedeReintentar": false,
+    "reintentoUsaVideoDelDia": false
   }
 }
 ```
@@ -746,13 +757,14 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 |---|---|
 | `tipoVideo` | Etiqueta del tipo de video elegido en el chat |
 | `plan` | Plan aplicado al video (RN-54): `nombre`, `videosPorDia` y, desde la fase 5, `regeneracionesPorVideo` (3 en Lite), con el que la pantalla calcula las regeneraciones restantes |
-| `avisoDeRespaldo` | Texto del paquete de nicho (`plantilla.json`) si se usó el guion de respaldo: "Preparamos una propuesta básica con tus respuestas. Revisa los textos y ajústalos a tu gusto." `null` si el guion lo escribió la IA. El motivo del respaldo (`video.motivo_respaldo`) no se expone al negocio. El frontend solo lo muestra en `STORYBOARD` |
+| `avisoDeRespaldo` | **Se quitó el 2026-11-12** (ADR 0021): ya no hay guion de respaldo. Hasta entonces traía "Preparamos una propuesta básica con tus respuestas…" si se había usado |
 | `planos` | Planos 1 a 3 (Gancho, Producto, Relleno), con `segundos` y `maxPalabras` de la plantilla (6, 5 y 7 palabras). `foto.tipo` es `ENTERO`, `DETALLE` o `PORCION`, o `null` si el negocio subió una foto solo para este video. `movimiento.descripcion` es el movimiento en palabras simples (`movimientos.json`). Vacío mientras el guion está pendiente. **Fase 5:** `estado` del clip (`null` en el storyboard; después `PENDIENTE`, `GENERANDO` o `LISTO`, también durante `GENERANDO` para mostrar el avance) y `usoRespaldo`. Desde la revisión del 2026-11-06 no hay respaldo sin IA para los clips (ADR 0020): `usoRespaldo: true` y el estado `RESPALDO` (el plano animado con el acercamiento de FFmpeg) solo aparecen en videos anteriores; un plano nuevo sin clip deja el video en `ERROR` (sección 3.5) |
-| `cierre` | Plano 4, armado por el sistema sin IA (sección 7.4): `precio` (lo que el negocio escribió en el chat, recortado en el límite de una palabra si pasa de `maximoCaracteresPrecio` = 40; `null` si no hay precio), `llamado` (el primero de `llamados` de la plantilla que coincide con sus canales, en el orden WhatsApp, delivery, tienda: "Pide por WhatsApp", "Pídelo por delivery" o "Te esperamos en {distrito}"), `ubicacion` (distrito), `whatsapp` (solo si vende por WhatsApp), `logo` y `fotoLocal` (URLs firmadas o `null`) y los dos colores. `null` mientras el guion está pendiente |
+| `cierre` | Plano 4, sin clip (sección 7.4). Desde el 2026-11-12 sus textos los propone la IA: `precio` (solo si el negocio escribió un precio real, resumido con sus mismos números y moneda, hasta `maximoCaracteresPrecio` = 40; `null` si no hay, también si el negocio escribió una instrucción; antes era lo escrito en el chat, recortado), `frase` (gancho que va en grande cuando no hay precio; `null` en videos anteriores) y `maxPalabrasFrase` (6), `llamado` (el primero de `llamados` de la plantilla que coincide con sus canales, en el orden WhatsApp, delivery, tienda: "Pide por WhatsApp", "Pídelo por delivery" o "Te esperamos en {distrito}"), `ubicacion` (el distrito o, desde el 2026-11-12, un lugar más preciso que dijo el negocio), `whatsapp` (solo si vende por WhatsApp), `logo` y `fotoLocal` (URLs firmadas o `null`) y los dos colores. `null` mientras el guion está pendiente |
 | `descripcion`, `hashtags` | Texto de la publicación y sus hashtags (entre 5 y 8, al menos uno del distrito, RN-24). En esta fase no se editan; la edición antes de publicar llega en la fase 6 |
 | `maximoPublicacion` | 600: límite de la descripción **más** sus hashtags (RN-24) |
 | `fotosDelProducto` | Las fotos que hoy tiene el producto, para la hoja "Cambiar foto" |
-| `generacion` | **Fase 5** (`GeneracionVista`), presente en todos los estados. `videosHoy`: `{usados, porDia, puedeAprobar}`, los videos del día de Lima ya usados por el negocio (`consumo_diario`), los que permite el plan aplicado y si se puede aprobar otro (RN-26); con `puedeAprobar: false` el botón "Crear mi video" se desactiva. `urlVideo`: URL firmada del MP4 final (vence en 1 hora; si el reproductor falla, el frontend vuelve a pedir la vista), `null` hasta la primera composición. `regeneracionesUsadas` de este video (RN-28). `iaDisponible`: el modelo de video del video (`video.modelo_video_usado_id`) está activo, tiene adaptador y su credencial está configurada; con `false`, el frontend desactiva "Crear mi video", "Regenerar este plano" y el cambio de foto en la revisión (el backend responde `409 IA_NO_DISPONIBLE`). `avisoRevision`: "No pudimos aplicar tu último cambio; tu video anterior sigue disponible. Inténtalo de nuevo." si falló una recomposición, o "No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración." si falló una regeneración; si no, `null`. `motivoError`: solo en `ERROR` (por ejemplo, "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato." o "No pudimos armar el video. Te devolvimos el video del día."); si no, `null` |
+| `inicioDelGuion` | Desde el 2026-11-12. Desde cuándo se escribe el guion en curso: la creación del video o el último "Reintentar" de la etapa del guion (`video.guion_iniciado_en`, o `fechaCreacion` en videos anteriores). El frontend lo usa para el aviso "Está tardando más de lo normal" |
+| `generacion` | **Fase 5** (`GeneracionVista`), presente en todos los estados. `videosHoy`: `{usados, porDia, puedeAprobar}`, los videos del día de Lima ya usados por el negocio (`consumo_diario`), los que permite el plan aplicado y si se puede aprobar otro (RN-26); con `puedeAprobar: false` el botón "Crear mi video" se desactiva. `urlVideo`: URL firmada del MP4 final (vence en 1 hora; si el reproductor falla, el frontend vuelve a pedir la vista), `null` hasta la primera composición. `regeneracionesUsadas` de este video (RN-28). `iaDisponible`: el modelo de video del video (`video.modelo_video_usado_id`) está activo, tiene adaptador y su credencial está configurada; con `false`, el frontend desactiva "Crear mi video", "Regenerar este plano" y el cambio de foto en la revisión (el backend responde `409 IA_NO_DISPONIBLE`). `avisoRevision`: "No pudimos aplicar tu último cambio; tu video anterior sigue disponible. Inténtalo de nuevo." si falló una recomposición, o "No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración." si falló una regeneración; si no, `null`. `motivoError`: solo en `ERROR` (por ejemplo, "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato.", "No pudimos armar el video. Te devolvimos el video del día." o, desde el 2026-11-12, "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato."); si no, `null`. `puedeReintentar` (PR #12): si el video está en `ERROR` y se puede reintentar (falló al generarse o, desde el 2026-11-12, al escribir el guion, y no es un error definitivo). `reintentoUsaVideoDelDia` (desde el 2026-11-12): `true` solo si reintentar vuelve a consumir el video del día (falló al generarse); con `false` y `puedeReintentar`, el reintento vuelve a escribir el guion sin consumir |
 
 **`SolicitudPlano`** (`video.api.SolicitudPlano`), cuerpo de `PUT /api/videos/{id}/planos/{orden}`:
 
@@ -761,14 +773,15 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 | `texto` | `{"texto": "Fresas recién llegadas hoy"}` | 1 a 3 | Se recortan los espacios. Vacío: `TEXTO_VACIO`. Más de 200 caracteres o más palabras que `maxPalabras`: `TEXTO_MUY_LARGO` (V21). Emojis, saltos de línea u otros caracteres de control: `CARACTER_NO_PERMITIDO`. Una frase prohibida del paquete o de las `palabrasProhibidas` del negocio: `PALABRA_PROHIBIDA`, con la frase en el mensaje |
 | `foto.tipo` | `{"foto": {"tipo": "DETALLE"}}` | 1 a 3 | Usa la foto de ese tipo que hoy tiene el producto. Si ya no la tiene: `FOTO_NO_DISPONIBLE` |
 | `foto.clave` | `{"foto": {"clave": "subidas/negocios/1/foto_producto/....jpg"}}` | 1 a 3 | Una subida nueva con propósito `FOTO_PRODUCTO` (sección 3.3). Se verifica y copia como en el catálogo (errores de la sección 5.2). Queda **solo en este plano**, con `foto.tipo: null`: no cambia el producto ni el catálogo |
-| `precio` | `{"precio": "S/ 65"}` | 4 | Se recortan los espacios; hasta 40 caracteres (`PRECIO_MUY_LARGO`). `""` quita el precio. También pasa por `CARACTER_NO_PERMITIDO` y `PALABRA_PROHIBIDA` |
+| `precio` | `{"precio": "S/ 65"}` | 4 | Se recortan los espacios; hasta 40 caracteres (`PRECIO_MUY_LARGO`). `""` quita el precio (entonces el cierre muestra la frase). También pasa por `CARACTER_NO_PERMITIDO` y `PALABRA_PROHIBIDA` |
+| `frase` | `{"frase": "Recién salida del horno"}` | 4 | Desde el 2026-11-12. Se recortan los espacios; hasta `maxPalabrasFrase` (6) palabras y 40 caracteres (`FRASE_MUY_LARGA`). `""` la quita. También pasa por `CARACTER_NO_PERMITIDO` y `PALABRA_PROHIBIDA`. Puede ir junto con `precio` |
 
 - `texto` y `foto` pueden ir juntos. `foto` lleva **exactamente uno** de `tipo` o `clave`; con los dos o ninguno, `SOLICITUD_INVALIDA`.
-- En los planos 1 a 3, un `precio` o un cuerpo sin `texto` ni `foto` responde `SOLICITUD_INVALIDA` ("Envía el texto o la foto nueva del plano."). En el plano 4, cualquier cosa que no sea solo `precio` responde `SOLICITUD_INVALIDA` ("En el cierre solo se puede cambiar el precio.").
+- En los planos 1 a 3, un `precio` o un cuerpo sin `texto` ni `foto` responde `SOLICITUD_INVALIDA` ("Envía el texto o la foto nueva del plano."). En el plano 4, un cuerpo sin `precio` ni `frase`, o con `texto` o `foto`, responde `SOLICITUD_INVALIDA` ("En el cierre solo se pueden cambiar el precio y la frase."). En los planos 1 a 3, una `frase` también responde `SOLICITUD_INVALIDA`.
 - Un `orden` que no existe en el video responde `404 NO_ENCONTRADO` ("Ese plano no existe.").
 - Las palabras se cuentan como en el frontend (`Texto.contarPalabras` y `contarPalabras` de `api/videos.ts`): lo separado por espacios que tenga al menos una letra o un número ("S/ 65" son 2; "—" no cuenta).
 - Los textos que escribe el negocio **no** pasan por la RN-22 (precios o promociones no mencionados): son suyos.
-- **En `LISTO` (fase 5)** las reglas son las mismas; además, `texto` o `precio` recomponen y `foto` regenera ese clip (sección 3.5), solo con la IA disponible.
+- **En `LISTO` (fase 5)** las reglas son las mismas; además, `texto`, `precio` o `frase` recomponen y `foto` regenera ese clip (sección 3.5), solo con la IA disponible.
 
 **`Descarga`** (`VideoController.Descarga`), respuesta de `GET /api/videos/{id}/descarga`: `{ "url": "<URL GET firmada del MP4, con Content-Disposition: attachment>" }`. El nombre del archivo es `autoreel-` + el nombre del producto en minúsculas, sin tildes y con guiones + `-{id}.mp4` (por ejemplo, `autoreel-torta-tres-leches-de-fresa-15.mp4`); si el producto ya no existe, `autoreel-video-{id}.mp4`. El frontend navega a esa URL.
 
@@ -1054,16 +1067,18 @@ Origen: `video/aplicacion/ServicioVideos` y, para la foto subida, `almacenamient
 |---|---|---|---|
 | `NO_ENCONTRADO` | 404 | El video no existe o es de otro negocio ("No encontramos ese video."), o el `orden` no es un plano del video ("Ese plano no existe."; en `regenerar`, también el plano 4) | Todas las de `/api/videos/{id}` |
 | `VIDEO_NO_EDITABLE` | 409 | El video no está en el estado que la acción necesita ("Este video ya no se puede cambiar."): `PUT` y `descartar`, fuera de `STORYBOARD` y `LISTO` (guion pendiente, generándose, aprobado, descartado o en `ERROR`); `aprobar-storyboard`, fuera de `STORYBOARD`; `regenerar` y `aprobar`, fuera de `LISTO` | `PUT .../planos/{orden}`, `POST .../descartar`, `POST .../aprobar-storyboard`, `POST .../regenerar`, `POST .../aprobar` |
-| `SOLICITUD_INVALIDA` | 400 | Planos 1 a 3: sin `texto` ni `foto`, o con `precio`. Plano 4: sin `precio`, o con `texto` o `foto`. `foto` con `tipo` y `clave` juntos, o sin ninguno ("Elige una foto del producto o sube una nueva."). Un `tipo` de foto desconocido o un cuerpo ilegible | `PUT .../planos/{orden}` |
+| `SOLICITUD_INVALIDA` | 400 | Planos 1 a 3: sin `texto` ni `foto`, o con `precio` o `frase`. Plano 4: sin `precio` ni `frase`, o con `texto` o `foto`. `foto` con `tipo` y `clave` juntos, o sin ninguno ("Elige una foto del producto o sube una nueva."). Un `tipo` de foto desconocido o un cuerpo ilegible | `PUT .../planos/{orden}` |
 | `TEXTO_VACIO` | 400 | El texto queda vacío al recortar los espacios ("Escribe el texto de este plano.") | `PUT .../planos/{orden}` |
 | `TEXTO_MUY_LARGO` | 400 | Más palabras que el máximo del plano (V21): "Este plano admite hasta 6 palabras, para que se lea en el video."; o más de 200 caracteres: "Este plano admite hasta 200 caracteres." | `PUT .../planos/{orden}` |
 | `CARACTER_NO_PERMITIDO` | 400 | El texto o el precio tiene algo que las tipografías del video no pueden dibujar ("Quita los emojis, los saltos de línea y los símbolos especiales: no se pueden mostrar en el video."). Desde la fase 5 es una **lista blanca** (`Texto.tieneCaracteresNoDibujables`): solo se admite el latín de U+0020 a U+007E y de U+00A0 a U+00FF (incluye á, ñ, ¿, ¡) y ‘ ’ “ ” – — … € | `PUT .../planos/{orden}` |
 | `PALABRA_PROHIBIDA` | 400 | El texto o el precio contiene una frase prohibida por el paquete de nicho (`vocabulario.json`) o por el negocio (`palabrasProhibidas`), sin distinguir mayúsculas ni tildes: `No podemos usar "…" en tus videos. Escríbelo de otra forma.` | `PUT .../planos/{orden}` |
 | `PRECIO_MUY_LARGO` | 400 | El precio del cierre pasa de 40 caracteres ("El precio admite hasta 40 caracteres.") | `PUT .../planos/4` |
+| `FRASE_MUY_LARGA` | 400 | Desde el 2026-11-12. La frase del cierre pasa de 6 palabras o de 40 caracteres ("La frase admite hasta 6 palabras y 40 caracteres, para que se lea en el video.") | `PUT .../planos/4` |
+| `VIDEO_NO_REINTENTABLE` | 409 | PR #12. El video está en `ERROR` pero no se puede reintentar: por ejemplo, un error definitivo (el producto ya no existe o no tiene fotos) ("Este video no se puede reintentar. Crea otro desde el inicio.") | `POST .../reintentar` |
 | `FOTO_NO_DISPONIBLE` | 400 | `foto.tipo` pide una foto que el producto ya no tiene ("El producto ya no tiene esa foto. Elige otra o sube una nueva.") | `PUT .../planos/{orden}` |
 | Errores de archivos (sección 5.2) | 400 / 409 | Al verificar y copiar una foto subida (`foto.clave`) | `PUT .../planos/{orden}` |
 
-Un guion que no pasa el validador, un proveedor que no responde o la falta de la clave **no son errores HTTP**: el video pasa a `STORYBOARD` con el guion de respaldo y `avisoDeRespaldo` (sección 4.6).
+Un guion que no pasa el validador, un proveedor que no responde o la falta de la clave **no son errores HTTP**. Hasta el 2026-11-12 el video pasaba a `STORYBOARD` con el guion de respaldo y `avisoDeRespaldo`. Desde entonces, el guion se reintenta solo durante 5 minutos y luego el video pasa a `ERROR` con `generacion.motivoError` y `puedeReintentar: true` (sección 3.5).
 
 ### 5.7 Generación y revisión (fase 5)
 
@@ -1071,9 +1086,9 @@ Origen: `video/aplicacion/ServicioVideos` y `ServicioConsumo`, y `video/dominio/
 
 | Código | HTTP | Cuándo | Ruta |
 |---|---|---|---|
-| `VIDEOS_DEL_DIA_AGOTADOS` | 409 | El negocio ya usó los videos del día de su plan (RN-26, V22): "Ya usaste tu video de hoy. Mañana tienes uno nuevo." (con `videosPorDia` mayor que 1: "Ya usaste tus N videos de hoy. Mañana tienes otros nuevos."). El storyboard queda igual y se puede aprobar al día siguiente | `POST .../aprobar-storyboard` |
+| `VIDEOS_DEL_DIA_AGOTADOS` | 409 | El negocio ya usó los videos del día de su plan (RN-26, V22): "Ya usaste tu video de hoy. Mañana tienes uno nuevo." (con `videosPorDia` mayor que 1: "Ya usaste tus N videos de hoy. Mañana tienes otros nuevos."). El storyboard queda igual y se puede aprobar al día siguiente | `POST .../aprobar-storyboard`; desde el PR #12, `POST .../reintentar` de un video que falló al generarse |
 | `SIN_REGENERACIONES` | 409 | El video ya usó las regeneraciones de su plan (RN-28, V26): "Ya usaste las 3 regeneraciones de este video. Todavía puedes editar los textos." | `POST .../planos/{orden}/regenerar`, `PUT .../planos/{orden}` con `foto` en `LISTO` |
-| `IA_NO_DISPONIBLE` | 409 | El modelo de video del video no se puede usar ahora (sin credencial, inactivo o sin adaptador): "Por ahora no podemos crear clips con IA. Inténtalo en un rato; mientras tanto puedes editar los textos." No se guarda ni se consume nada. El frontend ya desactiva esas acciones con `iaDisponible: false` | `POST .../planos/{orden}/regenerar`; desde la revisión del 2026-11-06, también `POST .../aprobar-storyboard` (antes de consumir el video del día) y `PUT .../planos/{orden}` con `foto` en `LISTO` |
+| `IA_NO_DISPONIBLE` | 409 | El modelo de video del video no se puede usar ahora (sin credencial, inactivo o sin adaptador): "Por ahora no podemos crear clips con IA. Inténtalo en un rato; mientras tanto puedes editar los textos." No se guarda ni se consume nada. El frontend ya desactiva esas acciones con `iaDisponible: false` | `POST .../planos/{orden}/regenerar`; desde la revisión del 2026-11-06, también `POST .../aprobar-storyboard` (antes de consumir el video del día) y `PUT .../planos/{orden}` con `foto` en `LISTO`; desde el PR #12, `POST .../reintentar` de un video que falló al generarse |
 | `VIDEO_NO_DISPONIBLE` | 409 | El video todavía no tiene MP4 final o no está en `LISTO`, `APROBADO`, `PROGRAMADO` ni `PUBLICADO`: "Tu video todavía no está listo para descargar." | `GET .../descarga` |
 
 Un clip que no se genera o un proveedor que falla durante la generación **no son errores HTTP**: desde la revisión del 2026-11-06 ya no hay acercamiento de FFmpeg como respaldo. En la primera generación el video pasa a `ERROR` con `generacion.motivoError` y se devuelve el video del día; en una regeneración el plano conserva su clip anterior y la vista trae `generacion.avisoRevision` (sección 3.5). Una composición que falla tampoco lo es: el video pasa a `ERROR` con `generacion.motivoError` (primera composición) o vuelve a `LISTO` con `generacion.avisoRevision` (recomposición).

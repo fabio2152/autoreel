@@ -1,7 +1,6 @@
 package com.autoreel.video.infraestructura;
 
 import java.awt.Color;
-import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
@@ -57,20 +56,6 @@ public class PreparadorDeFotos {
             int ancho = (int) Math.ceil(imagen.getWidth() * escala);
             int alto = (int) Math.ceil(imagen.getHeight() * escala);
             lienzo.drawImage(imagen, (ANCHO - ancho) / 2, (ALTO - alto) / 2, ancho, alto, null);
-        } finally {
-            lienzo.dispose();
-        }
-        return jpeg(salida);
-    }
-
-    /** Fondo del cierre sin foto del local: degradado vertical con los dos colores de marca (#rrggbb). */
-    public byte[] degradado(String colorPrimario, String colorSecundario) {
-        BufferedImage salida = new BufferedImage(ANCHO, ALTO, BufferedImage.TYPE_INT_RGB);
-        Graphics2D lienzo = salida.createGraphics();
-        try {
-            lienzo.setPaint(new GradientPaint(0, 0, color(colorPrimario, new Color(0xBE123C)), 0, ALTO,
-                    color(colorSecundario, new Color(0xFDE68A))));
-            lienzo.fillRect(0, 0, ANCHO, ALTO);
         } finally {
             lienzo.dispose();
         }
@@ -174,12 +159,5 @@ public class PreparadorDeFotos {
             escritor.dispose();
         }
         return salida.toByteArray();
-    }
-
-    private static Color color(String hexadecimal, Color porDefecto) {
-        if (hexadecimal == null || !hexadecimal.matches("#[0-9a-fA-F]{6}")) {
-            return porDefecto;
-        }
-        return new Color(Integer.parseInt(hexadecimal.substring(1), 16));
     }
 }

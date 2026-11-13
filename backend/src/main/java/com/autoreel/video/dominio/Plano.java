@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 
 /**
  * Uno de los cuatro planos del video (sección 7.4). Los planos 1 a 3 tienen foto, movimiento y texto; el 4 (cierre)
- * tiene precio, llamado a la acción y ubicación, y lo arma el sistema.
+ * tiene precio o frase (los propone la IA), llamado a la acción y ubicación, y no tiene clip.
  */
 @Entity
 @Table(name = "plano")
@@ -45,6 +45,9 @@ public class Plano {
     private String texto;
 
     private String precio;
+
+    /** Texto principal del cierre cuando no hay precio. */
+    private String frase;
 
     private String llamado;
 
@@ -89,11 +92,12 @@ public class Plano {
         return plano;
     }
 
-    static Plano cierre(Video video, int orden, String precio, String llamado, String ubicacion) {
+    static Plano cierre(Video video, int orden, String precio, String frase, String llamado, String ubicacion) {
         Plano plano = new Plano();
         plano.video = video;
         plano.orden = orden;
         plano.precio = precio;
+        plano.frase = frase;
         plano.llamado = llamado;
         plano.ubicacion = ubicacion;
         return plano;
@@ -114,6 +118,15 @@ public class Plano {
 
     public void cambiarPrecio(String precio) {
         this.precio = precio;
+    }
+
+    public void cambiarFrase(String frase) {
+        this.frase = frase;
+    }
+
+    /** Lo que el cierre muestra en grande: el precio o, si no hay, la frase. */
+    public String textoPrincipalDelCierre() {
+        return precio != null ? precio : frase;
     }
 
     /** Al aprobar el storyboard: el clip queda por enviar. */
@@ -218,6 +231,10 @@ public class Plano {
 
     public String getPrecio() {
         return precio;
+    }
+
+    public String getFrase() {
+        return frase;
     }
 
     public String getLlamado() {

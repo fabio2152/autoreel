@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 import com.autoreel.nicho.dominio.Movimientos.Movimiento;
 import com.autoreel.nicho.dominio.PaqueteNicho;
+import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
 import com.autoreel.nicho.dominio.Texto;
 import com.autoreel.nicho.dominio.Vocabulario;
@@ -75,6 +76,8 @@ public final class ValidadorDeGuion {
             }
             errores.addAll(problemasDeContenido("La descripción", guion.descripcion(), datos, paquete));
         }
+        errores.addAll(erroresDeVariedad(guion.planos(), paquete));
+        errores.addAll(erroresDelCierre(guion.cierre(), datos, paquete));
         errores.addAll(erroresDeHashtags(guion.hashtags(), datos, paquete));
         if (guion.descripcion() != null
                 && publicacion(guion.descripcion(), guion.hashtags()).length() > MAXIMO_PUBLICACION) {
@@ -89,7 +92,7 @@ public final class ValidadorDeGuion {
         return hashtags.isEmpty() ? descripcion : descripcion + "\n\n" + String.join(" ", hashtags);
     }
 
-    /** Reglas del texto en pantalla de un plano (RN-21 a RN-23). También las usa el guion de respaldo. */
+    /** Reglas del texto en pantalla de un plano (RN-21 a RN-23). */
     public static List<String> erroresDelTextoEnPantalla(int orden, String texto, int maxPalabras,
             DatosDelGuion datos, PaqueteNicho paquete) {
         String donde = "El plano " + orden;
@@ -104,9 +107,7 @@ public final class ValidadorDeGuion {
         if (palabras > maxPalabras) {
             errores.add(donde + " tiene " + palabras + " palabras; el máximo es " + maxPalabras + ".");
         }
-        if (Texto.tieneCaracteresNoDibujables(texto)) {
-            errores.add(donde + " tiene emojis o saltos de línea, que no se pueden mostrar en el video.");
-        }
+        errores.addAll(problemasDeDibujo(donde, texto));
         if (PRECIO_EN_PANTALLA.matcher(texto).find()) {
             errores.add(donde + " menciona un precio; los precios solo van en el cierre.");
         }
@@ -132,15 +133,24 @@ public final class ValidadorDeGuion {
 
     /** RN-22 (nada inventado) y RN-23 (nada prohibido) en un texto del guion. */
     static List<String> problemasDeContenido(String donde, String texto, DatosDelGuion datos, PaqueteNicho paquete) {
+        return problemasDeContenido(donde, texto, datos.fuentes(), "los datos del negocio", datos, paquete);
+    }
+
+    /**
+     * Igual, pero los números, monedas y porcentajes solo pueden salir de {@code fuentesDeNumeros} (para el precio del
+     * cierre, la respuesta de precio del negocio).
+     */
+    private static List<String> problemasDeContenido(String donde, String texto, List<String> fuentesDeNumeros,
+            String nombreDeLasFuentes, DatosDelGuion datos, PaqueteNicho paquete) {
         List<String> errores = new ArrayList<>();
         List<String> fuentes = datos.fuentes();
-        Set<String> numerosPermitidos = numeros(String.join(" ", fuentes));
+        Set<String> numerosPermitidos = numeros(String.join(" ", fuentesDeNumeros));
         for (String numero : numeros(texto)) {
             if (!numerosPermitidos.contains(numero)) {
-                errores.add(donde + " menciona \"" + numero + "\", que no está en los datos del negocio.");
+                errores.add(donde + " menciona \"" + numero + "\", que no está en " + nombreDeLasFuentes + ".");
             }
         }
-        String fuentesEnMinusculas = String.join(" ", fuentes).toLowerCase(Locale.ROOT);
+        String fuentesEnMinusculas = String.join(" ", fuentesDeNumeros).toLowerCase(Locale.ROOT);
         Matcher moneda = MONEDA.matcher(texto);
         while (moneda.find()) {
             if (!fuentesEnMinusculas.contains(moneda.group().toLowerCase(Locale.ROOT))) {
@@ -157,6 +167,115 @@ public final class ValidadorDeGuion {
         fraseProhibida(texto, datos, paquete).ifPresent(frase ->
                 errores.add(donde + " usa \"" + frase + "\", que no está permitido."));
         return errores;
+    }
+
+    /**
+     * Que el video no repita el mismo movimiento en todos sus planos y que tenga los planos con cámara 3D que pide el
+     * nicho (no solo acercamientos y alejamientos).
+     */
+    private static List<String> erroresDeVariedad(List<GuionPropuesto.PlanoPropuesto> planos, PaqueteNicho paquete) {
+        List<String> errores = new ArrayList<>();
+        Set<String> movimientos = new HashSet<>();
+        planos.forEach(plano -> movimientos.add(plano.movimiento()));
+        if (planos.size() > 1 && movimientos.size() == 1 && !movimientos.contains(null)) {
+            errores.add("Los planos repiten el movimiento \"" + planos.getFirst().movimiento()
+                    + "\"; elige movimientos distintos para que el video tenga variedad.");
+        }
+        int minimo = paquete.movimientos().minimoPlanosCamara3d();
+        long conCamara3d = planos.stream().filter(plano -> paquete.movimientos().esCamara3d(plano.movimiento()))
+                .count();
+        if (conCamara3d < minimo) {
+            errores.add("Al menos " + minimo + " planos deben usar un movimiento marcado como cámara 3D (que rodee, "
+                    + "suba o cruce el producto); hay " + conCamara3d + ".");
+        }
+        return errores;
+    }
+
+    /**
+     * El cierre que propone la IA: el precio solo si el negocio escribió uno con números (con sus números exactos), la
+     * frase gancho siempre (se muestra si no hay precio) y la ubicación solo con lugares que el negocio mencionó.
+     */
+    private static List<String> erroresDelCierre(GuionPropuesto.CierrePropuesto cierre, DatosDelGuion datos,
+            PaqueteNicho paquete) {
+        if (cierre == null) {
+            return List.of("Falta el cierre.");
+        }
+        PlantillaVideo plantilla = paquete.plantillaVideo();
+        int maximo = plantilla.maximoCaracteresPrecio();
+        List<String> errores = new ArrayList<>();
+        if (cierre.precio() == null && exigePrecio(datos)) {
+            errores.add("El negocio escribió un precio (\"" + datos.precio() + "\"): resúmelo en \"precio\" con sus "
+                    + "mismos números y moneda.");
+        }
+        if (cierre.precio() != null) {
+            if (!escribioUnPrecio(datos)) {
+                errores.add("El negocio no escribió un precio con números: en el cierre, \"precio\" debe ser null y "
+                        + "el cierre muestra la frase.");
+            } else {
+                if (!NUMERO.matcher(cierre.precio()).find()) {
+                    errores.add("El precio del cierre debe llevar los números del precio que escribió el negocio.");
+                }
+                if (cierre.precio().length() > maximo) {
+                    errores.add("El precio del cierre pasa de " + maximo + " caracteres; resúmelo.");
+                }
+                errores.addAll(problemasDeDibujo("El precio del cierre", cierre.precio()));
+                // Los números y la moneda salen solo de la respuesta de precio, no de la descripción ni del horario.
+                errores.addAll(problemasDeContenido("El precio del cierre", cierre.precio(), List.of(datos.precio()),
+                        "el precio que escribió el negocio", datos, paquete));
+            }
+        }
+        if (cierre.frase() == null) {
+            errores.add("Falta la frase del cierre.");
+        } else {
+            int palabras = Texto.contarPalabras(cierre.frase());
+            int maxPalabras = plantilla.cierre().maxPalabras();
+            if (palabras > maxPalabras) {
+                errores.add("La frase del cierre tiene " + palabras + " palabras; el máximo es " + maxPalabras + ".");
+            }
+            if (cierre.frase().length() > maximo) {
+                errores.add("La frase del cierre pasa de " + maximo + " caracteres.");
+            }
+            errores.addAll(problemasDeDibujo("La frase del cierre", cierre.frase()));
+            if (PRECIO_EN_PANTALLA.matcher(cierre.frase()).find()) {
+                errores.add("La frase del cierre menciona un precio; el precio va solo en \"precio\".");
+            }
+            errores.addAll(problemasDeContenido("La frase del cierre", cierre.frase(), datos, paquete));
+        }
+        if (cierre.ubicacion() != null) {
+            if (cierre.ubicacion().length() > plantilla.maximoCaracteresUbicacion()) {
+                errores.add("La ubicación del cierre pasa de " + plantilla.maximoCaracteresUbicacion()
+                        + " caracteres.");
+            }
+            errores.addAll(problemasDeDibujo("La ubicación del cierre", cierre.ubicacion()));
+            Set<String> palabrasDelNegocio = new HashSet<>(Texto.tokens(String.join(" ", datos.fuentes())));
+            Texto.tokens(cierre.ubicacion()).stream()
+                    .filter(palabra -> palabra.length() > 2 || palabra.chars().anyMatch(Character::isDigit))
+                    .filter(palabra -> !palabrasDelNegocio.contains(palabra))
+                    .findFirst()
+                    .ifPresent(palabra -> errores.add("La ubicación del cierre usa \"" + palabra + "\", que el negocio "
+                            + "no mencionó; usa solo lugares que escribió el negocio o null."));
+        }
+        return errores;
+    }
+
+    /** Si la respuesta de precio del negocio es un precio o una promoción con números (y no una instrucción). */
+    public static boolean escribioUnPrecio(DatosDelGuion datos) {
+        return datos.precio() != null && NUMERO.matcher(datos.precio()).find();
+    }
+
+    /**
+     * Si el cierre debe mostrar el precio: el negocio escribió uno con moneda, porcentaje o "2x1" (no solo un número
+     * suelto) y sin un "no" que lo vuelva una instrucción ("no pongas los 65 soles").
+     */
+    static boolean exigePrecio(DatosDelGuion datos) {
+        return escribioUnPrecio(datos) && PRECIO_EN_PANTALLA.matcher(datos.precio()).find()
+                && !Texto.tokens(datos.precio()).contains("no");
+    }
+
+    private static List<String> problemasDeDibujo(String donde, String texto) {
+        return Texto.tieneCaracteresNoDibujables(texto)
+                ? List.of(donde + " tiene emojis o saltos de línea, que no se pueden mostrar en el video.")
+                : List.of();
     }
 
     private static List<String> erroresDeHashtags(List<String> hashtags, DatosDelGuion datos, PaqueteNicho paquete) {
@@ -194,12 +313,6 @@ public final class ValidadorDeGuion {
             errores.add("Falta un hashtag del distrito, por ejemplo #" + distrito + ".");
         }
         return errores;
-    }
-
-    /** Si un hashtag no usa ninguna frase prohibida para este negocio (lo usa el guion de respaldo). */
-    public static boolean hashtagPermitido(String hashtag, DatosDelGuion datos, PaqueteNicho paquete) {
-        String cuerpo = cuerpo(hashtag);
-        return frasesProhibidas(datos, paquete.vocabulario()).stream().noneMatch(frase -> usaFrase(cuerpo, frase));
     }
 
     /** Frases prohibidas del nicho y del negocio; las de salud valen si la descripción del producto las dice. */

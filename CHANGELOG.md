@@ -2,6 +2,63 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Calidad del video] - 2026-11-12
+
+Cambios pedidos por el usuario al revisar un video real. Las frases salían feas o copiadas, el cierre mostró como precio una orden escrita en el chat ("no menciones precio…") y los clips solo se acercaban o se alejaban. La música no cambia. Decisiones en el ADR 0021.
+
+### Agregado
+
+- **El cierre lo escribe la IA.** El guion trae un objeto `cierre` con:
+  - `precio`: solo si el negocio escribió uno real, resumido con sus mismos números y moneda, por ejemplo "S/ 65 la torta entera";
+  - `frase`: un gancho de hasta 6 palabras que va en grande cuando no hay precio, por ejemplo "Recién salidas del horno";
+  - `ubicacion`: opcional, un lugar más preciso que el distrito tomado de lo que dijo el negocio, por ejemplo "Plaza Lima Sur, Chorrillos".
+
+  Una instrucción como "no menciones precio" nunca se muestra. En el storyboard y en la revisión se editan el precio y la frase ("Editar precio y frase", `FRASE_MUY_LARGA`).
+- **Movimientos de cámara 3D** en el paquete de nicho: `ORBITA_FRONTAL`, `ARCO_HEROICO`, `MACRO_DETALLE`, `GRUA_REVELADO`, `PARALAJE_LATERAL` y `DIAGONAL_ENFOQUE`.
+  - Al menos 2 de los 3 planos usan uno de ellos (`camara3d`, `minimoPlanosCamara3d`), y los tres no repiten el mismo movimiento.
+  - Los arcos llegan como máximo a 60°.
+- **`movimientos.json`** suma tres campos con el prompt del modelo de video:
+  - `plantillaDeToma`: el envoltorio en inglés, con `{instruccion}`.
+  - `prohibiciones`: lo prohibido, en frases.
+  - `negativos`: lo mismo como lista, para el prompt negativo.
+
+  Gemini Omni Flash y Veo reciben el mismo prompt: Omni con "Avoid: …" al final y Veo con `negativePrompt`.
+- **Reintentos automáticos del guion.** Si el proveedor de texto falla o no está configurado, el video sigue en "Preparando propuesta" y se reintenta cada 45 s durante 5 minutos. Luego pasa a error con "No pudimos escribir tu guion con IA. Inténtalo de nuevo en un rato."
+- **Migración `V9`:** `plano.frase`, `video.guion_iniciado_en` (inicio del plazo de reintentos) y `video.error_definitivo` (un error que no se arregla reintentando, como un producto sin fotos).
+- **Pruebas** (268 en el backend):
+  - validador: cierre, precio frente a instrucción, ubicación, variedad y cámara 3D;
+  - integración: reintentos del guion y "Reintentar" sin consumo;
+  - paquete: 13 movimientos y el prompt de toma;
+  - composición: fundidos con 15 s y 450 cuadros exactos.
+
+### Cambiado
+
+- **Guion publicitario** (`guion.md`):
+  - La IA escribe como el copywriter de la pastelería. Toma las respuestas del negocio como indicaciones, no como textos para copiar, y corrige la ortografía y las tildes.
+  - Cada plano tiene su papel: enganchar, presentar y rematar el antojo.
+  - Incluye ejemplos buenos y malos.
+- **"Reintentar"** (llegó con el PR #12 para los videos que fallaron al generarse) también sirve si falló el guion. La propuesta se vuelve a escribir y **no usa el video del día** ("Volveremos a escribir tu propuesta. No usa tu video de hoy."). No se ofrece si el error no se arregla reintentando.
+- **Movimientos anteriores:** se conservan sus ids. Los acercamientos y deslizamientos son ahora movimientos reales de cámara (no zoom), y los efectos suman un arco de cámara. Ya no existe el límite de 15° ni la prohibición de "cortes de cámara", que cubre "una sola toma continua".
+- **Composición:**
+  - Fundido de 0,3 s entre todos los planos, en lugar del corte directo, manteniendo los 15 s exactos.
+  - Textos en el tercio inferior, sobre una franja oscura degradada, con entrada animada.
+  - Cierre con el logo en una insignia redonda, el texto principal en grande, el llamado en una píldora del color de marca, y la ubicación y el WhatsApp más chicos.
+  - Sin foto del local, el fondo del cierre es el último cuadro del plano 3, desenfocado y oscurecido (antes, un degradado de los colores de marca).
+  - Más nitidez: escalado `lanczos`, `unsharp` suave y CRF 20.
+- El aviso "Está tardando más de lo normal" se cuenta desde el inicio del guion en curso, no desde la creación del video.
+- **Especificación:** cambian RNF-09, 7.1, 7.4, 7.5, 8.0, 8.1, 8.2, 8.5, 9.1, 9.2, RN-21, RN-22, RN-25, RN-27, V19 y V20.
+
+### Quitado
+
+- **El guion de respaldo** (RN-25 anterior), que copiaba los textos del negocio, y el aviso "Preparamos una propuesta básica…" (`avisoDeRespaldo`).
+- En `plantilla.json`: `respaldoDesde`, `textoDeRespaldo`, `ganchosDeRespaldo`, `descripcionDeRespaldo`, `descripcionFijaDeRespaldo` y `avisoDeRespaldo`.
+- Las columnas `video.guion_de_respaldo` y `video.motivo_respaldo` quedan en la base de datos solo para los videos anteriores.
+
+### Pendiente
+
+- Probar con 2 o 3 videos reales de Gemini Omni Flash que los arcos no deformen el producto. Si no convence, se puede cambiar a Veo 3.1 Fast desde el panel, sin programar.
+- La facturación de Google AI Studio debe estar activa: sin Gemini ya no hay propuesta.
+
 ## [Documentación al día] - 2026-11-06
 
 ### Cambiado
