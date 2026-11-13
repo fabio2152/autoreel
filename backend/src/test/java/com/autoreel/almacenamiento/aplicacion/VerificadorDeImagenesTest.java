@@ -31,6 +31,19 @@ class VerificadorDeImagenesTest {
                 .ancho()).isEqualTo(720);
     }
 
+    /** La foto del local acepta desde 480 px en el lado menor (decisión del usuario, 2026-11-12). */
+    @Test
+    void laFotoDelLocalAceptaDesde480Pixeles() {
+        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(479, 854), PropositoArchivo.FOTO_LOCAL,
+                "image/jpeg"))
+                .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
+        assertThat(verificador.verificar(Imagenes.jpg(480, 854), PropositoArchivo.FOTO_LOCAL, "image/jpeg")
+                .ancho()).isEqualTo(480);
+        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(480, 854), PropositoArchivo.FOTO_PRODUCTO,
+                "image/jpeg"))
+                .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
+    }
+
     @Test
     void aceptaUnaFotoHorizontalConAviso() {
         ImagenVerificada imagen = verificador.verificar(Imagenes.png(1920, 1080, false),

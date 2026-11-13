@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Foto del local desde 480 px] - 2026-11-12
+
+### Cambiado
+
+- **La foto del local acepta desde 480 px** en el lado más corto (antes 720). Solo es el fondo oscurecido del cierre y no pasa por la IA. Las fotos de producto siguen pidiendo 720 px (RN-11). El backend (`VerificadorDeImagenes.LADO_MENOR_FOTO_LOCAL`) y el navegador (`imagenes.ts`) usan el mismo mínimo; prueba nueva `laFotoDelLocalAceptaDesde480Pixeles`.
+
 ## [Calidad del video] - 2026-11-12
 
 Cambios pedidos por el usuario al revisar un video real. Las frases salían feas o copiadas, el cierre mostró como precio una orden escrita en el chat ("no menciones precio…") y los clips solo se acercaban o se alejaban. La música no cambia. Decisiones en el ADR 0021.

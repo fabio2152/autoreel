@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { subirArchivo, type PropositoArchivo } from '../api/archivos'
 import { Aviso } from './Aviso'
-import { ErrorDeImagen, normalizarFoto, revisarLogo } from './imagenes'
+import { ErrorDeImagen, LADO_MENOR_FOTO, LADO_MENOR_FOTO_LOCAL, normalizarFoto, revisarLogo } from './imagenes'
 
 export interface ImagenSubida {
   clave: string
@@ -62,7 +62,7 @@ export function SubidorDeImagen({
       const preparado =
         proposito === 'LOGO'
           ? { foto: await revisarLogo(archivo), horizontal: false }
-          : await normalizarFoto(archivo)
+          : await normalizarFoto(archivo, proposito === 'FOTO_LOCAL' ? LADO_MENOR_FOTO_LOCAL : LADO_MENOR_FOTO)
       const clave = await subirArchivo(proposito, preparado.foto, setProgreso)
       const url = URL.createObjectURL(preparado.foto)
       setVistaPrevia(url)

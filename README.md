@@ -81,7 +81,7 @@ cd backend && ./mvnw verify        # unitarias + integración (requiere Docker)
 cd frontend && npm run lint && npm run build
 ```
 
-Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 268 pruebas en el backend.
+Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 269 pruebas en el backend.
 
 ## Documentación
 

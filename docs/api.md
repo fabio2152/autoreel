@@ -1007,7 +1007,7 @@ Los responden `POST /api/archivos/url-subida` (al firmar) y `PUT /api/perfil`, `
 | `IMAGEN_ANIMADA` | 400 | WebP animado o PNG animado (APNG) | Verificación |
 | `IMAGEN_DEMASIADO_GRANDE` | 400 | Lado mayor de más de 8000 px o más de 40 megapíxeles; en el logo, lado mayor de más de 4000 px. El mensaje trae las medidas | Verificación |
 | `LOGO_MUY_PEQUENO` | 400 | El lado menor del logo mide menos de 200 px | Verificación |
-| `FOTO_RESOLUCION_INSUFICIENTE` | 400 | El lado menor de una foto de producto o del local mide menos de **720 px** (RN-11, V12; 1080 px hasta la revisión del 2026-11-06). El mensaje trae las medidas reales | Verificación |
+| `FOTO_RESOLUCION_INSUFICIENTE` | 400 | El lado menor de una foto de producto mide menos de **720 px**, o el de la foto del local menos de **480 px** (desde el 2026-11-12) (RN-11, V12; 1080 px hasta la revisión del 2026-11-06). El mensaje trae las medidas reales | Verificación |
 | `ARCHIVO_MODIFICADO` | 409 | El archivo cambió (o desapareció) entre la lectura y la copia a su clave definitiva | Verificación |
 
 Las fotos horizontales y el logo opaco **no son errores**: se aceptan con los avisos `FOTO_HORIZONTAL`, `FOTO_LOCAL_HORIZONTAL` y `LOGO_SIN_TRANSPARENCIA`.
