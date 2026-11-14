@@ -33,7 +33,8 @@ final class GraficosDelVideo {
         try {
             for (int y = 0; y < alto; y++) {
                 double avance = (double) y / (alto - 1);
-                int alfa = (int) Math.round(255 * opacidadMaxima * Math.pow(avance, 1.6));
+                // Sube rápido al principio para que ya oscurezca donde va el texto, a media franja.
+                int alfa = (int) Math.round(255 * opacidadMaxima * Math.pow(avance, 0.8));
                 lienzo.setColor(new Color(0, 0, 0, alfa));
                 lienzo.fillRect(0, y, ancho, 1);
             }

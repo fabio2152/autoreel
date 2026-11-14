@@ -1553,7 +1553,7 @@ Secciones 7.4 y 8.3 de la especificación, RN-31, V23.
   - **Textos** con `drawtext=fontfile=fuente.ttf:textfile=...:expansion=none`: un precio con `%`, `\`, `:` o comillas no rompe el filtro. Antes se limpian con `Texto.soloDibujable`.
   - **Zona segura:** de x = 90 a x = 900 (los botones de Reels ocupan el borde derecho), textos centrados en x = 495.
   - **Textos de los planos 1 a 3** (desde el 2026-11-12, ADR 0021):
-    - En el **tercio inferior**: el bloque crece hacia arriba desde y = 1470 (`BASE_TEXTO_PLANO`), hasta 3 líneas, en 76, 68, 60 o 52 px.
+    - En el **tercio inferior**: el bloque crece hacia arriba desde y = 1470 (`BASE_TEXTO_PLANO`), hasta 3 líneas, en 96, 88, 80, 72 o 64 px, con contorno de 5 px al 60 % y la franja oscura al 80 % (desde el 2026-11-14, para que se lea sobre fondos claros).
     - Blancos, con borde y sombra suaves, sobre la **franja degradada** de `GraficosDelVideo` (en y = 1060), sin caja negra.
     - **Entrada animada:** cada línea aparece con un fundido y una subida de 40 px en 0,35 s (`alpha` e `y` con expresiones de `drawtext`). Empiezan a los 0,3 s, escalonadas 0,1 s por línea.
     - Se desvanecen en 0,3 s antes del fundido siguiente.
