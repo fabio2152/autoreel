@@ -90,10 +90,32 @@ public class VeoGeneradorDeClips implements GeneradorDeClips {
         return new Listo(Base64.getDecoder().decode(base64), video.path("mimeType").asString("video/mp4"), null);
     }
 
-    /** Pide un token con la cuenta de servicio: verifica la credencial sin crear un clip, que costaría. */
+    /**
+     * Verifica la credencial sin crear un clip, que costaría. Con la cuenta de servicio pide un token. Con una clave de
+     * API consulta una tarea que no existe: si Google responde que no la encuentra (400/404), la clave y el proyecto
+     * sirven; si la rechaza (401/403), no.
+     */
     @Override
     public void probar(ModeloIA modelo, String credencial) {
-        googleCloud.verificarCredencial(credencial);
+        if (!GoogleCloud.esClaveDeApi(credencial)) {
+            googleCloud.verificarCredencial(credencial);
+            return;
+        }
+        String proyecto = GoogleCloud.proyectoDelModelo(modelo);
+        if (proyecto == null) {
+            throw new ErrorDeProveedor(Tipo.CONFIGURACION_INVALIDA, "Con una clave de API, Veo necesita el ID del "
+                    + "proyecto de Google Cloud: agrégalo como \"proyecto\" en los parámetros del modelo");
+        }
+        String tareaInexistente = "projects/" + proyecto + "/locations/" + region(modelo) + "/publishers/google/models/"
+                + modelo.getIdentificadorModelo() + "/operations/00000000-0000-0000-0000-000000000000";
+        try {
+            googleCloud.llamar(modelo, credencial, region(modelo), "fetchPredictOperation",
+                    Map.of("operationName", tareaInexistente), NOMBRE);
+        } catch (ErrorDeProveedor e) {
+            if (e.getTipo() != Tipo.CONFIGURACION_INVALIDA) {
+                throw e;
+            }
+        }
     }
 
     private static String region(ModeloIA modelo) {

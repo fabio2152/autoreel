@@ -143,7 +143,8 @@ Son los valores de las migraciones. Desde la fase 7 el administrador puede cambi
 **`GeminiCloudGuionista` (`GEMINI_CLOUD`, Google Cloud):**
 
 - Usa `GoogleCloud.llamar(...)`: `POST {base}/v1/projects/{proyecto}/locations/{ubicacion}/publishers/google/models/{identificador_modelo}:generateContent`, con `Authorization: Bearer {token}`. El cuerpo es el mismo que el de `GEMINI`.
-- **El proyecto** sale del `project_id` del JSON de la cuenta de servicio. **La ubicación** sale de `parametros.ubicacion`, por defecto `global` (con `global`, la base es `url-global`; con otra, `url` con `{region}` reemplazado).
+- **La credencial** puede ser el JSON de una cuenta de servicio o, desde el 2026-11-14, una **clave de API de Google Cloud** (cualquier valor que no empiece con `{`). Con la clave, `GoogleCloud` la envía en `x-goog-api-key`, no pide token y toma el proyecto de `parametros.proyecto`; sin proyecto usa el modo exprés (`/v1/publishers/google/models/...`), que sirve para Gemini pero no para Veo.
+- **El proyecto** sale del `project_id` del JSON de la cuenta de servicio (o de `parametros.proyecto` con una clave de API). **La ubicación** sale de `parametros.ubicacion`, por defecto `global` (con `global`, la base es `url-global`; con otra, `url` con `{region}` reemplazado).
 - `temperatura`, igual que en `GEMINI`.
 - **`probar`:** `countTokens` con el texto "AutoReel". No escribe nada y detecta una cuenta inválida, sin permisos o un modelo que no existe.
 
@@ -253,7 +254,8 @@ Errores: 401 y 403 son `CREDENCIAL_INVALIDA`; 400 y 404, `CONFIGURACION_INVALIDA
   - Sin `done`: `EnCurso`.
   - Con `done` y el clip en `response.videos[0].bytesBase64Encoded`: `Listo`.
   - Con `error`, con `raiMediaFilteredCount` mayor que 0 (el filtro de contenido) o sin clip: `Fallido`.
-- **`probar`:** pide un token con la cuenta de servicio (`GoogleCloud.verificarCredencial`). Verifica la credencial, **pero no el modelo**: un `identificador_modelo` o una `region` mal escritos recién fallan al generar (404, `CONFIGURACION_INVALIDA`).
+- **`probar` con clave de API:** exige `parametros.proyecto` y consulta con `fetchPredictOperation` una tarea inexistente: 400/404 significa que la clave y el proyecto sirven; 401/403, que no. No gasta.
+- **`probar` con cuenta de servicio:** pide un token (`GoogleCloud.verificarCredencial`). Verifica la credencial, **pero no el modelo**: un `identificador_modelo` o una `region` mal escritos recién fallan al generar (404, `CONFIGURACION_INVALIDA`).
 - **El proyecto** sale del `project_id` del JSON de la cuenta. **La región** y el resto, de `parametros`:
 
 | Parámetro | Va a | Por defecto |

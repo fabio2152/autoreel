@@ -100,8 +100,8 @@ class GeminiCloudGuionistaTest {
     }
 
     @Test
-    void unaClaveDeApiNoSirveComoCuentaDeServicio() {
-        assertThatThrownBy(() -> guionista.escribir(modelo(), "AIza-clave-de-api", "x", "{}"))
+    void unJsonQueNoEsUnaCuentaDeServicioEsInvalido() {
+        assertThatThrownBy(() -> guionista.escribir(modelo(), "{\"type\":\"otra-cosa\"}", "x", "{}"))
                 .isInstanceOfSatisfying(ErrorDeProveedor.class,
                         error -> assertThat(error.getTipo()).isEqualTo(ErrorDeProveedor.Tipo.CREDENCIAL_INVALIDA));
     }

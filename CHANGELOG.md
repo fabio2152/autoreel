@@ -2,6 +2,15 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Veo con clave de API de Google Cloud] - 2026-11-14
+
+### Agregado
+
+- **Google Cloud acepta una clave de API** además del JSON de la cuenta de servicio (`autoreel/google-cloud`). Con la clave, el ID del proyecto va en el parámetro `proyecto` del modelo (no es secreto). Sin proyecto, Gemini (Google Cloud) usa el modo exprés; Veo lo exige.
+- **"Probar conexión" de Veo con clave de API**: consulta una tarea inexistente, sin costo, y distingue una clave o proyecto rechazados (401/403) de uno válido.
+- Ajustes → Integraciones: la ayuda y el cuadro de Google Cloud piden "Clave de API o contenido del archivo JSON".
+- Pruebas: `VeoGeneradorDeClipsTest` (la clave va en `x-goog-api-key` con el proyecto de los parámetros y sin token; falta de proyecto; prueba con 404 y con 403).
+
 ## [Foto del local desde 480 px] - 2026-11-12
 
 ### Cambiado
