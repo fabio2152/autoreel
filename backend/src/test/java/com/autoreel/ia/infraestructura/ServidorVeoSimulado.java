@@ -128,7 +128,9 @@ public final class ServidorVeoSimulado implements AutoCloseable {
         try (InputStream entrada = intercambio.getRequestBody()) {
             cuerpo = new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
         }
-        peticiones.add(new Peticion(ruta, intercambio.getRequestHeaders().getFirst("Authorization"), cuerpo));
+        peticiones.add(new Peticion(ruta, intercambio.getRequestHeaders().getFirst("Authorization") != null
+                ? intercambio.getRequestHeaders().getFirst("Authorization")
+                : "clave " + intercambio.getRequestHeaders().getFirst("x-goog-api-key"), cuerpo));
         Respuesta respuesta;
         if (ruta.equals("/token")) {
             tokens.incrementAndGet();

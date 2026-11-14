@@ -640,7 +640,7 @@ AutoReel puede usar Google por dos caminos, y la elección es un dato de la base
 | Camino | Clave | Texto (guion) | Video (clips) | Estado |
 |---|---|---|---|---|
 | **Google AI Studio** | Una clave de API (secreto `autoreel/gemini`) | **Gemini** (`gemini-3.8-flash`, adaptador `GEMINI`) | **Gemini Omni Flash** (`gemini-omni-1.2-flash`, adaptador `GEMINI_OMNI`) | **Activo**: lo usa el plan Lite |
-| **Google Cloud (Vertex AI)** | Una cuenta de servicio en JSON (secreto `autoreel/google-cloud`) | **Gemini (Google Cloud)** (`gemini-3.8-flash`, adaptador `GEMINI_CLOUD`) | **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`, adaptador `VEO`) | Listo e **inactivo** |
+| **Google Cloud (Vertex AI)** | Una clave de API de Google Cloud más el parámetro `proyecto`, o una cuenta de servicio en JSON (secreto `autoreel/google-cloud`) | **Gemini (Google Cloud)** (`gemini-3.8-flash`, adaptador `GEMINI_CLOUD`) | **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`, adaptador `VEO`) | Listo e **inactivo** |
 
 **Hoy basta una sola clave, la de Google AI Studio**, para el guion y los clips. Cómo pasar a Google Cloud está en la sección 19.2.
 
@@ -649,7 +649,7 @@ AutoReel puede usar Google por dos caminos, y la elección es un dato de la base
 Hay una tarjeta por cada clave que usa algún modelo:
 
 - **Google AI Studio** (`autoreel/gemini`): "La clave de API de aistudio.google.com/apikey (empieza con "AIza"). Sirve para el guion y los clips."
-- **Google Cloud (Vertex AI)** (`autoreel/google-cloud`): "El archivo JSON completo de la cuenta de servicio, con su clave privada. Sirve para Veo y Gemini en Google Cloud."
+- **Google Cloud (Vertex AI)** (`autoreel/google-cloud`): "Una clave de API de Google Cloud (empieza con "AQ." o "AIza"), o el archivo JSON completo de una cuenta de servicio. Con la clave, agrega el ID de tu proyecto como "proyecto" en los parámetros de Veo."
 
 Cada tarjeta muestra:
 
@@ -920,7 +920,16 @@ Cuando un negocio toca **"Crear mi video"**, AutoReel crea un clip corto para ca
 
 ### 19.2 Camino alternativo: Veo y Gemini en Google Cloud
 
-Está **listo e inactivo**. Tiene más control (Veo 3.1 y Veo 3.1 Fast son estables en Google Cloud), pero la configuración es más trabajosa. Usa una **cuenta de servicio**, porque Google Cloud no acepta claves de API para Veo.
+Está **listo e inactivo**. Tiene más control (Veo 3.1 y Veo 3.1 Fast son estables en Google Cloud), pero la configuración es más trabajosa. Acepta dos credenciales: una **clave de API de Google Cloud** (la más simple, desde el 2026-11-14) o una **cuenta de servicio** en JSON.
+
+**Opción A, clave de API (recomendada):**
+
+1. En la consola, con el proyecto elegido y la API de **Vertex AI** activa, crea una clave de API (suele empezar con `AQ.`).
+2. Pégala en la tarjeta **Google Cloud (Vertex AI)** de **Ajustes → Integraciones y claves**.
+3. En el modelo **Veo 3.1 Lite**, edita los **Parámetros (JSON)** y agrega el ID de tu proyecto: `"proyecto": "tu-proyecto-123"` (lo ves arriba a la izquierda, en el selector de proyecto de la consola). No es secreto. Sin él, Veo responde que el proyecto no es válido; Gemini (Google Cloud) funciona aun sin él.
+4. Pulsa **Probar conexión**: consulta una tarea inexistente, así que no gasta. Si Google rechaza la clave o el proyecto, lo dice.
+
+**Opción B, cuenta de servicio:**
 
 **En la consola de Google Cloud:**
 

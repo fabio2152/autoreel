@@ -110,11 +110,50 @@ class VeoGeneradorDeClipsTest {
     }
 
     @Test
-    void unaCredencialQueNoEsUnaCuentaDeServicioEsInvalida() {
-        assertThatThrownBy(() -> veo.iniciar(modelo(), "clave-de-gemini", SOLICITUD))
+    void unJsonQueNoEsUnaCuentaDeServicioEsInvalido() {
+        assertThatThrownBy(() -> veo.iniciar(modelo(), "{\"type\":\"otra-cosa\"}", SOLICITUD))
                 .isInstanceOfSatisfying(ErrorDeProveedor.class,
                         error -> assertThat(error.getTipo()).isEqualTo(ErrorDeProveedor.Tipo.CREDENCIAL_INVALIDA));
         assertThat(servidor.creacionesRecibidas()).isEmpty();
+    }
+
+    /** Clave de API de Google Cloud (2026-11-14): va en x-goog-api-key y el proyecto sale de los parámetros. */
+    @Test
+    void conClaveDeApiUsaElProyectoDeLosParametrosYNoPideToken() {
+        String tarea = veo.iniciar(modeloConProyecto(), "AQ.clave-de-prueba", SOLICITUD);
+
+        assertThat(tarea).contains("operations/tarea-");
+        ServidorVeoSimulado.Peticion peticion = servidor.creacionesRecibidas().getFirst();
+        assertThat(peticion.ruta()).isEqualTo("/v1/projects/mi-proyecto/locations/us-central1/publishers/"
+                + "google/models/veo-3.1-lite-generate-001:predictLongRunning");
+        assertThat(peticion.autorizacion()).isEqualTo("clave AQ.clave-de-prueba");
+        assertThat(servidor.tokensEntregados()).isZero();
+    }
+
+    @Test
+    void conClaveDeApiSinProyectoLaPruebaPideElProyecto() {
+        assertThatThrownBy(() -> veo.probar(modelo(), "AQ.clave-de-prueba"))
+                .isInstanceOf(ErrorDeProveedor.class)
+                .hasMessageContaining("proyecto")
+                .extracting("tipo").isEqualTo(ErrorDeProveedor.Tipo.CONFIGURACION_INVALIDA);
+    }
+
+    @Test
+    void conClaveDeApiLaPruebaAceptaUnaTareaInexistenteYRechazaUn403() {
+        servidor.consultaResponde(404, "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}");
+        veo.probar(modeloConProyecto(), "AQ.clave-de-prueba");
+        assertThat(servidor.peticiones().getFirst().ruta()).endsWith(":fetchPredictOperation");
+
+        servidor.consultaResponde(403, "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}");
+        assertThatThrownBy(() -> veo.probar(modeloConProyecto(), "AQ.clave-de-prueba"))
+                .isInstanceOf(ErrorDeProveedor.class)
+                .extracting("tipo").isEqualTo(ErrorDeProveedor.Tipo.CREDENCIAL_INVALIDA);
+    }
+
+    private static ModeloIA modeloConProyecto() {
+        ModeloIA modelo = modelo();
+        ReflectionTestUtils.setField(modelo, "parametros", Map.of("region", "us-central1", "proyecto", "mi-proyecto"));
+        return modelo;
     }
 
     private static ModeloIA modelo() {

@@ -33,7 +33,8 @@ const CREDENCIALES_CONOCIDAS: Record<string, { titulo: string; ayuda: string; js
   },
   'autoreel/google-cloud': {
     titulo: 'Google Cloud (Vertex AI)',
-    ayuda: 'El archivo JSON completo de la cuenta de servicio, con su clave privada. Sirve para Veo y Gemini en Google Cloud.',
+    ayuda:
+      'Una clave de API de Google Cloud (empieza con "AQ." o "AIza"), o el archivo JSON completo de una cuenta de servicio. Con la clave, agrega el ID de tu proyecto como "proyecto" en los parámetros de Veo. Sirve para Veo y Gemini en Google Cloud.',
     json: true,
   },
 }
@@ -184,7 +185,7 @@ function ModalCredencial({ credencial, onCerrar }: { credencial: Credencial; onC
         {conocida && <p className="text-sm text-stone-600">{conocida.ayuda}</p>}
         <div>
           <label htmlFor="valor-credencial" className="mb-1 block text-sm font-medium text-stone-700">
-            {conocida?.json ? 'Contenido del archivo JSON' : 'Clave'}
+            {conocida?.json ? 'Clave de API o contenido del archivo JSON' : 'Clave'}
           </label>
           {conocida?.json ? (
             <textarea
@@ -196,7 +197,7 @@ function ModalCredencial({ credencial, onCerrar }: { credencial: Credencial; onC
               value={valor}
               onChange={(e) => setValor(e.target.value)}
               className={estiloTexto}
-              placeholder='{"type": "service_account", ...}'
+              placeholder='AQ.… o {"type": "service_account", ...}'
             />
           ) : (
             <input

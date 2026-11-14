@@ -18,9 +18,14 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Llamadas a los modelos de Google en Google Cloud (Vertex AI, hoy "Gemini Enterprise Agent Platform") con una
- * cuenta de servicio. La comparten los adaptadores de Google Cloud: Veo (video) y Gemini (texto). La credencial es el
- * JSON de la cuenta de servicio (RN-55); el proyecto sale de ese JSON y la ubicación, de los parámetros del modelo.
+ * Llamadas a los modelos de Google en Google Cloud (Vertex AI, hoy "Gemini Enterprise Agent Platform"). La comparten
+ * los adaptadores de Google Cloud: Veo (video) y Gemini (texto). La credencial (RN-55) puede ser:
+ * <ul>
+ * <li>el JSON de una cuenta de servicio: el proyecto sale de ese JSON y se pide un token;</li>
+ * <li>una clave de API de Google Cloud (2026-11-14): va en {@code x-goog-api-key} y el proyecto sale del parámetro
+ * {@code proyecto} del modelo. Sin proyecto se usa el modo exprés, que sirve para Gemini pero no para Veo.</li>
+ * </ul>
+ * La ubicación sale de los parámetros del modelo.
  */
 @Component
 public class GoogleCloud {
@@ -60,14 +65,19 @@ public class GoogleCloud {
      */
     public JsonNode llamar(ModeloIA modelo, String credencial, String ubicacion, String metodo, Object cuerpo,
             String nombreProveedor) {
-        CuentaDeServicio cuenta = tokens.cuenta(credencial);
-        String base = UBICACION_GLOBAL.equals(ubicacion) ? propiedades.urlGlobal()
+        boolean conClave = esClaveDeApi(credencial);
+        CuentaDeServicio cuenta = conClave ? null : tokens.cuenta(credencial);
+        String proyecto = conClave ? proyectoDelModelo(modelo) : cuenta.proyecto();
+        String base = UBICACION_GLOBAL.equals(ubicacion) || proyecto == null ? propiedades.urlGlobal()
                 : propiedades.url().replace("{region}", ubicacion);
-        String url = base + "/v1/projects/" + cuenta.proyecto() + "/locations/" + ubicacion
+        // Con clave de API y sin proyecto se usa el modo exprés (sin proyecto en la ruta): sirve para Gemini, no para Veo.
+        String url = base + "/v1" + (proyecto == null ? "" : "/projects/" + proyecto + "/locations/" + ubicacion)
                 + "/publishers/google/models/" + modelo.getIdentificadorModelo() + ":" + metodo;
         try {
-            return cliente.post().uri(url)
-                    .header("Authorization", "Bearer " + tokens.token(cuenta))
+            var peticion = cliente.post().uri(url);
+            peticion = conClave ? peticion.header("x-goog-api-key", credencial.strip())
+                    : peticion.header("Authorization", "Bearer " + tokens.token(cuenta));
+            return peticion
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(json.writeValueAsString(cuerpo))
                     .retrieve()
@@ -75,9 +85,19 @@ public class GoogleCloud {
         } catch (RestClientResponseException e) {
             int codigo = e.getStatusCode().value();
             if (codigo == 401 || codigo == 403) {
-                tokens.olvidar(cuenta);
-                throw new ErrorDeProveedor(Tipo.CREDENCIAL_INVALIDA,
-                        "Google Cloud rechazó la cuenta de servicio o le faltan permisos (" + codigo + ")", e);
+                if (cuenta != null) {
+                    tokens.olvidar(cuenta);
+                }
+                throw new ErrorDeProveedor(Tipo.CREDENCIAL_INVALIDA, conClave
+                        ? "Google Cloud rechazó la clave de API o el proyecto \"" + proyecto
+                                + "\" (revisa el parámetro proyecto y que la API de Vertex AI esté habilitada) (" + codigo + ")"
+                        : "Google Cloud rechazó la cuenta de servicio o le faltan permisos (" + codigo + ")", e);
+            }
+            if (codigo == 400 && conClave && proyecto == null
+                    && e.getResponseBodyAsString().contains("RESOURCE_PROJECT_INVALID")) {
+                throw new ErrorDeProveedor(Tipo.CONFIGURACION_INVALIDA, nombreProveedor
+                        + " necesita el ID del proyecto de Google Cloud: agrégalo como \"proyecto\" en los parámetros del modelo",
+                        e);
             }
             if (codigo == 400 || codigo == 404) {
                 throw new ErrorDeProveedor(Tipo.CONFIGURACION_INVALIDA, nombreProveedor
@@ -97,6 +117,17 @@ public class GoogleCloud {
      */
     public void verificarCredencial(String credencial) {
         tokens.token(tokens.cuenta(credencial));
+    }
+
+    /** Una clave de API de Google Cloud (por ejemplo, las que empiezan con "AQ." o "AIza"); si no, es el JSON. */
+    static boolean esClaveDeApi(String credencial) {
+        return credencial != null && !credencial.strip().startsWith("{");
+    }
+
+    /** El ID del proyecto para usar con una clave de API: parámetro {@code proyecto} del modelo; null si no está. */
+    static String proyectoDelModelo(ModeloIA modelo) {
+        String proyecto = parametro(modelo, "proyecto", "").strip();
+        return proyecto.isEmpty() ? null : proyecto;
     }
 
     /** Un parámetro del modelo como texto, o el valor por defecto. */
