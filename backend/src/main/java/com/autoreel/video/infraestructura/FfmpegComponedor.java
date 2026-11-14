@@ -65,6 +65,11 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
     static final double FUNDIDO_DE_MUSICA = 1.5;
     private static final String CONTORNO =
             ":borderw=2:bordercolor=black@0.35:shadowx=0:shadowy=4:shadowcolor=black@0.55";
+    /** Contorno más marcado para el texto de los planos, que va sobre el clip y no sobre un fondo oscurecido. */
+    private static final String CONTORNO_DEL_PLANO =
+            ":borderw=5:bordercolor=black@0.6:shadowx=0:shadowy=6:shadowcolor=black@0.75";
+    /** Opacidad máxima de la franja oscura bajo el texto de los planos. */
+    static final float OPACIDAD_FRANJA = 0.8f;
     /**
      * @param ruta          ejecutable de FFmpeg ({@code FFMPEG_PATH}); por defecto, el del PATH.
      * @param tiempoMaximo  tiempo máximo de una composición.
@@ -132,7 +137,7 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
         CierreAComponer cierre = composicion.cierre();
         int total = cierre.segundos();
 
-        Files.write(carpeta.resolve("franja.png"), GraficosDelVideo.franjaInferior(ANCHO, ALTO_FRANJA, 0.62f));
+        Files.write(carpeta.resolve("franja.png"), GraficosDelVideo.franjaInferior(ANCHO, ALTO_FRANJA, OPACIDAD_FRANJA));
         StringBuilder franjas = new StringBuilder("[" + entradas.agregar("-i", "franja.png") + ":v]format=rgba,split="
                 + planos.size());
         for (int i = 0; i < planos.size(); i++) {
@@ -242,7 +247,7 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
         if (vacio(texto)) {
             return "";
         }
-        DisenoDeTextos.Bloque bloque = diseno.repartir(texto, ANCHO_UTIL - 40, 3, 76, 68, 60, 52);
+        DisenoDeTextos.Bloque bloque = diseno.repartir(texto, ANCHO_UTIL, 3, 96, 88, 80, 72, 64);
         int alto = diseno.altoDeLinea(bloque.tamano());
         int y = BASE_TEXTO_PLANO - alto * bloque.lineas().size();
         StringBuilder filtros = new StringBuilder();
@@ -250,7 +255,7 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
             String archivo = "plano" + plano.orden() + "-" + i + ".txt";
             escribirTexto(carpeta, archivo, bloque.lineas().get(i));
             filtros.append(texto(archivo, bloque.tamano(), "white", y, RETRASO_DEL_TEXTO + i * ESCALON,
-                    plano.segundos() - TRANSICION)).append(CONTORNO);
+                    plano.segundos() - TRANSICION)).append(CONTORNO_DEL_PLANO);
             y += alto;
         }
         return filtros.toString();

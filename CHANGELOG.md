@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Texto de los planos más legible] - 2026-11-14
+
+### Cambiado
+
+- **El texto de los planos se lee mejor** sobre fondos claros: letra de 96 a 64 px (antes de 76 a 52), contorno de 5 px al 60 % con sombra más marcada, y la franja oscura llega al 80 % y oscurece desde la mitad, donde va el texto. Comprobado recomponiendo el video de prueba con Veo.
+
 ## [Veo con clave de API de Google Cloud] - 2026-11-14
 
 ### Agregado
