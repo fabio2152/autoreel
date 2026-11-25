@@ -361,12 +361,12 @@ Cada producto tiene **una foto principal obligatoria y dos opcionales**, de cual
 |---|---|---|
 | Formato | **JPG, PNG o WebP** | Solo **PNG** (idealmente con fondo transparente) |
 | Peso máximo | **10 MB** | **5 MB** |
-| Tamaño mínimo | El **lado más corto** debe medir al menos **720 px** | El lado más corto debe medir al menos **200 px** |
+| Tamaño mínimo | Ninguno: puede tener cualquier medida (desde el 2026-11-25) | Ninguno |
 | Tamaño máximo | Hasta 8000 px por lado | Hasta 4000 px por lado |
 | Animadas | No se admiten | No se admiten |
 
-- **Una foto tomada con la cámara de cualquier celular actual cumple de sobra el mínimo de 720 px**, que es la calidad con la que la IA crea los clips de tu video. Si recibes el aviso de tamaño, probablemente la foto fue recortada mucho o la descargaste de WhatsApp o de internet: usa la original de la cámara.
-- **Antes de subir la foto, AutoReel la prepara en tu celular:** la endereza según cómo tomaste la foto, la achica si es muy grande (el lado mayor queda en 2560 px como máximo, sin que el lado más corto baje de 720 px) y la guarda como JPG. Así se sube más rápido. En ese proceso **se borran los datos ocultos de la foto, incluida la ubicación GPS**.
+- **Una foto tomada con la cámara de cualquier celular actual cumple de sobra el mínimo de 720 px**, que es la calidad con la que la IA crea los clips de tu video. Si recibes el aviso de tamaño, probablemente la foto fue recortada mucho o la descargaste de WhatsApp o de internet: usa la original de la cámara. *Desde el 2026-11-25 ya no hay mínimo: se acepta cualquier foto, pero una foto chica puede verse menos nítida en el video.*
+- **Antes de subir la foto, AutoReel la prepara en tu celular:** la endereza según cómo tomaste la foto, la achica si es muy grande (el lado mayor queda en 2560 px como máximo; nunca la agranda) y la guarda como JPG. Así se sube más rápido. En ese proceso **se borran los datos ocultos de la foto, incluida la ubicación GPS**.
 - El logo se sube tal cual, sin cambios, para conservar su transparencia.
 
 ### 8.4 Fotos HEIC del iPhone
@@ -429,7 +429,7 @@ Toca **Cerrar sesión**, al final de Ajustes.
 
 | Mensaje que ves | Qué significa | Qué hacer |
 |---|---|---|
-| "Tu foto mide 640 × 480 px. Necesitamos al menos 720 px en el lado más corto. Tómala con la cámara del celular, sin recortarla." | La foto es muy pequeña. | Usa la foto original de la cámara (ver 8.3). |
+| "Tu foto mide 640 × 480 px. Necesitamos al menos 720 px en el lado más corto. Tómala con la cámara del celular, sin recortarla." | La foto es muy pequeña. | Usa la foto original de la cámara (ver 8.3). | *(Este mensaje ya no aparece desde el 2026-11-25.)*
 | "Las fotos HEIC del iPhone no se pueden usar todavía…" | La foto está en formato HEIC. | Ver 8.4. |
 | "Ese archivo no es una foto. Sube una imagen JPG, PNG o WebP." | Elegiste otro tipo de archivo (un PDF, un video…). | Elige una foto. |
 | "No pudimos abrir la imagen. Prueba con otra foto en JPG o PNG." | El archivo está dañado o tu navegador no lo puede leer. | Prueba con otra foto. |
@@ -658,7 +658,7 @@ Al final está el **Texto de la publicación**: la descripción y los hashtags q
 
 1. Toca **Cambiar foto** debajo de la foto del momento. Se abre **Foto del momento N**.
 2. Elige una de las fotos de tu producto (**Foto 1**, **Foto 2** o **Foto 3**, las que tenga). La que está en uso aparece marcada. La toma se mantiene: si la nueva foto es muy distinta, revisa el resultado en el video.
-3. O toca **Subir otra foto** y elige una nueva. Sigue la [guía de fotos](#8-cómo-tomar-buenas-fotos): vertical, con buena luz y de al menos 720 px en su lado más corto.
+3. O toca **Subir otra foto** y elige una nueva. Sigue la [guía de fotos](#8-cómo-tomar-buenas-fotos): vertical y con buena luz.
 
 Al elegirla, la ventana se cierra y la tarjeta muestra la foto nueva.
 

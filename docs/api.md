@@ -81,7 +81,7 @@ curl -s -b $JAR -c $JAR -H "X-XSRF-TOKEN: $XSRF" -X POST $API/api/admin/negocios
 
 El correo y la contraseña del ejemplo son marcadores: usar los de `ADMIN_EMAIL` y `ADMIN_PASSWORD` (o `DEMO_NEGOCIO_EMAIL` y `DEMO_NEGOCIO_PASSWORD` para el negocio de ejemplo) del `.env` local.
 
-Subir una foto con la sesión de un negocio (requiere `jq`; la foto debe medir al menos 720 px en su lado menor):
+Subir una foto con la sesión de un negocio (requiere `jq`; desde el 2026-11-25 la foto puede tener cualquier medida):
 
 ```bash
 FOTO=torta.jpg
@@ -1010,7 +1010,7 @@ Los responden `POST /api/archivos/url-subida` (al firmar) y `PUT /api/perfil`, `
 | `ARCHIVO_NO_SUBIDO` | 400 | La clave de subida no existe en el almacenamiento (el `PUT` no se hizo o falló) | Verificación |
 | `IMAGEN_ANIMADA` | 400 | WebP animado o PNG animado (APNG) | Verificación |
 | `IMAGEN_DEMASIADO_GRANDE` | 400 | Lado mayor de más de 8000 px o más de 40 megapíxeles. El mensaje trae las medidas. *Desde el 2026-11-25 el logo no tiene límites propios de medidas y ya no existe `LOGO_MUY_PEQUENO`* | Verificación |
-| `FOTO_RESOLUCION_INSUFICIENTE` | 400 | El lado menor de una foto de producto mide menos de **720 px**, o el de la foto del local menos de **480 px** (desde el 2026-11-12) (RN-11, V12; 1080 px hasta la revisión del 2026-11-06). El mensaje trae las medidas reales | Verificación |
+| `FOTO_RESOLUCION_INSUFICIENTE` | 400 | El lado menor de una foto de producto mide menos de **720 px**, o el de la foto del local menos de **480 px** (desde el 2026-11-12) (RN-11, V12; 1080 px hasta la revisión del 2026-11-06). El mensaje trae las medidas reales | Verificación | **Quitado el 2026-11-25:** las fotos ya no tienen medidas mínimas.
 | `ARCHIVO_MODIFICADO` | 409 | El archivo cambió (o desapareció) entre la lectura y la copia a su clave definitiva | Verificación |
 
 Las fotos horizontales y el logo opaco **no son errores**: se aceptan con los avisos `FOTO_HORIZONTAL`, `FOTO_LOCAL_HORIZONTAL` y `LOGO_SIN_TRANSPARENCIA`.
@@ -1127,7 +1127,7 @@ Una prueba de conexión que falla **no es un error HTTP**: `POST .../probar` res
 
 - Si una respuesta de error no trae un JSON legible, `cliente.ts` crea un `ErrorApi` con el código `ERROR` y un mensaje genérico.
 - `api/archivos.ts` crea `ErrorApi(0, 'SUBIDA_FALLIDA', …)` cuando el `PUT` al almacenamiento falla dos veces (con una URL nueva en el reintento).
-- `componentes/imagenes.ts` lanza `ErrorDeImagen` (sin código) al preparar la imagen en el navegador: HEIC, tipo no admitido, foto de menos de 720 px, logo que no es PNG o de más de 5 MB (desde el 2026-11-25, sin medidas mínimas), o foto normalizada de más de 10 MB.
+- `componentes/imagenes.ts` lanza `ErrorDeImagen` (sin código) al preparar la imagen en el navegador: HEIC, tipo no admitido (desde el 2026-11-25, sin medidas mínimas), logo que no es PNG o de más de 5 MB (desde el 2026-11-25, sin medidas mínimas), o foto normalizada de más de 10 MB.
 
 Ninguno de estos es un código del backend.
 

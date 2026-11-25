@@ -2,6 +2,16 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fotos sin medidas mínimas] - 2026-11-25
+
+### Cambiado
+
+- **Las fotos de producto y del local solo revisan el tipo de archivo (JPG, PNG o WebP) y el peso (10 MB):** ya no se piden 720 px (480 la del local) en el lado menor, ni en el navegador ni en el backend. El navegador ya no agranda las fotos chicas; se amplían al preparar el clip y pueden verse menos nítidas. Sigue el límite general contra imágenes enormes (8000 px por lado o 40 megapíxeles) y el aviso de foto horizontal.
+
+### Quitado
+
+- El error `FOTO_RESOLUCION_INSUFICIENTE` y `PropositoArchivo.esFoto()`, que ya no se usaba.
+
 ## [Venta por página web] - 2026-11-25
 
 ### Agregado

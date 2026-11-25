@@ -3,10 +3,6 @@
  * respuesta rápida y sube archivos más livianos.
  */
 
-/** RN-11: 720 px en el lado menor, lo que pide el clip de IA (720p). */
-export const LADO_MENOR_FOTO = 720
-/** La foto del local solo es el fondo del cierre: basta con 480 px en el lado menor. */
-export const LADO_MENOR_FOTO_LOCAL = 480
 const LADO_MAYOR_NORMALIZADO = 2560
 const CALIDAD_JPEG = 0.88
 const MB = 1024 * 1024
@@ -28,14 +24,11 @@ async function abrir(archivo: Blob): Promise<ImageBitmap> {
 }
 
 /**
- * Foto de producto o del local: aplica la orientación de la cámara, reduce el lado mayor a 2560 px (sin bajar el
- * lado menor del mínimo: 720 o 480 la del local), la exporta como JPEG y, al redibujarla, le quita los metadatos
- * (incluida la ubicación GPS).
+ * Foto de producto o del local: aplica la orientación de la cámara, reduce el lado mayor a 2560 px (nunca la
+ * amplía), la exporta como JPEG y, al redibujarla, le quita los metadatos (incluida la ubicación GPS). Desde el
+ * 2026-11-25 no hay medidas mínimas: solo se revisan el tipo de archivo y el peso.
  */
-export async function normalizarFoto(
-  archivo: File,
-  ladoMenorMinimo = LADO_MENOR_FOTO,
-): Promise<{ foto: Blob; horizontal: boolean }> {
+export async function normalizarFoto(archivo: File): Promise<{ foto: Blob; horizontal: boolean }> {
   if (esHeic(archivo)) {
     throw new ErrorDeImagen(
       'Las fotos HEIC del iPhone no se pueden usar todavía. En Ajustes > Cámara > Formatos elige "Más compatible", o comparte la foto como JPG.',
@@ -45,16 +38,8 @@ export async function normalizarFoto(
     throw new ErrorDeImagen('Ese archivo no es una foto. Sube una imagen JPG, PNG o WebP.')
   }
   const imagen = await abrir(archivo)
-  const { width: anchoOriginal, height: altoOriginal } = imagen
-  const menor = Math.min(anchoOriginal, altoOriginal)
-  const mayor = Math.max(anchoOriginal, altoOriginal)
-  if (menor < ladoMenorMinimo) {
-    imagen.close()
-    throw new ErrorDeImagen(
-      `Tu foto mide ${anchoOriginal} × ${altoOriginal} px. Necesitamos al menos ${ladoMenorMinimo} px en el lado más corto. Tómala con la cámara del celular, sin recortarla.`,
-    )
-  }
-  const escala = Math.max(Math.min(1, LADO_MAYOR_NORMALIZADO / mayor), ladoMenorMinimo / menor)
+  const mayor = Math.max(imagen.width, imagen.height)
+  const escala = Math.min(1, LADO_MAYOR_NORMALIZADO / mayor)
   const ancho = Math.round(imagen.width * escala)
   const alto = Math.round(imagen.height * escala)
   const lienzo = document.createElement('canvas')

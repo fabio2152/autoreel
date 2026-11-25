@@ -579,7 +579,7 @@ stateDiagram-v2
 
 - **RN-09.** Mientras el onboarding no esté completo, el negocio no puede crear videos.
 - **RN-10.** El logo debe ser PNG de hasta 5 MB.
-- **RN-11.** Las fotos de productos deben ser JPG, PNG o WebP, de hasta 10 MB, con el lado menor de al menos 720 píxeles (lo que pide el clip de IA en 720p; antes 1080, cambio del 2026-11-06). *La foto del local, que solo es el fondo oscurecido del cierre, acepta desde 480 píxeles (cambio del 2026-11-12).* Las horizontales se aceptan con un aviso de que se recortarán al formato vertical.
+- **RN-11.** Las fotos de productos deben ser JPG, PNG o WebP, de hasta 10 MB, con el lado menor de al menos 720 píxeles (lo que pide el clip de IA en 720p; antes 1080, cambio del 2026-11-06). *La foto del local, que solo es el fondo oscurecido del cierre, acepta desde 480 píxeles (cambio del 2026-11-12).* Las horizontales se aceptan con un aviso de que se recortarán al formato vertical. *Cambio del 2026-11-25: las fotos ya no tienen medidas mínimas; solo se revisan el tipo de archivo y el peso (`FOTO_RESOLUCION_INSUFICIENTE` ya no existe).*
 - **RN-12.** Un producto solo puede usarse en un video si tiene sus tres fotos. *Cambio del 2026-11-25 (ADR 0022):* un producto puede usarse en un video si tiene su **Foto 1** (la principal); la Foto 2 y la Foto 3 son opcionales.
 - **RN-13.** Un producto archivado no aparece en el chat, pero sus videos anteriores se conservan.
 - **RN-14.** Un producto subido desde el chat solo se guarda en el catálogo si el usuario lo acepta; si no, queda asociado únicamente a ese video.
