@@ -60,7 +60,7 @@ class ValidadorDeGuionTest {
                 DESCRIPCION, HASHTAGS);
 
         assertThat(ValidadorDeGuion.validar(inventado, datos(), PAQUETE, FOTOS)).containsExactly(
-                "La estructura \"LARGA\" no existe; elige una de: [RAPIDA, CLASICA, HISTORIA, PLANO_UNICO].",
+                "La estructura \"LARGA\" no existe; elige una de: [RAPIDA, CLASICA, HISTORIA, PLANO_UNICO, EXTENDIDA].",
                 "La creatividad \"LOCURA\" no existe; elige una de: [PRODUCTO, AMBIENTE, ORIGEN].",
                 "Falta la idea del video.");
     }

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,6 +58,18 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
     private static final ServidorOmniSimulado AI_STUDIO = new ServidorOmniSimulado();
     /** Google Cloud simulado: entrega el token y los clips de Veo. */
     private static final ServidorVeoSimulado VEO = new ServidorVeoSimulado();
+    /** El clip completo que devuelve Veo al extender (el base más la extensión). */
+    private static final byte[] CLIP_EXTENDIDO = "clip-extendido-de-prueba".getBytes(StandardCharsets.UTF_8);
+    /** Estructura EXTENDIDA: una sola toma de 12 segundos y el cierre de 3. */
+    private static final String GUION_EXTENDIDO = """
+            {"estructura":"EXTENDIDA","creatividad":"PRODUCTO",
+             "idea":"La cámara rodea la torta y termina mostrando la vitrina.",
+             "planos":[
+              {"orden":1,"foto":1,"toma":"Slow orbit around the cake that ends revealing the shop window.",
+               "descripcionToma":"Órbita que termina en la vitrina","texto":"Un antojo de fresas frescas"}],
+             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
+             "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
+             "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
 
     @DynamicPropertySource
     static void google(DynamicPropertyRegistry propiedades) {
@@ -431,6 +444,126 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                         org.hamcrest.Matchers.is(false))));
     }
 
+    /** Tomas largas (2026-11-25): cada toma termina en la foto de la siguiente; la última termina libre. */
+    @Test
+    void conTomasLargasCadaClipTerminaEnLaFotoDeLaTomaSiguiente() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboard(negocio, "LARGAS");
+        aprobar(negocio, id).andExpect(status().isOk());
+
+        generacion.procesar(id);
+
+        List<JsonNode> pedidos = VEO.creacionesRecibidas().stream().map(peticion -> json.readTree(peticion.cuerpo()))
+                .toList();
+        assertThat(pedidos).hasSize(3);
+        for (int orden = 0; orden < 2; orden++) {
+            JsonNode ultimoCuadro = pedidos.get(orden).at("/instances/0/lastFrame");
+            assertThat(ultimoCuadro.path("mimeType").asString()).isEqualTo("image/jpeg");
+            // La foto final es la misma foto (ya vertical) con la que empieza la toma siguiente.
+            assertThat(ultimoCuadro.path("bytesBase64Encoded").asString())
+                    .isEqualTo(pedidos.get(orden + 1).at("/instances/0/image/bytesBase64Encoded").asString());
+        }
+        assertThat(pedidos.getLast().at("/instances/0/lastFrame").isMissingNode()).isTrue();
+
+        generacion.procesar(id);
+        composicion.procesar(id);
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.concepto.tomas").value("Tomas largas con transiciones"));
+    }
+
+    /** Con tomas cortas los clips terminan libres. */
+    @Test
+    void conTomasCortasNingunClipLlevaFotoFinal() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboard(negocio);
+        aprobar(negocio, id).andExpect(status().isOk());
+
+        generacion.procesar(id);
+
+        assertThat(VEO.creacionesRecibidas()).hasSize(3).allSatisfy(peticion -> assertThat(
+                json.readTree(peticion.cuerpo()).at("/instances/0/lastFrame").isMissingNode()).isTrue());
+    }
+
+    /**
+     * Plano extendido (2026-11-25): Veo crea el clip base de 8 s y luego lo continúa; el clip del video es el
+     * extendido y cada parte se cobra.
+     */
+    @Test
+    void elPlanoExtendidoGeneraElClipBaseYLuegoLoExtiende() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboardExtendido(negocio);
+        aprobar(negocio, id).andExpect(status().isOk());
+
+        generacion.procesar(id);
+        assertThat(VEO.creacionesRecibidas()).hasSize(1);
+        JsonNode base = json.readTree(VEO.creacionesRecibidas().getFirst().cuerpo());
+        assertThat(base.at("/instances/0/image").isMissingNode()).isFalse();
+        assertThat(base.at("/instances/0/video").isMissingNode()).isTrue();
+        assertThat(base.at("/parameters/durationSeconds").asInt()).isEqualTo(8);
+
+        // El clip base llega: se guarda y se pide su extensión con el video.
+        generacion.procesar(id);
+        assertThat(VEO.creacionesRecibidas()).hasSize(2);
+        JsonNode extension = json.readTree(VEO.creacionesRecibidas().get(1).cuerpo());
+        assertThat(extension.at("/instances/0/video/bytesBase64Encoded").asString())
+                .isEqualTo(Base64.getEncoder().encodeToString(ServidorVeoSimulado.CLIP));
+        assertThat(extension.at("/instances/0/video/mimeType").asString()).isEqualTo("video/mp4");
+        assertThat(extension.at("/instances/0/image").isMissingNode()).isTrue();
+        assertThat(extension.at("/instances/0/prompt").asString())
+                .startsWith("Continue this exact shot seamlessly")
+                .contains("Slow orbit around the cake that ends revealing the shop window.");
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("GENERANDO"))
+                .andExpect(jsonPath("$.planos[0].estado").value("GENERANDO"));
+
+        VEO.consultaLista(CLIP_EXTENDIDO);
+        generacion.procesar(id);
+        mvc.perform(get("/api/videos/" + id).cookie(negocio)).andExpect(jsonPath("$.estado").value("COMPONIENDO"));
+        composicion.procesar(id);
+
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.concepto.tomas").value("Plano extendido"))
+                .andExpect(jsonPath("$.planos[0].usoRespaldo").value(false));
+        assertThat(componedor.ultima.planos()).singleElement().satisfies(plano -> {
+            assertThat(plano.clip()).isEqualTo(CLIP_EXTENDIDO);
+            assertThat(plano.segundos()).isEqualTo(12);
+        });
+        // El clip base (8 s) y la extensión (7 s), a 0,05 dólares por segundo.
+        List<RegistroCosto> clips = costos.findByVideoIdOrderById(id).stream()
+                .filter(costo -> costo.getConcepto() == ConceptoCosto.CLIP).toList();
+        assertThat(clips).hasSize(2);
+        assertThat(clips.get(0).getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.40"));
+        assertThat(clips.get(1).getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.35"));
+    }
+
+    @Test
+    void siLaExtensionFallaElPlanoConservaElClipBaseYElVideoSeCompone() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboardExtendido(negocio);
+        aprobar(negocio, id).andExpect(status().isOk());
+        generacion.procesar(id);
+        generacion.procesar(id);
+        assertThat(VEO.creacionesRecibidas()).hasSize(2);
+
+        VEO.consultaFallida();
+        generacion.procesar(id);
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("COMPONIENDO"))
+                .andExpect(jsonPath("$.planos[0].estado").value("LISTO"));
+        composicion.procesar(id);
+
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.planos[0].usoRespaldo").value(false));
+        assertThat(componedor.ultima.planos().getFirst().clip()).isEqualTo(ServidorVeoSimulado.CLIP);
+        assertThat(VEO.creacionesRecibidas()).as("no se vuelve a pedir el clip").hasSize(2);
+        // La extensión ya se había enviado: el proveedor la cobra (RN-32).
+        assertThat(costos.findByVideoIdOrderById(id)).filteredOn(costo -> costo.getConcepto() == ConceptoCosto.CLIP)
+                .hasSize(2);
+    }
+
     @Test
     void v08OtroNegocioNoPuedeTocarElVideo() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
@@ -455,8 +588,22 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
     }
 
     private long storyboard(Cookie negocio) throws Exception {
-        long id = completarChat(negocio);
+        return storyboard(negocio, "CORTAS");
+    }
+
+    private long storyboard(Cookie negocio, String tomas) throws Exception {
+        long id = completarChat(negocio, tomas);
         guiones.procesar(id);
+        return id;
+    }
+
+    /** Storyboard con plano extendido: una toma de 12 segundos. */
+    private long storyboardExtendido(Cookie negocio) throws Exception {
+        AI_STUDIO.guionResponde(GUION_EXTENDIDO);
+        long id = storyboard(negocio, "EXTENDIDO");
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.planos[0].segundos").value(12));
         return id;
     }
 
@@ -473,8 +620,8 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(cuerpo)));
     }
 
-    /** Recorre el chat completo y devuelve el video que nace al terminar. */
-    private long completarChat(Cookie cookie) throws Exception {
+    /** Recorre el chat completo, con el modo de tomas pedido, y devuelve el video que nace al terminar. */
+    private long completarChat(Cookie cookie, String tomas) throws Exception {
         Map<String, Object> producto = Map.of("nombre", "Torta Tres Leches",
                 "descripcion", "Bizcocho de tres leches con fresas frescas.", "temporadas", List.of("TODO_EL_ANIO"),
                 "fotos", fotosCompletas(cookie));
@@ -488,7 +635,8 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         reloj.avanzar(Duration.ofSeconds(4));
         vista(mvc.perform(post("/api/chat/conversaciones/" + id + "/procesar").with(csrf()).cookie(cookie)));
         responder(cookie, id, Map.of("paso", "precio", "omitir", true));
-        JsonNode fin = responder(cookie, id, Map.of("paso", "extra", "omitir", true));
+        responder(cookie, id, Map.of("paso", "extra", "omitir", true));
+        JsonNode fin = responder(cookie, id, Map.of("paso", "tomas", "opcion", tomas));
         return fin.get("videoId").asLong();
     }
 

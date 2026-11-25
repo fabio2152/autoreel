@@ -11,6 +11,8 @@ final class RespuestasDelChat {
     static final String ESPECIAL = "especial";
     static final String PRECIO = "precio";
     static final String EXTRA = "extra";
+    /** Cómo quiere las tomas (2026-11-25): uno de los modos de tomas de la plantilla del nicho. */
+    static final String TOMAS = "tomas";
 
     private RespuestasDelChat() {
     }

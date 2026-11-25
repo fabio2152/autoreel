@@ -23,9 +23,11 @@ import com.autoreel.ia.dominio.GeneradorDeClips.EstadoDeClip;
 import com.autoreel.ia.dominio.GeneradorDeClips.Fallido;
 import com.autoreel.ia.dominio.GeneradorDeClips.Listo;
 import com.autoreel.ia.dominio.GeneradorDeClips.SolicitudDeClip;
+import com.autoreel.ia.dominio.GeneradorDeClips.SolicitudDeExtension;
 import com.autoreel.ia.dominio.ModeloIA;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import com.autoreel.nicho.dominio.Movimientos;
+import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.negocio.infraestructura.NegocioRepositorio;
@@ -66,14 +68,26 @@ public class ServicioGeneracion {
     /** RN-30: un plano tiene dos intentos. */
     static final int INTENTOS_POR_CLIP = 2;
     private static final int SEGUNDOS_POR_DEFECTO = 4;
+    /** Lo que agrega Veo al extender un clip. */
+    static final int SEGUNDOS_DE_EXTENSION = 7;
+    private static final String PREFIJO_DE_EXTENSION =
+            "Continue this exact shot seamlessly from its last frame, with the same camera motion, light and style. ";
     private static final long TAMANO_MAXIMO = 200L * 1024 * 1024;
     public static final String MOTIVO_SIN_CLIPS =
             "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato.";
     public static final String AVISO_REGENERACION =
             "No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.";
 
+    /**
+     * @param transiciones cada toma termina en la foto de la siguiente (modo "tomas largas", 2026-11-25).
+     * @param extender     cada clip se extiende después de generarse (plano extendido, 2026-11-25).
+     */
     private record Trabajo(Long videoId, Long negocioId, ModeloIA modelo, Movimientos movimientos,
-            String creatividad, List<PlanoATrabajar> planos) {
+            String creatividad, boolean transiciones, boolean extender, List<PlanoATrabajar> planos) {
+
+        Optional<PlanoATrabajar> siguiente(PlanoATrabajar plano) {
+            return planos.stream().filter(otro -> otro.orden() == plano.orden() + 1).findFirst();
+        }
     }
 
     /**
@@ -81,7 +95,7 @@ public class ServicioGeneracion {
      * @param segundos lo que dura el plano en el video.
      */
     private record PlanoATrabajar(int orden, EstadoPlano estado, int intentos, String idTarea, Instant enviadoEn,
-            String claveFoto, String toma, String movimiento, int segundos) {
+            String claveFoto, String toma, String movimiento, int segundos, boolean extensionEnCurso) {
     }
 
     private final VideoRepositorio videos;
@@ -199,12 +213,15 @@ public class ServicioGeneracion {
                 .map(Movimientos.Movimiento::instruccion)
                 .orElseThrow(() -> new IllegalStateException("Movimiento desconocido: " + plano.movimiento()));
         int segundos = segundosDelClip(trabajo.modelo(), plano.segundos());
+        // Transiciones: el clip termina en la foto de la toma siguiente; la última toma termina libre.
+        byte[] fotoFinal = trabajo.transiciones() ? trabajo.siguiente(plano)
+                .map(siguiente -> preparador.vertical(leerArchivo(siguiente.claveFoto()))).orElse(null) : null;
         // Se cuenta el intento antes de llamar: si algo se corta después, no se reenvía sin límite.
         conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.prepararEnvio(reloj.instant()));
         try {
             String idTarea = generador.iniciar(trabajo.modelo(), credencial, new SolicitudDeClip(foto, "image/jpeg",
                     trabajo.movimientos().promptDeToma(toma, trabajo.creatividad()),
-                    trabajo.movimientos().negativos(trabajo.creatividad()), segundos));
+                    trabajo.movimientos().negativos(trabajo.creatividad()), segundos, fotoFinal));
             conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.enviado(idTarea));
             return false;
         } catch (ErrorDeProveedor e) {
@@ -228,6 +245,10 @@ public class ServicioGeneracion {
     private boolean consultar(Trabajo trabajo, PlanoATrabajar plano, GeneradorDeClips generador, String credencial) {
         boolean sinTiempo = plano.enviadoEn() == null
                 || reloj.instant().isAfter(plano.enviadoEn().plus(ESPERA_POR_CLIP));
+        if (plano.extensionEnCurso()) {
+            consultarExtension(trabajo, plano, generador, credencial, sinTiempo);
+            return false;
+        }
         EstadoDeClip estado;
         try {
             estado = generador.consultar(trabajo.modelo(), credencial, plano.idTarea());
@@ -244,7 +265,12 @@ public class ServicioGeneracion {
             return false;
         }
         switch (estado) {
-            case Listo listo -> guardarClip(trabajo, plano, listo);
+            case Listo listo -> {
+                guardarClip(trabajo, plano, listo);
+                if (trabajo.extender()) {
+                    extender(trabajo, plano, generador, credencial, listo.video());
+                }
+            }
             case EnCurso enCurso -> {
                 if (sinTiempo) {
                     // La tarea ya se envió: el proveedor la cobra aunque no se use (RN-32).
@@ -263,6 +289,70 @@ public class ServicioGeneracion {
             }
         }
         return false;
+    }
+
+    /**
+     * Plano extendido: con el clip base ya guardado, pide a Veo que lo continúe. Si no se puede, el plano se queda con
+     * el clip base (la composición congela su último cuadro hasta completar la toma).
+     */
+    private void extender(Trabajo trabajo, PlanoATrabajar plano, GeneradorDeClips generador, String credencial,
+            byte[] clipBase) {
+        String toma = plano.toma() != null ? plano.toma() : "";
+        try {
+            String idTarea = generador.extender(trabajo.modelo(), credencial, new SolicitudDeExtension(clipBase,
+                    PREFIJO_DE_EXTENSION + trabajo.movimientos().promptDeToma(toma, trabajo.creatividad()),
+                    trabajo.movimientos().negativos(trabajo.creatividad())));
+            conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.extendiendo(idTarea, reloj.instant()));
+        } catch (RuntimeException e) {
+            // Cualquier falla deja el plano con su clip base: no se vuelve a pagar el clip.
+            log.info("No se pudo extender el clip del plano {} del video {}: {}", plano.orden(), trabajo.videoId(),
+                    e.getMessage());
+        }
+    }
+
+    /** La extensión en curso: si llega, reemplaza al clip base; si falla o se agota el tiempo, se conserva el base. */
+    private void consultarExtension(Trabajo trabajo, PlanoATrabajar plano, GeneradorDeClips generador,
+            String credencial, boolean sinTiempo) {
+        EstadoDeClip estado;
+        try {
+            estado = generador.consultar(trabajo.modelo(), credencial, plano.idTarea());
+        } catch (ErrorDeProveedor e) {
+            if (e.getTipo() != ErrorDeProveedor.Tipo.NO_DISPONIBLE || sinTiempo) {
+                extensionFallida(trabajo, plano, "error del proveedor: " + e.getMessage());
+            }
+            return;
+        }
+        switch (estado) {
+            case Listo listo -> guardarExtension(trabajo, plano, listo);
+            case EnCurso enCurso -> {
+                if (sinTiempo) {
+                    extensionFallida(trabajo, plano, "se agotó el tiempo");
+                }
+            }
+            case Fallido fallido -> extensionFallida(trabajo, plano, fallido.motivo());
+        }
+    }
+
+    private void guardarExtension(Trabajo trabajo, PlanoATrabajar plano, Listo listo) {
+        String clave = "negocios/" + trabajo.negocioId() + "/videos/" + trabajo.videoId() + "/clip-" + plano.orden()
+                + "-extendido-" + UUID.randomUUID() + ".mp4";
+        almacen.guardar(clave, listo.video(), listo.tipoContenido());
+        conPlano(trabajo, plano.orden(), (video, entidad) -> {
+            video.sumarCosto(costos.registrar(trabajo.negocioId(), trabajo.videoId(), trabajo.modelo(),
+                    ConceptoCosto.CLIP, BigDecimal.valueOf(SEGUNDOS_DE_EXTENSION)));
+            borrarAlConfirmar(entidad.clipListo(clave));
+        });
+    }
+
+    /** La extensión ya se envió: el proveedor la cobra aunque falle (RN-32). */
+    private void extensionFallida(Trabajo trabajo, PlanoATrabajar plano, String motivo) {
+        log.info("La extensión del plano {} del video {} no llegó ({}): se usa el clip base", plano.orden(),
+                trabajo.videoId(), motivo);
+        conPlano(trabajo, plano.orden(), (video, entidad) -> {
+            video.sumarCosto(costos.registrar(trabajo.negocioId(), trabajo.videoId(), trabajo.modelo(),
+                    ConceptoCosto.CLIP, BigDecimal.valueOf(SEGUNDOS_DE_EXTENSION)));
+            entidad.extensionFallida();
+        });
     }
 
     private void guardarClip(Trabajo trabajo, PlanoATrabajar plano, Listo listo) {
@@ -366,10 +456,13 @@ public class ServicioGeneracion {
         List<PlanoATrabajar> planos = video.planosConFoto().stream()
                 .map(plano -> new PlanoATrabajar(plano.getOrden(), plano.getEstado(), plano.getIntentos(),
                         plano.getIdTareaProveedor(), plano.getEnviadoEn(), plano.getClaveFoto(), plano.getToma(),
-                        plano.getMovimiento(), plano.getSegundos()))
+                        plano.getMovimiento(), plano.getSegundos(), plano.isExtensionEnCurso()))
                 .toList();
+        boolean transiciones = paquete.plantillaVideo().modoDeTomas(video.getModoTomas()).transiciones();
+        boolean extender = paquete.plantillaVideo().estructura(video.getEstructura())
+                .map(PlantillaVideo.Estructura::extender).orElse(false);
         return new Trabajo(video.getId(), video.getNegocioId(), video.getModeloVideoUsado(), paquete.movimientos(),
-                video.getCreatividad(), planos);
+                video.getCreatividad(), transiciones, extender, planos);
     }
 
     private byte[] leerArchivo(String clave) {

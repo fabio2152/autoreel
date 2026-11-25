@@ -81,6 +81,9 @@ public class Video {
 
     private String descripcionPublicacion;
 
+    /** Cómo pidió el negocio las tomas en el chat (paquete de nicho); vacío en videos anteriores al 2026-11-25. */
+    private String modoTomas;
+
     /** Estructura que eligió la IA (paquete de nicho); vacía mientras no hay guion. */
     private String estructura;
 
@@ -432,6 +435,15 @@ public class Video {
 
     public Long getId() {
         return id;
+    }
+
+    /** Lo que eligió el negocio en el paso "tomas" del chat. */
+    public void pedirModoDeTomas(String modoTomas) {
+        this.modoTomas = modoTomas;
+    }
+
+    public String getModoTomas() {
+        return modoTomas;
     }
 
     public String getEstructura() {

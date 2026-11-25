@@ -14,6 +14,7 @@ import com.autoreel.ia.dominio.GeneradorDeClips.EnCurso;
 import com.autoreel.ia.dominio.GeneradorDeClips.Fallido;
 import com.autoreel.ia.dominio.GeneradorDeClips.Listo;
 import com.autoreel.ia.dominio.GeneradorDeClips.SolicitudDeClip;
+import com.autoreel.ia.dominio.GeneradorDeClips.SolicitudDeExtension;
 import com.autoreel.ia.dominio.ModeloIA;
 import com.autoreel.ia.dominio.TipoModelo;
 import com.autoreel.ia.dominio.UnidadCosto;
@@ -62,6 +63,42 @@ class VeoGeneradorDeClipsTest {
         assertThat(cuerpo.at("/parameters/personGeneration").asString()).isEqualTo("dont_allow");
         assertThat(cuerpo.at("/parameters/generateAudio").asBoolean(true)).isFalse();
         assertThat(cuerpo.at("/parameters/resizeMode").asString()).isEqualTo("crop");
+    }
+
+    /** Transiciones entre fotos (2026-11-25): la foto final va como lastFrame; sin ella, el campo no se envía. */
+    @Test
+    void conFotoFinalElClipTerminaEnEsaFoto() {
+        veo.iniciar(modelo(), servidor.cuentaDeServicio(), new SolicitudDeClip(new byte[] {1, 2, 3}, "image/jpeg",
+                "Slow push-in on the cake", "people, hands, text", 4, new byte[] {4, 5, 6}));
+
+        JsonNode cuerpo = json.readTree(servidor.creacionesRecibidas().getFirst().cuerpo());
+        assertThat(cuerpo.at("/instances/0/image/bytesBase64Encoded").asString()).isEqualTo("AQID");
+        assertThat(cuerpo.at("/instances/0/lastFrame/bytesBase64Encoded").asString()).isEqualTo("BAUG");
+        assertThat(cuerpo.at("/instances/0/lastFrame/mimeType").asString()).isEqualTo("image/jpeg");
+
+        veo.iniciar(modelo(), servidor.cuentaDeServicio(), SOLICITUD);
+        assertThat(json.readTree(servidor.creacionesRecibidas().getLast().cuerpo()).at("/instances/0/lastFrame")
+                .isMissingNode()).isTrue();
+    }
+
+    /** Plano extendido (2026-11-25): el clip va como video, sin foto ni duración, y la tarea se consulta igual. */
+    @Test
+    void extenderEnviaElClipComoVideo() {
+        String tarea = veo.extender(modelo(), servidor.cuentaDeServicio(),
+                new SolicitudDeExtension(new byte[] {7, 8, 9}, "Continue the orbit", "people, hands, text"));
+
+        assertThat(tarea).contains("operations/tarea-");
+        ServidorVeoSimulado.Peticion peticion = servidor.creacionesRecibidas().getFirst();
+        assertThat(peticion.ruta()).endsWith("/models/veo-3.1-lite-generate-001:predictLongRunning");
+        JsonNode cuerpo = json.readTree(peticion.cuerpo());
+        assertThat(cuerpo.at("/instances/0/prompt").asString()).isEqualTo("Continue the orbit");
+        assertThat(cuerpo.at("/instances/0/video/bytesBase64Encoded").asString()).isEqualTo("BwgJ");
+        assertThat(cuerpo.at("/instances/0/video/mimeType").asString()).isEqualTo("video/mp4");
+        assertThat(cuerpo.at("/instances/0/image").isMissingNode()).isTrue();
+        assertThat(cuerpo.at("/parameters/aspectRatio").asString()).isEqualTo("9:16");
+        assertThat(cuerpo.at("/parameters/negativePrompt").asString()).isEqualTo("people, hands, text");
+        assertThat(cuerpo.at("/parameters/durationSeconds").isMissingNode()).isTrue();
+        assertThat(veo.consultar(modelo(), servidor.cuentaDeServicio(), tarea)).isInstanceOf(Listo.class);
     }
 
     @Test

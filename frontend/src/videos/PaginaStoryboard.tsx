@@ -159,7 +159,7 @@ function Storyboard({ video }: { video: Video }) {
       {video.concepto && (
         <section className="rounded-2xl bg-marca-50 p-4 ring-1 ring-marca-100">
           <p className="text-xs font-medium tracking-wide text-marca-700 uppercase">
-            La idea · {video.concepto.estructura}
+            La idea · {video.concepto.tomas} · {video.concepto.estructura}
             {video.concepto.creatividad && ` · ${video.concepto.creatividad}`}
           </p>
           {video.concepto.idea && <p className="mt-1 text-sm text-stone-800">{video.concepto.idea}</p>}

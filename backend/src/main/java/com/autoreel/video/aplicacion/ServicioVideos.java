@@ -382,7 +382,7 @@ public class ServicioVideos {
                 .map(plano -> cierre(plano, plantilla, datos.perfil(), datos.guion()))
                 .orElse(null);
         VideoVista.ConceptoVista concepto = video.getEstructura() == null ? null : new VideoVista.ConceptoVista(
-                estructura.nombre(),
+                plantilla.modoDeTomas(video.getModoTomas()).nombre(), estructura.nombre(),
                 paquete.movimientos().creatividad(video.getCreatividad()).map(c -> c.nombre()).orElse(null),
                 video.getIdea());
         List<VideoVista.FotoVista> fotos = Arrays.stream(TipoFoto.values())

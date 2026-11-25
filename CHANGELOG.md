@@ -2,6 +2,18 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Modos de tomas] - 2026-11-25
+
+Opciones experimentales para videos más continuos, pedidas por el usuario. Decisiones en el ADR 0024.
+
+### Agregado
+
+- **Paso nuevo del chat, el último: "¿Cómo quieres las tomas del video?"** con cinco opciones: Tomas cortas (por defecto, como antes: Rápida o Clásica), Tomas largas con transiciones (Clásica o Historia), Historia, Plano único y Plano extendido. Se guarda en `video.modo_tomas` y la IA solo puede elegir las estructuras de ese modo.
+- **Transiciones entre fotos:** en "Tomas largas", cada clip de Veo termina exactamente en la foto de la toma siguiente (`lastFrame`), así el video se ve como un recorrido continuo.
+- **Plano extendido:** estructura nueva `EXTENDIDA` (una toma de 12 s y cierre de 3 s). Veo genera un clip de 8 s y luego lo extiende; si la extensión falla, se usa el clip base.
+- El storyboard muestra el modo elegido junto a la estructura y la creatividad.
+- **Migración `V12`:** `video.modo_tomas` y `plano.extension_en_curso`.
+
 ## [Fotos sin medidas mínimas] - 2026-11-25
 
 ### Cambiado

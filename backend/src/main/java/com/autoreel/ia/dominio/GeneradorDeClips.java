@@ -21,6 +21,17 @@ public interface GeneradorDeClips {
     EstadoDeClip consultar(ModeloIA modelo, String credencial, String idTarea);
 
     /**
+     * Continúa un clip que ya generó este mismo proveedor (plano extendido, 2026-11-25). La tarea se consulta con
+     * {@link #consultar}; el resultado es el clip completo (el original más la extensión).
+     *
+     * @throws ErrorDeProveedor si el modelo no admite extender clips o el proveedor no responde.
+     */
+    default String extender(ModeloIA modelo, String credencial, SolicitudDeExtension solicitud) {
+        throw new ErrorDeProveedor(ErrorDeProveedor.Tipo.CONFIGURACION_INVALIDA,
+                "El modelo " + modelo.getNombre() + " no admite extender clips");
+    }
+
+    /**
      * RF-11, "Probar conexión": verifica la credencial (y el modelo, si el proveedor lo permite) sin generar un clip,
      * que costaría.
      *
@@ -35,8 +46,23 @@ public interface GeneradorDeClips {
      * @param negativos lo que nunca debe aparecer, como lista de sustantivos; va como prompt negativo si el proveedor
      *                  lo admite.
      * @param segundos  duración pedida del clip.
+     * @param fotoFinal la foto en la que debe terminar el clip (transiciones entre fotos, 2026-11-25); vacía si el
+     *                  clip termina libre. Solo la usan los proveedores que la admiten (Veo).
      */
-    record SolicitudDeClip(byte[] foto, String tipoFoto, String prompt, String negativos, int segundos) {
+    record SolicitudDeClip(byte[] foto, String tipoFoto, String prompt, String negativos, int segundos,
+            byte[] fotoFinal) {
+
+        public SolicitudDeClip(byte[] foto, String tipoFoto, String prompt, String negativos, int segundos) {
+            this(foto, tipoFoto, prompt, negativos, segundos, null);
+        }
+    }
+
+    /**
+     * @param video     el clip que generó el proveedor, tal cual (MP4).
+     * @param prompt    la toma completa, como en {@link SolicitudDeClip}.
+     * @param negativos lo que nunca debe aparecer.
+     */
+    record SolicitudDeExtension(byte[] video, String prompt, String negativos) {
     }
 
     sealed interface EstadoDeClip permits EnCurso, Listo, Fallido {

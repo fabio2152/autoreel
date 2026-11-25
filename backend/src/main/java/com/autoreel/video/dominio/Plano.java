@@ -85,6 +85,10 @@ public class Plano {
 
     private String claveClip;
 
+    /** Plano extendido: el clip base ya llegó y se está extendiendo; si la extensión falla, se conserva el base. */
+    @Column(nullable = false)
+    private boolean extensionEnCurso;
+
     /** Una regeneración pedida que todavía no terminó: si termina en respaldo, se devuelve. */
     @Column(nullable = false)
     private boolean regeneracionEnCurso;
@@ -148,6 +152,7 @@ public class Plano {
     /** Al aprobar el storyboard: el clip queda por enviar. */
     void pendiente() {
         this.estado = EstadoPlano.PENDIENTE;
+        this.extensionEnCurso = false;
         this.intentos = 0;
         this.idTareaProveedor = null;
         this.enviadoEn = null;
@@ -198,6 +203,7 @@ public class Plano {
         this.motivoRespaldo = null;
         this.idTareaProveedor = null;
         this.regeneracionEnCurso = false;
+        this.extensionEnCurso = false;
         return anterior;
     }
 
@@ -215,6 +221,26 @@ public class Plano {
         this.idTareaProveedor = null;
         this.estado = EstadoPlano.LISTO;
         return true;
+    }
+
+    /** El clip base ya se guardó: se envía su extensión y el plano sigue generando. */
+    public void extendiendo(String idTarea, Instant ahora) {
+        this.extensionEnCurso = true;
+        this.idTareaProveedor = idTarea;
+        this.enviadoEn = ahora;
+        this.estado = EstadoPlano.GENERANDO;
+    }
+
+    /** La extensión no llegó: el plano queda con su clip base (la composición congela el último cuadro). */
+    public void extensionFallida() {
+        this.extensionEnCurso = false;
+        this.idTareaProveedor = null;
+        this.estado = EstadoPlano.LISTO;
+        this.regeneracionEnCurso = false;
+    }
+
+    public boolean isExtensionEnCurso() {
+        return extensionEnCurso;
     }
 
     public boolean terminado() {

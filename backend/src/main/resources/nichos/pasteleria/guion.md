@@ -10,13 +10,17 @@ Van adjuntas después de este mensaje, en este orden: {fotos}. Míralas antes de
 - Cada toma **empieza exactamente en su foto** (es el primer cuadro del clip) y desde ahí se mueve. Escribe la toma pensando en lo que de verdad se ve en esa foto: su encuadre, su fondo, lo que tiene encima.
 - Solo puedes mencionar ingredientes, decoraciones o frutas que se vean en las fotos o que diga la descripción del producto.
 
+## Cómo quiere las tomas el negocio
+
+{modoDeTomas}
+
 ## Estructura del video
 
-Elige una. Todas duran 15 segundos; la primera toma es siempre el **gancho** y al final el sistema agrega el cierre con el logo.
+Elige una de estas (son las que permite lo que pidió el negocio). Todas duran 15 segundos; la primera toma es siempre el **gancho** y al final el sistema agrega el cierre con el logo.
 
 {estructuras}
 
-Elige la que mejor sirva al producto y a lo que pidió el negocio: con varias fotos buenas y un producto vistoso, la rápida; con una idea que se cuenta (de dónde viene, a dónde llega), la historia; con una sola foto espectacular, el plano único. No elijas siempre la misma.
+Si hay más de una, elige la que mejor sirva al producto y a sus fotos: con varias fotos buenas y un producto vistoso, la de más tomas; con una idea que se cuenta (de dónde viene, a dónde llega), la de tomas más largas.
 
 ## Nivel de creatividad
 

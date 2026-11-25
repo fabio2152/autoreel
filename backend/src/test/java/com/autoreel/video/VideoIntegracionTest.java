@@ -155,6 +155,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.tipoVideo").value("Producto estrella"))
                 .andExpect(jsonPath("$.producto.nombre").value("Torta Tres Leches"))
                 .andExpect(jsonPath("$.plan.videosPorDia").value(1))
+                .andExpect(jsonPath("$.concepto.tomas").value("Tomas cortas"))
                 .andExpect(jsonPath("$.concepto.estructura").value("Clásica"))
                 .andExpect(jsonPath("$.concepto.creatividad").isString())
                 .andExpect(jsonPath("$.concepto.idea").value(
@@ -200,17 +201,30 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         assertThat(guiones.pendientes(500)).doesNotContain(videoId);
     }
 
-    /** La estructura que elige la IA define cuántas tomas hay, cuánto dura cada una y dónde va el cierre. */
+    /**
+     * La estructura que elige la IA define cuántas tomas hay, cuánto dura cada una y dónde va el cierre. El modo de
+     * tomas que eligió el negocio en el chat (2026-11-25) limita las estructuras que puede elegir la IA.
+     */
     @Test
     void laEstructuraElegidaDefineLasTomasYElCierre() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
-        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
+        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null, "HISTORIA");
 
+        // Una estructura fuera del modo se corrige en el intento siguiente.
+        GEMINI.responderTexto(GUION_VALIDO);
         GEMINI.responderTexto(GUION_HISTORIA);
         guiones.procesar(videoId);
 
+        JsonNode pedido = json.readTree(GEMINI.peticiones().getFirst().cuerpo());
+        assertThat(pedido.at("/generationConfig/responseJsonSchema/properties/estructura/enum").toString())
+                .isEqualTo("[\"HISTORIA\"]");
+        assertThat(pedido.at("/contents/0/parts/0/text").asString()).contains("El negocio eligió Historia")
+                .doesNotContain("- CLASICA (");
+        assertThat(GEMINI.peticiones()).hasSize(2);
+        assertThat(GEMINI.peticiones().get(1).cuerpo()).contains("El negocio pidió Historia");
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.concepto.tomas").value("Historia"))
                 .andExpect(jsonPath("$.concepto.estructura").value("Historia"))
                 .andExpect(jsonPath("$.planos", hasSize(2)))
                 .andExpect(jsonPath("$.planos[0].segundos").value(6))
@@ -513,8 +527,13 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(cuerpo)));
     }
 
-    /** Recorre el chat completo y devuelve el video que nace al terminar. */
+    /** Recorre el chat completo, con tomas cortas, y devuelve el video que nace al terminar. */
     private long completarChat(Cookie cookie, String tipoVideo, String precio) throws Exception {
+        return completarChat(cookie, tipoVideo, precio, "CORTAS");
+    }
+
+    /** Recorre el chat completo y devuelve el video que nace al terminar. */
+    private long completarChat(Cookie cookie, String tipoVideo, String precio, String tomas) throws Exception {
         long producto = crearProducto(cookie);
         long id = vista(mvc.perform(post("/api/chat/conversaciones").with(csrf()).cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"empezarDeNuevo\":true}"))).get("id").asLong();
@@ -528,7 +547,8 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
             responder(cookie, id, Map.of("paso", "precio", "texto", precio));
             procesarDespues(cookie, id);
         }
-        JsonNode fin = responder(cookie, id, Map.of("paso", "extra", "omitir", true));
+        responder(cookie, id, Map.of("paso", "extra", "omitir", true));
+        JsonNode fin = responder(cookie, id, Map.of("paso", "tomas", "opcion", tomas));
         assertThat(fin.get("estado").asString()).isEqualTo("COMPLETA");
         assertThat(fin.get("videoId").isNumber()).isTrue();
         return fin.get("videoId").asLong();
