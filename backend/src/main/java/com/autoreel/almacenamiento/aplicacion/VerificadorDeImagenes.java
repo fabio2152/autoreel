@@ -33,10 +33,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class VerificadorDeImagenes {
 
-    /** RN-11: el lado menor de las fotos debe tener al menos 720 px, lo que pide el clip de IA en 720p (2026-11-06). */
-    public static final int LADO_MENOR_FOTO = 720;
-    /** La foto del local solo es el fondo oscurecido del cierre (no pasa por la IA): basta con 480 px (2026-11-12). */
-    public static final int LADO_MENOR_FOTO_LOCAL = 480;
+    // RN-11 (2026-11-25): las fotos ya no tienen medidas mínimas; solo se revisan el formato y el peso. Una foto chica
+    // se amplía al preparar el clip y puede verse menos nítida.
     /** Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse. */
     static final int LADO_MAYOR_MAXIMO = 8000;
     static final long PIXELES_MAXIMOS = 40_000_000L;
@@ -90,7 +88,6 @@ public class VerificadorDeImagenes {
     }
 
     private static void validarMedidas(int ancho, int alto, PropositoArchivo proposito) {
-        int menor = Math.min(ancho, alto);
         int mayor = Math.max(ancho, alto);
         // Solo contra imágenes que pesan poco pero ocupan mucha memoria al abrirse. El logo no tiene medidas mínimas
         // ni máximas propias (2026-11-25): basta con que sea PNG y pese hasta 5 MB.
@@ -99,17 +96,6 @@ public class VerificadorDeImagenes {
                     "La imagen mide " + ancho + " × " + alto + " px y es demasiado grande. Usa una de hasta "
                             + LADO_MAYOR_MAXIMO + " px por lado.");
         }
-        int minimo = ladoMenorMinimo(proposito);
-        if (proposito.esFoto() && menor < minimo) {
-            throw new ExcepcionDeNegocio("FOTO_RESOLUCION_INSUFICIENTE",
-                    "Tu foto mide " + ancho + " × " + alto + " px. Necesitamos al menos " + minimo
-                            + " px en el lado más corto. Tómala con la cámara del celular, sin recortarla.");
-        }
-    }
-
-    /** Lado menor mínimo de una foto según su propósito: 480 px la del local, 720 px las de producto. */
-    static int ladoMenorMinimo(PropositoArchivo proposito) {
-        return proposito == PropositoArchivo.FOTO_LOCAL ? LADO_MENOR_FOTO_LOCAL : LADO_MENOR_FOTO;
     }
 
     /** WebP animado (bandera de animación en el bloque VP8X) o PNG animado (bloque acTL antes de los datos). */

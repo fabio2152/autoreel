@@ -575,7 +575,7 @@ sequenceDiagram
     participant V as VerificadorDeImagenes
 
     U->>F: Elige la foto (o el logo)
-    F->>F: Fotos: normalizarFoto() (lado menor ≥ 720, EXIF aplicado, lado mayor ≤ 2560 px,<br/>JPEG 0,88, sin metadatos). Logo: revisarLogo() (PNG, ≤ 5 MB, lado menor ≥ 200)
+    F->>F: Fotos: normalizarFoto() (EXIF aplicado, lado mayor ≤ 2560 px, sin ampliar,<br/>JPEG 0,88, sin metadatos). Logo: revisarLogo() (PNG, ≤ 5 MB)
 
     Note over F,B: 1. url-subida
     F->>A: POST /api/archivos/url-subida<br/>{proposito, tipoContenido: blob.type, tamano: blob.size}
@@ -610,7 +610,7 @@ sequenceDiagram
     end
     S-->>D: ArchivoAlmacenado(contenido, tipo, tamano, etiqueta = ETag)
     D->>V: verificar(contenido, proposito, tipo según la extensión)
-    V-->>D: ImagenVerificada(ancho, alto, horizontal, sinTransparencia)<br/>o 400 ARCHIVO_INVALIDO / IMAGEN_ANIMADA / IMAGEN_DEMASIADO_GRANDE /<br/>FOTO_RESOLUCION_INSUFICIENTE / LOGO_DEBE_SER_PNG
+    V-->>D: ImagenVerificada(ancho, alto, horizontal, sinTransparencia)<br/>o 400 ARCHIVO_INVALIDO / IMAGEN_ANIMADA / IMAGEN_DEMASIADO_GRANDE /<br/>LOGO_DEBE_SER_PNG
 
     Note over D,B: 4. copia a la clave definitiva
     D->>S: copiarSiNoCambio(claveTemporal, negocios/{id}/{carpeta}/{uuid}.{ext}, ETag)
@@ -641,7 +641,7 @@ Revisa el **contenido real** de la imagen, no su extensión ni el tipo que decla
 2. El formato del lector (`png`, `jpeg`, `webp`) debe coincidir con el tipo que indica la extensión de la clave y estar admitido por el propósito. Si no: `ARCHIVO_INVALIDO` (o `LOGO_DEBE_SER_PNG` para el logo).
 3. Rechaza WebP animado (bandera de animación del bloque `VP8X`) y PNG animado (bloque `acTL` antes del primer `IDAT`, recorriendo los bloques del PNG por su longitud, no buscando el texto en los bytes): `IMAGEN_ANIMADA`.
 4. Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse: lado mayor ≤ 8000 px y total ≤ 40 MP (`IMAGEN_DEMASIADO_GRANDE`).
-5. Logo: solo PNG y hasta 5 MB, sin medidas mínimas ni máximas propias (desde el 2026-11-25; antes, lado menor ≥ 200 px y mayor ≤ 4000 px). Fotos de producto: lado menor ≥ `LADO_MENOR_FOTO` = **720 px**; foto del local: ≥ `LADO_MENOR_FOTO_LOCAL` = **480 px** (desde el 2026-11-12, porque solo es el fondo del cierre) (`FOTO_RESOLUCION_INSUFICIENTE`, con las medidas reales en el mensaje; RN-11, V12). Hasta la revisión del flujo eran 1080 px; se bajó a 720 porque es lo que pide el clip de IA en 720p.
+5. Logo: solo PNG y hasta 5 MB, sin medidas mínimas ni máximas propias (desde el 2026-11-25; antes, lado menor ≥ 200 px y mayor ≤ 4000 px). Fotos de producto: lado menor ≥ `LADO_MENOR_FOTO` = **720 px**; foto del local: ≥ `LADO_MENOR_FOTO_LOCAL` = **480 px** (desde el 2026-11-12, porque solo es el fondo del cierre) (`FOTO_RESOLUCION_INSUFICIENTE`, con las medidas reales en el mensaje; RN-11, V12). Hasta la revisión del flujo eran 1080 px; se bajó a 720 porque es lo que pide el clip de IA en 720p. *Cambio del 2026-11-25: las fotos ya no tienen medidas mínimas; solo se revisan el tipo de archivo y el peso (`FOTO_RESOLUCION_INSUFICIENTE` ya no existe).*
 6. JPEG con orientación EXIF 5 a 8 (leída con `JPEGSegmentUtil` y `TIFFReader`): intercambia ancho y alto, así las medidas guardadas son las de la foto tal como se ve. `horizontal = ancho > alto`.
 7. Logo sin transparencia: solo se decodifica si el modelo de color tiene alfa, y se marca transparente si algún píxel tiene alfa < 255 (en los PNG de paleta, sin canal alfa separado, se mira el alfa de cada píxel con `getRGB`). Un PNG opaco se **acepta** con el aviso `LOGO_SIN_TRANSPARENCIA` (decisión del usuario).
 
@@ -2048,7 +2048,7 @@ El orden es `RutaProtegida` (rol y cambio de contraseña) → `RutaOnboarding` �
 - **`PaginaCatalogo`** y **`PaginaProducto`** (RF-18): filtro activos/archivados, aviso de producto incompleto, formulario con nombre y descripción (desde la revisión del flujo, sin selector ni etiquetas de temporada: al editar se reenvían las que el producto ya tenía) y tres `SubidorDeImagen` (`ENTERO`, `DETALLE`, `PORCION`) con `GuiaDeFoto`. Desde el 2026-11-25 (ADR 0022) son `FOTO_1`, `FOTO_2` y `FOTO_3`, con las etiquetas "Foto principal", "Foto 2 (opcional)" y "Foto 3 (opcional)" (`NOMBRE_FOTO` en `api/catalogo.ts`); `GuiaDeFoto` sugiere variedad y avisa que la IA elige cuáles usar; el formulario dice que solo la foto principal es necesaria ("Te falta la foto principal.") y la tarjeta del catálogo muestra la `FOTO_1` (o la primera que tenga). El botón de guardar queda desactivado mientras hay subidas en curso, y los subidores quedan bloqueados (`deshabilitado`) mientras se guarda, igual que en el asistente y en Ajustes.
 - **`PaginaAjustes`** (RF-17, RF-15): edita el perfil con las mismas secciones del asistente (un solo `PUT /api/perfil`), cambia la contraseña con la actual y deja un marcador para Instagram (fase 6).
 - **`SubidorDeImagen`**: prepara la imagen con `imagenes.ts`, la sube con `subirArchivo` mostrando el porcentaje (`upload.onprogress`), avisa si la foto es horizontal ("la recortaremos al formato vertical") y devuelve la clave temporal al formulario. El `input` usa `accept="image/png"` para el logo e `image/jpeg,image/png,image/webp` para las fotos.
-- **`imagenes.ts`** (decisión del usuario: normalizar en el navegador): `normalizarFoto` rechaza HEIC con instrucciones, exige `image/jpeg|png|webp` y lado menor ≥ `LADO_MENOR_FOTO` (720 desde la revisión del flujo; antes 1080), aplica la orientación EXIF (`createImageBitmap` con `imageOrientation: 'from-image'`), reduce el lado mayor a 2560 px sin bajar el menor de 720, exporta JPEG con calidad 0,88 (sin metadatos) y verifica ≤ 10 MB. `revisarLogo` sube el PNG tal cual (para conservar la transparencia) tras revisar tipo, 5 MB y lado menor ≥ 200. El backend vuelve a verificar todo.
+- **`imagenes.ts`** (decisión del usuario: normalizar en el navegador): `normalizarFoto` rechaza HEIC con instrucciones, exige `image/jpeg|png|webp` y lado menor ≥ `LADO_MENOR_FOTO` (720 desde la revisión del flujo; antes 1080), aplica la orientación EXIF (`createImageBitmap` con `imageOrientation: 'from-image'`), reduce el lado mayor a 2560 px sin bajar el menor de 720, exporta JPEG con calidad 0,88 (sin metadatos) y verifica ≤ 10 MB. `revisarLogo` sube el PNG tal cual (para conservar la transparencia) tras revisar tipo, 5 MB y lado menor ≥ 200. El backend vuelve a verificar todo. *Cambio del 2026-11-25: las fotos ya no tienen medidas mínimas; solo se revisan el tipo de archivo y el peso (`FOTO_RESOLUCION_INSUFICIENTE` ya no existe).*
 
 ### 10.4 Chat (`chat/`, fase 3)
 

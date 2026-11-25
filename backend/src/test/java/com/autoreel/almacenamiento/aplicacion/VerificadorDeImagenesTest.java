@@ -21,27 +21,13 @@ class VerificadorDeImagenesTest {
         assertThat(imagen.horizontal()).isFalse();
     }
 
-    /** V12 con el mínimo de 720 px en el lado menor (decisión del usuario, 2026-11-06). */
+    /** Las fotos no tienen medidas mínimas: solo se revisan el formato y el peso (decisión del usuario, 2026-11-25). */
     @Test
-    void v12RechazaUnaFotoDeMenosDe720PixelesEnSuLadoMenor() {
-        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(719, 1280), PropositoArchivo.FOTO_PRODUCTO,
-                "image/jpeg"))
-                .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
-        assertThat(verificador.verificar(Imagenes.jpg(720, 1280), PropositoArchivo.FOTO_PRODUCTO, "image/jpeg")
-                .ancho()).isEqualTo(720);
-    }
-
-    /** La foto del local acepta desde 480 px en el lado menor (decisión del usuario, 2026-11-12). */
-    @Test
-    void laFotoDelLocalAceptaDesde480Pixeles() {
-        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(479, 854), PropositoArchivo.FOTO_LOCAL,
-                "image/jpeg"))
-                .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
-        assertThat(verificador.verificar(Imagenes.jpg(480, 854), PropositoArchivo.FOTO_LOCAL, "image/jpeg")
-                .ancho()).isEqualTo(480);
-        assertThatThrownBy(() -> verificador.verificar(Imagenes.jpg(480, 854), PropositoArchivo.FOTO_PRODUCTO,
-                "image/jpeg"))
-                .extracting("codigo").isEqualTo("FOTO_RESOLUCION_INSUFICIENTE");
+    void lasFotosNoTienenMedidasMinimas() {
+        assertThat(verificador.verificar(Imagenes.jpg(300, 400), PropositoArchivo.FOTO_PRODUCTO, "image/jpeg")
+                .ancho()).isEqualTo(300);
+        assertThat(verificador.verificar(Imagenes.jpg(200, 150), PropositoArchivo.FOTO_LOCAL, "image/jpeg")
+                .ancho()).isEqualTo(200);
     }
 
     @Test

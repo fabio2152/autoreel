@@ -66,16 +66,16 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.fotos.length()").value(1));
     }
 
+    /** V12 cambia el 2026-11-25: una foto chica ya no se rechaza (solo se revisan el formato y el peso). */
     @Test
-    void v12UnaFotoDeMenosDe720PixelesSeRechaza() throws Exception {
+    void v12UnaFotoChicaSeAcepta() throws Exception {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
         Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
-        fotos.put("FOTO_2", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(700, 1200), "image/jpeg"));
+        fotos.put("FOTO_2", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(400, 600), "image/jpeg"));
 
         mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.codigo").value("FOTO_RESOLUCION_INSUFICIENTE"));
+                .andExpect(status().is2xxSuccessful());
     }
 
     @Test

@@ -45,10 +45,6 @@ public enum PropositoArchivo {
         return megabytesMaximos;
     }
 
-    public boolean esFoto() {
-        return this != LOGO;
-    }
-
     public static String extension(String tipoContenido) {
         return EXTENSIONES.get(tipoContenido);
     }
