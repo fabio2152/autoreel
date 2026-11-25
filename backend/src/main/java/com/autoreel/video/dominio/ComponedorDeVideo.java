@@ -28,8 +28,13 @@ public interface ComponedorDeVideo {
      *
      * @param clip  el clip de IA; vacío si el plano usa el respaldo.
      * @param foto  la foto ya preparada en vertical (la usa el respaldo).
+     * @param inicioDelClip segundos del inicio del clip que se saltan (la foto casi quieta con la que empieza Veo).
      */
-    record PlanoAComponer(int orden, int segundos, byte[] clip, byte[] foto, String texto) {
+    record PlanoAComponer(int orden, int segundos, byte[] clip, byte[] foto, String texto, double inicioDelClip) {
+
+        public PlanoAComponer(int orden, int segundos, byte[] clip, byte[] foto, String texto) {
+            this(orden, segundos, clip, foto, texto, 0);
+        }
     }
 
     /**

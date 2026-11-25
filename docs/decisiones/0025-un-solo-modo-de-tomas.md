@@ -29,3 +29,7 @@ Las estructuras Rápida, Clásica, Plano único y Extendida, las transiciones co
 - Cada video pide 2 clips de 6 s: unos US$ 1,21 con Veo 3.1 Fast.
 - Con un producto de una sola foto, las dos tomas parten de la misma foto.
 - El movimiento del producto depende de Veo: puede deformarlo. Se controla con las prohibiciones y se afina en los prompts, sin programar.
+
+## Actualización (2026-11-25): sin la foto quieta al inicio
+
+Veo empieza cada clip con la foto casi quieta y luego salta a su animación, lo que se veía como una pausa y un corte al pasar de una toma a otra. La composición salta el primer segundo de cada clip (`recorteInicialSegundos` en los parámetros del modelo, migración `V13`) y se pide un clip de 8 s para cada toma de 6 s. Cada video cuesta 16 s de Veo: unos US$ 1,61 con Veo 3.1 Fast y US$ 6,41 con Veo 3.1 (precios de referencia con audio).

@@ -198,8 +198,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .doesNotContain(Movimientos.MARCA_INSTRUCCION);
         assertThat(pedido.at("/parameters/negativePrompt").asString()).isEqualTo(movimientos.negativos("AMBIENTE"));
         assertThat(pedido.at("/parameters/aspectRatio").asString()).isEqualTo("9:16");
-        // La toma dura 6 segundos (estructura HISTORIA): Veo admite 4, 6 u 8 y se pide la más corta que la cubre.
-        assertThat(pedido.at("/parameters/durationSeconds").asInt()).isEqualTo(6);
+        // La toma dura 6 segundos (estructura HISTORIA) y la composición salta el primer segundo del clip (V13): Veo
+        // admite 4, 6 u 8 y se pide la más corta que cubre 7 segundos.
+        assertThat(pedido.at("/parameters/durationSeconds").asInt()).isEqualTo(8);
         mvc.perform(get("/api/videos/" + id).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("GENERANDO"))
                 .andExpect(jsonPath("$.planos[0].estado").value("GENERANDO"));
@@ -214,16 +215,19 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.generacion.iaDisponible").value(true))
                 .andExpect(jsonPath("$.planos[0].estado").value("LISTO"))
                 .andExpect(jsonPath("$.planos[0].usoRespaldo").value(false));
-        assertThat(componedor.ultima.planos()).allSatisfy(plano -> assertThat(plano.clip()).isNotNull());
+        assertThat(componedor.ultima.planos()).allSatisfy(plano -> {
+            assertThat(plano.clip()).isNotNull();
+            assertThat(plano.inicioDelClip()).as("se salta la foto quieta del inicio").isEqualTo(1.0);
+        });
         assertThat(componedor.ultima.musica()).as("la pista del estilo").isNotNull();
         assertThat(componedor.ultima.cierre().llamado()).isEqualTo("Te esperamos en Miraflores");
 
-        // RN-32 y V39: dos clips de 6 s (Veo no informa los segundos generados: se usa la duración pedida) a 0,05
+        // RN-32 y V39: dos clips de 8 s (Veo no informa los segundos generados: se usa la duración pedida) a 0,05
         // dólares por segundo, con Veo 3.1 Lite, el modelo de video del plan Lite.
         List<RegistroCosto> clips = costos.findByVideoIdOrderById(id).stream()
                 .filter(costo -> costo.getConcepto() == ConceptoCosto.CLIP).toList();
         assertThat(clips).hasSize(2).allSatisfy(costo ->
-                assertThat(costo.getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.30")));
+                assertThat(costo.getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.40")));
         new TransactionTemplate(transacciones).executeWithoutResult(estado -> assertThat(
                 videos.findById(id).orElseThrow().getModeloVideoUsado().getIdentificadorModelo())
                 .isEqualTo("veo-3.1-lite-generate-001"));

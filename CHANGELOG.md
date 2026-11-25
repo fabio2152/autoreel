@@ -2,6 +2,14 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin la foto quieta al inicio de cada toma] - 2026-11-25
+
+### Cambiado
+
+- **Cada toma entra directo a la animación.** Veo empieza cada clip con la foto casi quieta y luego salta a su animación; se veía como una pausa y un corte raro al pasar de una toma a otra. La composición ahora salta el primer segundo de cada clip (`recorteInicialSegundos` = 1,0 en los parámetros de los modelos Veo, migración `V13`) y, para que la toma siga durando 6 s, se le pide a Veo un clip de 8 s.
+- Costo: cada video pide 16 s de Veo en lugar de 12 (con Veo 3.1 Fast, unos US$ 1,61 en lugar de 1,21).
+- Pruebas: `SegundosDelClipTest` (duración con recorte) y la generación pide 8 s y compone con el recorte.
+
 ## [Sin efectos raros al cambiar de fondo] - 2026-11-25
 
 ### Cambiado
