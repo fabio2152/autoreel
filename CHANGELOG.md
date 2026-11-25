@@ -2,6 +2,14 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [El producto ya no gira] - 2026-11-25
+
+### Cambiado
+
+- **El producto nunca gira sobre sí mismo:** al pedirle a Veo que una torta cuadrada girara en su base, la volvió redonda. Ahora, en la toma del producto entero, el producto avanza hacia la cámara sin girar (o se eleva un poco) y se mueven sus detalles (frutos que se acomodan, glaseado que cae). Las prohibiciones del clip piden mantener el contorno (una torta cuadrada sigue cuadrada) y los negativos suman "rotating product" y "spinning cake".
+- **La porción solo se levanta si la foto ya muestra una porción o un corte:** nunca se corta un producto entero para inventar una porción.
+- Probado con la Tres leches DC (cuadrada, una sola foto) con Veo 3.1 Fast: sigue cuadrada en las dos tomas.
+
 ## [Sin la foto quieta al inicio de cada toma] - 2026-11-25
 
 ### Cambiado
