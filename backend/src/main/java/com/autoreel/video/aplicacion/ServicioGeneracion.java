@@ -487,12 +487,15 @@ public class ServicioGeneracion {
     }
 
     /**
-     * Duración que se le pide al proveedor para un plano: la más corta que admite el modelo y que cubre el plano
+     * Duración que se le pide al proveedor para un plano: la más corta que admite el modelo y que cubre el plano (más
+     * el recorte inicial)
      * ({@code duracionesClip} en sus parámetros, por ejemplo [4, 6, 8] en Veo). Si ninguna alcanza, la más larga: la
      * composición congela el último cuadro. Un modelo sin esa lista usa {@code duracionClipSegundos}.
      */
     static int segundosDelClip(ModeloIA modelo, int segundosDelPlano) {
         Map<String, Object> parametros = modelo.getParametros() == null ? Map.of() : modelo.getParametros();
+        // El inicio del clip se salta en la composición: el clip debe cubrir la toma más ese recorte.
+        double necesarios = segundosDelPlano + recorteInicial(modelo);
         List<Integer> duraciones = new ArrayList<>();
         if (parametros.get("duracionesClip") instanceof List<?> lista) {
             lista.stream().filter(Number.class::isInstance).map(valor -> ((Number) valor).intValue())
@@ -503,8 +506,17 @@ public class ServicioGeneracion {
                     : SEGUNDOS_POR_DEFECTO);
         }
         duraciones.sort(null);
-        return duraciones.stream().filter(duracion -> duracion >= segundosDelPlano).findFirst()
+        return duraciones.stream().filter(duracion -> duracion >= necesarios).findFirst()
                 .orElse(duraciones.getLast());
+    }
+
+    /**
+     * Segundos del inicio de cada clip que la composición salta ({@code recorteInicialSegundos} en los parámetros del
+     * modelo; 0 si no lo tiene). Veo empieza con la foto casi quieta y luego salta a su animación (2026-11-25).
+     */
+    public static double recorteInicial(ModeloIA modelo) {
+        Object valor = modelo.getParametros() == null ? null : modelo.getParametros().get("recorteInicialSegundos");
+        return valor instanceof Number numero && numero.doubleValue() > 0 ? numero.doubleValue() : 0;
     }
 
     private static MotivoRespaldoPlano motivo(ErrorDeProveedor.Tipo tipo) {

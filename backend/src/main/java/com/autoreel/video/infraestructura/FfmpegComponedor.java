@@ -154,7 +154,7 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
             if (plano.clip() != null) {
                 ultimoArchivo = "clip" + plano.orden() + ".mp4";
                 Files.write(carpeta.resolve(ultimoArchivo), plano.clip());
-                origen = "[" + entradas.agregar("-i", ultimoArchivo) + ":v]" + clip(largo);
+                origen = "[" + entradas.agregar("-i", ultimoArchivo) + ":v]" + clip(largo, plano.inicioDelClip());
             } else {
                 ultimoArchivo = "foto" + plano.orden() + ".jpg";
                 Files.write(carpeta.resolve(ultimoArchivo), plano.foto());
@@ -219,9 +219,13 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
         }
     }
 
-    /** El clip de IA (720p) llevado a 1080×1920 con un escalado nítido, y alargado con su último cuadro si falta. */
-    private static String clip(double segundos) {
-        return "scale=" + ANCHO + ":" + ALTO + ":force_original_aspect_ratio=increase:flags=lanczos,"
+    /**
+     * El clip de IA (720p) sin su inicio (la foto casi quieta con la que empieza Veo), llevado a 1080×1920 con un
+     * escalado nítido, y alargado con su último cuadro si falta.
+     */
+    private static String clip(double segundos, double inicio) {
+        String recorte = inicio > 0 ? "trim=start=" + decimal(inicio) + ",setpts=PTS-STARTPTS," : "";
+        return recorte + "scale=" + ANCHO + ":" + ALTO + ":force_original_aspect_ratio=increase:flags=lanczos,"
                 + "crop=" + ANCHO + ":" + ALTO + ",setsar=1,unsharp=5:5:0.5:5:5:0,fps=" + CUADROS_POR_SEGUNDO + ","
                 + "tpad=stop_mode=clone:stop_duration=" + decimal(segundos) + ","
                 + "trim=duration=" + decimal(segundos) + ",setpts=PTS-STARTPTS,format=yuv420p";

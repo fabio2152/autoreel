@@ -152,7 +152,8 @@ public class ServicioComposicion {
             boolean conClip = plano.getEstado() == EstadoPlano.LISTO && plano.getClaveClip() != null;
             byte[] clip = conClip ? leer(plano.getClaveClip()) : null;
             byte[] foto = conClip ? null : preparador.vertical(leer(plano.getClaveFoto()));
-            planos.add(new PlanoAComponer(plano.getOrden(), segundos, clip, foto, plano.getTexto()));
+            planos.add(new PlanoAComponer(plano.getOrden(), segundos, clip, foto, plano.getTexto(),
+                    ServicioGeneracion.recorteInicial(video.getModeloVideoUsado())));
         }
 
         Plano cierre = video.cierre().orElseThrow();
