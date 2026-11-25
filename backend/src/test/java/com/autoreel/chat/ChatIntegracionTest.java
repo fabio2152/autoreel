@@ -64,12 +64,8 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
         responder(negocio, id, Map.of("paso", "precio", "omitir", true))
                 .andExpect(jsonPath("$.paso.id").value("extra"));
         responderTexto(negocio, id, "extra", "Pedidos por WhatsApp");
-        // La última pregunta (2026-11-25): cómo quiere las tomas, con botones.
-        procesarDespues(negocio, id)
-                .andExpect(jsonPath("$.estado").value("EN_CURSO"))
-                .andExpect(jsonPath("$.paso.id").value("tomas"))
-                .andExpect(jsonPath("$.paso.obligatoria").value(true));
-        JsonNode completa = json.readTree(responder(negocio, id, Map.of("paso", "tomas", "opcion", "LARGAS"))
+        // "extra" es la última pregunta: al procesarla la conversación termina.
+        JsonNode completa = json.readTree(procesarDespues(negocio, id)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("COMPLETA"))
                 .andExpect(jsonPath("$.paso").doesNotExist())
@@ -78,13 +74,13 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.respuestas.especial").value("Fresas frescas de Huaral"))
                 .andExpect(jsonPath("$.respuestas.precio").doesNotExist())
                 .andExpect(jsonPath("$.respuestas.extra").value("Pedidos por WhatsApp"))
-                .andExpect(jsonPath("$.respuestas.tomas").value("LARGAS"))
+                .andExpect(jsonPath("$.respuestas.tomas").doesNotExist())
                 .andExpect(jsonPath("$.resumen[1].respuesta").value("Torta Tres Leches de Fresa"))
                 .andExpect(jsonPath("$.mensajes[-1:].texto").value(hasItem("¡Listo! Estoy preparando tu propuesta…")))
                 .andReturn().getResponse().getContentAsString());
-        // El video nace con el modo de tomas que eligió el negocio.
+        // Sin el paso "tomas" (2026-11-25) el video no guarda un modo: usa el modo por defecto del nicho.
         assertThat(new JdbcTemplate(datos).queryForObject("select modo_tomas from video where id = ?", String.class,
-                completa.get("videoId").asLong())).isEqualTo("LARGAS");
+                completa.get("videoId").asLong())).isNull();
 
         mvc.perform(get("/api/chat/conversaciones/actual").cookie(negocio))
                 .andExpect(status().isOk())
@@ -322,11 +318,10 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
         responderTexto(negocio, id, "especial", "Fresas frescas");
         procesarDespues(negocio, id);
         responder(negocio, id, Map.of("paso", "precio", "omitir", true));
-        responder(negocio, id, Map.of("paso", "extra", "omitir", true));
         mvc.perform(post("/api/productos/" + producto + "/archivar").with(csrf()).cookie(negocio))
                 .andExpect(status().isOk());
 
-        responder(negocio, id, Map.of("paso", "tomas", "opcion", "CORTAS"))
+        responder(negocio, id, Map.of("paso", "extra", "omitir", true))
                 .andExpect(jsonPath("$.estado").value("EN_CURSO"))
                 .andExpect(jsonPath("$.paso.id").value("producto"));
     }

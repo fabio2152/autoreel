@@ -82,35 +82,6 @@
       "obligatoria": false,
       "omitible": true,
       "ejemplo": "Ej.: \"Atendemos pedidos hasta las 8 p. m.\"."
-    },
-    {
-      "id": "tomas",
-      "tipo": "BOTONES",
-      "texto": "Por último, ¿cómo quieres las tomas del video?",
-      "obligatoria": true,
-      "opciones": [
-        {
-          "valor": "CORTAS",
-          "texto": "Tomas cortas"
-        },
-        {
-          "valor": "LARGAS",
-          "texto": "Tomas largas con transiciones"
-        },
-        {
-          "valor": "HISTORIA",
-          "texto": "Historia (2 tomas)"
-        },
-        {
-          "valor": "PLANO_UNICO",
-          "texto": "Plano único"
-        },
-        {
-          "valor": "EXTENDIDO",
-          "texto": "Plano extendido"
-        }
-      ],
-      "ejemplo": "Si no sabes cuál, elige \"Tomas cortas\"."
     }
   ]
 }

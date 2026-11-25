@@ -235,6 +235,10 @@ public class ServicioGuion {
                 errores.add("El negocio pidió " + contexto.modo().nombre() + ": la estructura debe ser una de "
                         + contexto.modo().estructuras() + ".");
             }
+            if (guion.creatividad() != null && !contexto.modo().admiteCreatividad(guion.creatividad())) {
+                errores.add("El negocio pidió " + contexto.modo().nombre() + ": la creatividad debe ser una de "
+                        + contexto.modo().creatividades() + ".");
+            }
             if (errores.isEmpty()) {
                 return new Escrito(guion, comoMapa(respuesta.texto()));
             }
