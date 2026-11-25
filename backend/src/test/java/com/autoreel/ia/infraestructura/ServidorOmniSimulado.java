@@ -20,7 +20,7 @@ import com.sun.net.httpserver.HttpServer;
  * Servidor HTTP que responde como la API de interacciones de Gemini (Gemini Omni Flash). Las respuestas de crear y
  * consultar se programan en orden; sin respuestas programadas, crear devuelve una interacción terminada con el video
  * (4 segundos de tokens de video a 720p) y consultar también. El guion (generateContent, con la misma clave de AI
- * Studio) responde {@link #GUION}; cualquier otra ruta responde 404.
+ * Studio) responde {@link #GUION} u otro programado con {@link #guionResponde}; cualquier otra ruta responde 404.
  */
 public final class ServidorOmniSimulado implements AutoCloseable {
 
@@ -54,6 +54,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
     private final Deque<Respuesta> consultas = new ConcurrentLinkedDeque<>();
     private final List<Peticion> peticiones = new CopyOnWriteArrayList<>();
     private final AtomicInteger interacciones = new AtomicInteger();
+    private volatile String guion = GUION;
 
     public ServidorOmniSimulado() {
         try {
@@ -103,6 +104,11 @@ public final class ServidorOmniSimulado implements AutoCloseable {
         crearResponde(200, enCurso("int-curso-" + interacciones.incrementAndGet()));
     }
 
+    /** El guion que responde generateContent hasta el siguiente {@link #reiniciar}. */
+    public void guionResponde(String guion) {
+        this.guion = guion;
+    }
+
     public void consultaResponde(int estado, String cuerpo) {
         consultas.add(new Respuesta(estado, cuerpo));
     }
@@ -120,6 +126,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
         creaciones.clear();
         consultas.clear();
         peticiones.clear();
+        guion = GUION;
     }
 
     private void atender(HttpExchange intercambio) throws IOException {
@@ -140,7 +147,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
             respuesta = programada != null ? programada
                     : new Respuesta(200, terminada(ruta.substring(ruta.lastIndexOf('/') + 1)));
         } else if (metodo.equals("POST") && ruta.endsWith(":generateContent")) {
-            respuesta = new Respuesta(200, ServidorGeminiSimulado.cuerpoConTexto(GUION));
+            respuesta = new Respuesta(200, ServidorGeminiSimulado.cuerpoConTexto(guion));
         } else {
             respuesta = new Respuesta(404, "{\"error\":{\"code\":\"not_found\",\"message\":\"sin ruta\"}}");
         }

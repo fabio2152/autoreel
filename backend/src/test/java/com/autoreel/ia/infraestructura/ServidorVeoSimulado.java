@@ -93,6 +93,11 @@ public final class ServidorVeoSimulado implements AutoCloseable {
         consultaResponde(200, listo());
     }
 
+    /** El clip listo es otro video (por ejemplo, el clip extendido). */
+    public void consultaLista(byte[] video) {
+        consultaResponde(200, listo(video));
+    }
+
     public void consultaFallida() {
         consultaResponde(200, "{\"name\":\"op\",\"done\":true,\"response\":{\"raiMediaFilteredCount\":1,"
                 + "\"raiMediaFilteredReasons\":[\"filtrado\"]}}");
@@ -117,9 +122,13 @@ public final class ServidorVeoSimulado implements AutoCloseable {
     }
 
     private static String listo() {
+        return listo(CLIP);
+    }
+
+    private static String listo(byte[] video) {
         return "{\"name\":\"op\",\"done\":true,\"response\":{\"@type\":\"type.googleapis.com/cloud.ai.large_models"
                 + ".vision.GenerateVideoResponse\",\"raiMediaFilteredCount\":0,\"videos\":[{\"bytesBase64Encoded\":\""
-                + Base64.getEncoder().encodeToString(CLIP) + "\",\"mimeType\":\"video/mp4\"}]}}";
+                + Base64.getEncoder().encodeToString(video) + "\",\"mimeType\":\"video/mp4\"}]}}";
     }
 
     private void atender(HttpExchange intercambio) throws IOException {

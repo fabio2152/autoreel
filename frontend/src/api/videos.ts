@@ -69,7 +69,7 @@ export interface Video {
   producto: { id: number; nombre: string }
   plan: { nombre: string; videosPorDia: number; regeneracionesPorVideo: number }
   /** Lo que eligió la IA; null sin guion o en videos anteriores al guion flexible. */
-  concepto: { estructura: string; creatividad: string | null; idea: string | null } | null
+  concepto: { tomas: string; estructura: string; creatividad: string | null; idea: string | null } | null
   /** Vacío mientras el guion está pendiente. */
   planos: PlanoVista[]
   cierre: CierreVista | null

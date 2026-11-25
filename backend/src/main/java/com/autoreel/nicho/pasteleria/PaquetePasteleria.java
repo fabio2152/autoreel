@@ -131,6 +131,10 @@ public class PaquetePasteleria implements PaqueteNicho {
             exigir(pista.duracionSegundos() >= 15, "la pista " + pista.archivo() + " dura menos de 15 segundos");
         }
         validarMovimientos();
+        guionDelChat.pasos().stream().filter(paso -> paso.id().equals("tomas")).findFirst().ifPresent(paso ->
+                paso.opciones().forEach(opcion -> exigir(plantillaVideo.modosDeToma().stream()
+                                .anyMatch(modo -> modo.id().equals(opcion.valor())),
+                        "la opción " + opcion.valor() + " del paso tomas no es un modo de tomas de la plantilla")));
         // Los llamados fijos del cierre deben cumplir el propio vocabulario del nicho.
         for (String texto : plantillaVideo.llamados().values()) {
             for (String frase : vocabulario.prohibidas()) {

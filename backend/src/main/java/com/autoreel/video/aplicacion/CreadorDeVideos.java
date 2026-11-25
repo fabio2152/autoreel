@@ -35,7 +35,11 @@ public class CreadorDeVideos {
                     + " terminó sin producto o sin tipo de video");
         }
         Plan plan = planes.de(evento.negocioId());
-        videos.save(new Video(evento.negocioId(), evento.conversacionId(), productoId.longValue(), tipoVideo, plan,
-                reloj.instant()));
+        Video video = new Video(evento.negocioId(), evento.conversacionId(), productoId.longValue(), tipoVideo, plan,
+                reloj.instant());
+        if (evento.respuestas().get(RespuestasDelChat.TOMAS) instanceof String modoTomas) {
+            video.pedirModoDeTomas(modoTomas);
+        }
+        videos.save(video);
     }
 }

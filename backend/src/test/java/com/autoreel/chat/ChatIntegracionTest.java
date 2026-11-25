@@ -15,11 +15,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.sql.DataSource;
+
 import com.autoreel.Imagenes;
 import com.autoreel.PruebaDeIntegracion;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
@@ -27,6 +31,9 @@ import tools.jackson.databind.JsonNode;
 class ChatIntegracionTest extends PruebaDeIntegracion {
 
     private static final Duration AGRUPACION = Duration.ofSeconds(4);
+
+    @Autowired
+    private DataSource datos;
 
     @Test
     void v10SinOnboardingNoSePuedeCrearUnVideo() throws Exception {
@@ -57,7 +64,13 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
         responder(negocio, id, Map.of("paso", "precio", "omitir", true))
                 .andExpect(jsonPath("$.paso.id").value("extra"));
         responderTexto(negocio, id, "extra", "Pedidos por WhatsApp");
+        // La última pregunta (2026-11-25): cómo quiere las tomas, con botones.
         procesarDespues(negocio, id)
+                .andExpect(jsonPath("$.estado").value("EN_CURSO"))
+                .andExpect(jsonPath("$.paso.id").value("tomas"))
+                .andExpect(jsonPath("$.paso.obligatoria").value(true));
+        JsonNode completa = json.readTree(responder(negocio, id, Map.of("paso", "tomas", "opcion", "LARGAS"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("COMPLETA"))
                 .andExpect(jsonPath("$.paso").doesNotExist())
                 .andExpect(jsonPath("$.respuestas.tipoVideo").value("PRODUCTO_ESTRELLA"))
@@ -65,8 +78,13 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.respuestas.especial").value("Fresas frescas de Huaral"))
                 .andExpect(jsonPath("$.respuestas.precio").doesNotExist())
                 .andExpect(jsonPath("$.respuestas.extra").value("Pedidos por WhatsApp"))
+                .andExpect(jsonPath("$.respuestas.tomas").value("LARGAS"))
                 .andExpect(jsonPath("$.resumen[1].respuesta").value("Torta Tres Leches de Fresa"))
-                .andExpect(jsonPath("$.mensajes[-1:].texto").value(hasItem("¡Listo! Estoy preparando tu propuesta…")));
+                .andExpect(jsonPath("$.mensajes[-1:].texto").value(hasItem("¡Listo! Estoy preparando tu propuesta…")))
+                .andReturn().getResponse().getContentAsString());
+        // El video nace con el modo de tomas que eligió el negocio.
+        assertThat(new JdbcTemplate(datos).queryForObject("select modo_tomas from video where id = ?", String.class,
+                completa.get("videoId").asLong())).isEqualTo("LARGAS");
 
         mvc.perform(get("/api/chat/conversaciones/actual").cookie(negocio))
                 .andExpect(status().isOk())
@@ -304,10 +322,11 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
         responderTexto(negocio, id, "especial", "Fresas frescas");
         procesarDespues(negocio, id);
         responder(negocio, id, Map.of("paso", "precio", "omitir", true));
+        responder(negocio, id, Map.of("paso", "extra", "omitir", true));
         mvc.perform(post("/api/productos/" + producto + "/archivar").with(csrf()).cookie(negocio))
                 .andExpect(status().isOk());
 
-        responder(negocio, id, Map.of("paso", "extra", "omitir", true))
+        responder(negocio, id, Map.of("paso", "tomas", "opcion", "CORTAS"))
                 .andExpect(jsonPath("$.estado").value("EN_CURSO"))
                 .andExpect(jsonPath("$.paso.id").value("producto"));
     }

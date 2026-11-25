@@ -239,6 +239,7 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
 3. **"¿Qué lo hace especial hoy?"**, texto libre. Se ofrece la descripción del catálogo como sugerencia.
 4. **"¿Hay precio o promoción que quieras mencionar?"** Opcional; acepta "no". Si el tipo de video es Promoción, es obligatoria.
 5. **"¿Algo más que quieras que se diga?"** Opcional.
+5b. **"Por último, ¿cómo quieres las tomas del video?"** *Nuevo el 2026-11-25 (ADR 0024), experimental.* Botones: **Tomas cortas** (por defecto: la IA elige entre Rápida y Clásica, clips con fundido), **Tomas largas con transiciones** (Clásica o Historia; cada clip termina en la foto de la toma siguiente con `lastFrame` de Veo), **Historia (2 tomas)**, **Plano único** y **Plano extendido** (una toma de 12 s: Veo genera 8 s y luego extiende el clip; si la extensión falla, se usa el clip base). Se guarda en `video.modo_tomas` y la IA solo puede elegir las estructuras de ese modo (`modosDeToma` en `plantilla.json`).
 6. **"¡Listo! Estoy preparando tu propuesta…"**, y se muestra el storyboard.
 
 **Comportamiento del chat:**

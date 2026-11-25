@@ -46,6 +46,67 @@
       ],
       "cierre": 7,
       "maxPalabras": 8
+    },
+    {
+      "id": "EXTENDIDA",
+      "nombre": "Plano extendido",
+      "descripcion": "Una sola toma continua de 12 segundos desde una foto: Veo crea los primeros 8 segundos y luego continúa el mismo clip.",
+      "tomas": [
+        12
+      ],
+      "cierre": 3,
+      "maxPalabras": 8,
+      "extender": true
+    }
+  ],
+  "modoDeTomasPorDefecto": "CORTAS",
+  "modosDeToma": [
+    {
+      "id": "CORTAS",
+      "nombre": "Tomas cortas",
+      "estructuras": [
+        "RAPIDA",
+        "CLASICA"
+      ],
+      "transiciones": false,
+      "indicacion": "El negocio eligió tomas cortas. Elige entre RAPIDA y CLASICA. Cada toma es un clip independiente que empieza en su foto; entre una toma y la siguiente hay un fundido corto."
+    },
+    {
+      "id": "LARGAS",
+      "nombre": "Tomas largas con transiciones",
+      "estructuras": [
+        "CLASICA",
+        "HISTORIA"
+      ],
+      "transiciones": true,
+      "indicacion": "El negocio eligió tomas largas con transiciones. Elige entre CLASICA e HISTORIA. Cada toma empieza en su foto y TERMINA EXACTAMENTE EN LA FOTO DE LA TOMA SIGUIENTE (el modelo de video recibe las dos fotos), así el video se ve como un solo recorrido continuo, sin cortes. Escribe cada toma, menos la última, como un movimiento de cámara que viaja desde lo que se ve en su foto hasta el encuadre de la foto siguiente, y termina la toma describiendo ese encuadre final (por ejemplo: \"... and the shot ends framed exactly like the next photo: a close-up of the sliced cake\"). Cuando puedas, usa fotos distintas en tomas seguidas. La última toma termina libre."
+    },
+    {
+      "id": "HISTORIA",
+      "nombre": "Historia",
+      "estructuras": [
+        "HISTORIA"
+      ],
+      "transiciones": false,
+      "indicacion": "El negocio eligió Historia: usa la estructura HISTORIA, dos tomas largas que cuentan algo (de dónde viene el producto o a dónde llega)."
+    },
+    {
+      "id": "PLANO_UNICO",
+      "nombre": "Plano único",
+      "estructuras": [
+        "PLANO_UNICO"
+      ],
+      "transiciones": false,
+      "indicacion": "El negocio eligió plano único: usa la estructura PLANO_UNICO, una sola toma continua de 8 segundos, muy cuidada, desde la mejor foto."
+    },
+    {
+      "id": "EXTENDIDO",
+      "nombre": "Plano extendido",
+      "estructuras": [
+        "EXTENDIDA"
+      ],
+      "transiciones": false,
+      "indicacion": "El negocio eligió plano extendido: usa la estructura EXTENDIDA. Es una sola toma continua de 12 segundos desde una foto: el modelo de video crea los primeros 8 segundos y luego continúa el mismo clip unos segundos más con la misma toma. Escribe una toma con dos momentos que se encadenan en un solo movimiento continuo (por ejemplo: la cámara rodea el producto y luego retrocede despacio y revela la vitrina)."
     }
   ],
   "maxPalabrasCierre": 6,

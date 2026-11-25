@@ -50,12 +50,42 @@ public class VeoGeneradorDeClips implements GeneradorDeClips {
                 && Boolean.TRUE.equals(modelo.getParametros().get("generarAudio")));
         parametros.put("resolution", GoogleCloud.parametro(modelo, "resolucion", "720p"));
         parametros.put("resizeMode", GoogleCloud.parametro(modelo, "ajuste", "crop"));
-        Map<String, Object> cuerpo = Map.of(
-                "instances", List.of(Map.of(
-                        "prompt", solicitud.prompt(),
-                        "image", Map.of("bytesBase64Encoded", Base64.getEncoder().encodeToString(solicitud.foto()),
-                                "mimeType", solicitud.tipoFoto()))),
-                "parameters", parametros);
+        Map<String, Object> instancia = new LinkedHashMap<>();
+        instancia.put("prompt", solicitud.prompt());
+        instancia.put("image", Map.of("bytesBase64Encoded", Base64.getEncoder().encodeToString(solicitud.foto()),
+                "mimeType", solicitud.tipoFoto()));
+        if (solicitud.fotoFinal() != null) {
+            // Transición entre fotos: el clip termina exactamente en la foto de la toma siguiente.
+            instancia.put("lastFrame", Map.of("bytesBase64Encoded",
+                    Base64.getEncoder().encodeToString(solicitud.fotoFinal()), "mimeType", solicitud.tipoFoto()));
+        }
+        return enviar(modelo, credencial, Map.of("instances", List.of(instancia), "parameters", parametros));
+    }
+
+    /**
+     * Extiende un clip de Veo (unos 7 segundos más). El clip va en base64 y Veo devuelve el video completo, el
+     * original más la extensión; la duración de la extensión la fija Veo.
+     */
+    @Override
+    public String extender(ModeloIA modelo, String credencial, SolicitudDeExtension solicitud) {
+        Map<String, Object> parametros = new LinkedHashMap<>();
+        parametros.put("aspectRatio", GoogleCloud.parametro(modelo, "relacionAspecto", "9:16"));
+        parametros.put("sampleCount", 1);
+        if (solicitud.negativos() != null && !solicitud.negativos().isBlank()) {
+            parametros.put("negativePrompt", solicitud.negativos());
+        }
+        parametros.put("personGeneration", "dont_allow");
+        parametros.put("generateAudio", modelo.getParametros() != null
+                && Boolean.TRUE.equals(modelo.getParametros().get("generarAudio")));
+        parametros.put("resolution", GoogleCloud.parametro(modelo, "resolucion", "720p"));
+        Map<String, Object> instancia = Map.of(
+                "prompt", solicitud.prompt(),
+                "video", Map.of("bytesBase64Encoded", Base64.getEncoder().encodeToString(solicitud.video()),
+                        "mimeType", "video/mp4"));
+        return enviar(modelo, credencial, Map.of("instances", List.of(instancia), "parameters", parametros));
+    }
+
+    private String enviar(ModeloIA modelo, String credencial, Map<String, Object> cuerpo) {
         JsonNode respuesta = googleCloud.llamar(modelo, credencial, region(modelo), "predictLongRunning", cuerpo,
                 NOMBRE);
         String nombre = respuesta == null ? "" : respuesta.path("name").asString("");

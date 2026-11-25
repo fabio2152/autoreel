@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import com.autoreel.nicho.dominio.Movimientos.Creatividad;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
+import com.autoreel.nicho.dominio.PlantillaVideo.ModoDeTomas;
 import com.autoreel.video.dominio.DatosDelGuion;
 import com.autoreel.video.dominio.GuionPropuesto;
 import tools.jackson.core.JacksonException;
@@ -31,14 +32,15 @@ final class InstruccionesDelGuion {
      * @param fotos             números de las fotos del producto que van adjuntas, en ese orden.
      * @param erroresAnteriores problemas del intento anterior; vacío en el primero.
      */
-    static String armar(DatosDelGuion datos, PaqueteNicho paquete, List<Integer> fotos,
+    static String armar(DatosDelGuion datos, PaqueteNicho paquete, ModoDeTomas modo, List<Integer> fotos,
             List<String> erroresAnteriores) {
         Map<String, String> valores = new LinkedHashMap<>();
         valores.put("palabrasProhibidas",
                 datos.palabrasProhibidas().isEmpty() ? "ninguna" : String.join(", ", datos.palabrasProhibidas()));
         valores.put("tono", paquete.vocabulario().tono(datos.estilo()));
         valores.put("fotos", fotos.stream().map(numero -> "Foto " + numero).collect(Collectors.joining(", ")));
-        valores.put("estructuras", estructuras(paquete));
+        valores.put("modoDeTomas", modo.indicacion());
+        valores.put("estructuras", estructuras(paquete, modo));
         valores.put("creatividades", creatividades(paquete));
         valores.put("movimientos", movimientos(datos, paquete));
         valores.put("distritoHashtag", datos.distritoHashtag());
@@ -78,11 +80,11 @@ final class InstruccionesDelGuion {
      * Esquema de la respuesta: la estructura y la creatividad (listas cerradas), la idea, las tomas, los textos del
      * cierre, la descripción y los hashtags. Cuántas tomas, los largos y el contenido los revisa el validador.
      */
-    static String esquema(PaqueteNicho paquete, List<Integer> fotos, ObjectMapper json) {
-        List<String> estructuras = paquete.plantillaVideo().estructuras().stream().map(Estructura::id).toList();
+    static String esquema(PaqueteNicho paquete, ModoDeTomas modo, List<Integer> fotos, ObjectMapper json) {
+        List<Estructura> permitidas = paquete.plantillaVideo().estructurasPara(modo);
+        List<String> estructuras = permitidas.stream().map(Estructura::id).toList();
         List<String> creatividades = paquete.movimientos().creatividades().stream().map(Creatividad::id).toList();
-        int maximoTomas = paquete.plantillaVideo().estructuras().stream().mapToInt(e -> e.tomas().size()).max()
-                .orElse(1);
+        int maximoTomas = permitidas.stream().mapToInt(e -> e.tomas().size()).max().orElse(1);
         Map<String, Object> textoOpcional = Map.of("type", List.of("string", "null"));
         Map<String, Object> plano = Map.of(
                 "type", "object",
@@ -146,9 +148,9 @@ final class InstruccionesDelGuion {
                 texto(raiz.path("idea")), planos, cierrePropuesto, texto(raiz.path("descripcion")), hashtags));
     }
 
-    private static String estructuras(PaqueteNicho paquete) {
+    private static String estructuras(PaqueteNicho paquete, ModoDeTomas modo) {
         List<String> lineas = new ArrayList<>();
-        for (Estructura estructura : paquete.plantillaVideo().estructuras()) {
+        for (Estructura estructura : paquete.plantillaVideo().estructurasPara(modo)) {
             lineas.add("- " + estructura.id() + " (" + estructura.nombre() + "): " + estructura.descripcion() + " "
                     + estructura.tomas().size() + (estructura.tomas().size() == 1 ? " toma de " : " tomas de ")
                     + estructura.tomas().stream().map(String::valueOf).collect(Collectors.joining(", "))

@@ -29,8 +29,11 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
     public record PlanDelVideo(String nombre, int videosPorDia, int regeneracionesPorVideo) {
     }
 
-    /** @param idea el video en una o dos frases. */
-    public record ConceptoVista(String estructura, String creatividad, String idea) {
+    /**
+     * @param tomas cómo pidió el negocio las tomas en el chat ("Tomas largas con transiciones").
+     * @param idea  el video en una o dos frases.
+     */
+    public record ConceptoVista(String tomas, String estructura, String creatividad, String idea) {
     }
 
     /**

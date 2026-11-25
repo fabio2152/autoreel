@@ -28,6 +28,7 @@ import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
+import com.autoreel.nicho.dominio.PlantillaVideo.ModoDeTomas;
 import com.autoreel.video.dominio.DatosDelGuion;
 import com.autoreel.video.dominio.EstadoVideo;
 import com.autoreel.video.dominio.GuionPropuesto;
@@ -77,9 +78,12 @@ public class ServicioGuion {
     public static final String MOTIVO_FALLA_INTERNA =
             "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo.";
 
-    /** @param fotos claves de las fotos del producto, por número (1 a 3), en orden. */
+    /**
+     * @param fotos claves de las fotos del producto, por número (1 a 3), en orden.
+     * @param modo  cómo pidió el negocio las tomas: limita las estructuras que puede elegir la IA.
+     */
     private record Contexto(Long videoId, Long negocioId, ModeloIA modelo, PaqueteNicho paquete,
-            DatosDelGuion datos, Map<Integer, String> fotos) {
+            DatosDelGuion datos, Map<Integer, String> fotos, ModoDeTomas modo) {
 
         List<Integer> numerosDeFotos() {
             return List.copyOf(fotos.keySet());
@@ -189,7 +193,7 @@ public class ServicioGuion {
             return new SinProveedor();
         }
         List<Integer> fotos = contexto.numerosDeFotos();
-        String esquema = InstruccionesDelGuion.esquema(contexto.paquete(), fotos, json);
+        String esquema = InstruccionesDelGuion.esquema(contexto.paquete(), contexto.modo(), fotos, json);
         // La IA ve las fotos del producto para elegir cuáles usa y escribir tomas que tengan sentido con ellas.
         List<ImagenAdjunta> imagenes = contexto.fotos().values().stream()
                 .map(clave -> new ImagenAdjunta(preparador.paraLaIa(leerArchivo(clave)), "image/jpeg"))
@@ -200,7 +204,8 @@ public class ServicioGuion {
             if (intento > 1 && Duration.between(inicio, reloj.instant()).compareTo(PLAZO_TOTAL) > 0) {
                 break;
             }
-            String instrucciones = InstruccionesDelGuion.armar(contexto.datos(), contexto.paquete(), fotos, errores);
+            String instrucciones = InstruccionesDelGuion.armar(contexto.datos(), contexto.paquete(), contexto.modo(),
+                    fotos, errores);
             RespuestaDelModelo respuesta;
             try {
                 respuesta = guionista.get().escribir(modelo, credencial.get(), instrucciones, esquema, imagenes);
@@ -224,7 +229,12 @@ public class ServicioGuion {
                 continue;
             }
             GuionPropuesto guion = leido.get().limpio();
-            errores = ValidadorDeGuion.validar(guion, contexto.datos(), contexto.paquete(), Set.copyOf(fotos));
+            errores = new java.util.ArrayList<>(
+                    ValidadorDeGuion.validar(guion, contexto.datos(), contexto.paquete(), Set.copyOf(fotos)));
+            if (guion.estructura() != null && !contexto.modo().estructuras().contains(guion.estructura())) {
+                errores.add("El negocio pidió " + contexto.modo().nombre() + ": la estructura debe ser una de "
+                        + contexto.modo().estructuras() + ".");
+            }
             if (errores.isEmpty()) {
                 return new Escrito(guion, comoMapa(respuesta.texto()));
             }
@@ -320,7 +330,8 @@ public class ServicioGuion {
         Map<Integer, String> fotos = new java.util.LinkedHashMap<>();
         producto.get().fotosEnOrden().forEach(foto -> fotos.put(foto.getTipo().numero(), foto.getClaveS3()));
         return Optional.of(new Contexto(video.getId(), video.getNegocioId(), video.getModeloTextoUsado(),
-                datos.paquete(), datos.guion(), fotos));
+                datos.paquete(), datos.guion(), fotos,
+                datos.paquete().plantillaVideo().modoDeTomas(video.getModoTomas())));
     }
 
     private byte[] leerArchivo(String clave) {
