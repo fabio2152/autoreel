@@ -483,8 +483,7 @@ flowchart TD
     B -->|Subir uno nuevo hoy| C
     C --> D["¿Hay precio o promoción que quieras mencionar?"]
     D --> E["¿Algo más que quieras que se diga?"]
-    E --> E2["Por último, ¿cómo quieres las tomas del video?"]
-    E2 --> F["¡Listo! Estoy preparando tu propuesta…"]
+    E --> F["¡Listo! Estoy preparando tu propuesta…"]
     F --> G[Tarjeta Tus respuestas]
     G -->|Ver mi propuesta| H["Tu propuesta (sección 12)"]
 ```
@@ -498,7 +497,6 @@ flowchart TD
 | **¿Qué lo hace especial hoy?** | Escribe con tus palabras. Si tocas **Usar la descripción de mi producto**, se copia la descripción del catálogo en la caja de texto para que la ajustes antes de enviarla. | Ej.: "Bizcocho de vainilla con fresas frescas, recién hecho esta mañana". | Sí |
 | **¿Hay precio o promoción que quieras mencionar?** | Escribe el precio o la promoción con sus números. AutoReel lo resume para el cierre con tus mismos números y moneda. También puedes pedir otra cosa: "no pongas precio, solo que están recién salidas del horno" (sección 12.6). | Ej.: "S/ 65" o "2x1 hasta el domingo". | Solo si elegiste **Promoción** |
 | **¿Algo más que quieras que se diga?** | Escribe lo que quieras agregar. | Ej.: "Atendemos pedidos hasta las 8 p. m.". | No |
-| **Por último, ¿cómo quieres las tomas del video?** (desde el 2026-11-25, en prueba) | Toca un botón. **Tomas cortas**: varias tomas con un fundido entre ellas (lo de siempre). **Tomas largas con transiciones**: cada toma termina en la foto de la siguiente y el video se ve como un solo recorrido. **Historia**: dos tomas de 6 s. **Plano único**: una toma de 8 s y un cierre largo. **Plano extendido**: una sola toma de 12 s que la IA continúa. | Si no sabes cuál, elige "Tomas cortas". | Sí |
 
 **Escribir en la primera pregunta.** Debajo de los cuatro botones está la caja de texto, que dice "O escríbelo con tus palabras…". Si ninguno de los botones describe el video que quieres, escríbelo ahí y toca **Enviar**:
 

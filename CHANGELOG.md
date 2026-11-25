@@ -2,6 +2,21 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Un solo modo de tomas] - 2026-11-25
+
+Decisión del usuario después de revisar 10 videos con Veo 3.1 (ADR 0025).
+
+### Cambiado
+
+- **Un solo modo, "Historia con ambiente y movimiento":** estructura Historia (2 tomas de 6 s) y creatividad Ambiente. Cada toma lleva el producto a un lugar bonito y creíble (la vitrina de la pastelería, una mesa junto a la ventana) y el producto mismo se mueve (una porción que se levanta y se acerca, frutos que se acomodan). Se prohíben las tomas simples (solo acercar, alejar o girar alrededor del postre), los fondos vacíos y agregar decoración que no está en la foto (en una prueba, Veo le puso pecanas y rosetas de crema a la torta de zanahoria).
+- `guion.md` deja de ofrecer la lista de movimientos de cámara e incluye como ejemplo las tomas del video que más gustó.
+- `ModoDeTomas` suma `creatividades`: el esquema del guion solo ofrece las del modo.
+- El plan Lite usa Veo 3.1 Fast (cambio de datos desde el panel).
+
+### Quitado
+
+- El paso del chat "¿Cómo quieres las tomas del video?" y los modos Tomas cortas, Tomas largas con transiciones, Historia, Plano único y Plano extendido. Las transiciones con foto final y la extensión de clips quedan en el código, sin uso.
+
 ## [Modos de tomas] - 2026-11-25
 
 Opciones experimentales para videos más continuos, pedidas por el usuario. Decisiones en el ADR 0024.

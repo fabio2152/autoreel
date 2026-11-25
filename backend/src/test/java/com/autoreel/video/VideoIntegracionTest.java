@@ -52,9 +52,22 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     private static final ServidorGeminiSimulado GEMINI = new ServidorGeminiSimulado();
     private static final String CLAVE = "clave-de-prueba";
 
-    /** Estructura CLÁSICA: tres tomas de 4 segundos; la tercera va sin texto. */
+    /** Estructura HISTORIA con creatividad AMBIENTE (el único modo, 2026-11-25): dos tomas de 6 segundos. */
     private static final String GUION_VALIDO = """
-            {"estructura":"CLASICA","creatividad":"PRODUCTO",
+            {"estructura":"HISTORIA","creatividad":"AMBIENTE",
+             "idea":"La cámara revela la torta en la vitrina y termina en la porción servida.",
+             "planos":[
+              {"orden":1,"foto":2,"toma":"The camera cranes up and reveals the cake inside a bakery display case.",
+               "descripcionToma":"La cámara revela la torta en la vitrina","texto":"Un antojo de fresas frescas"},
+              {"orden":2,"foto":1,"toma":"The slice lifts toward the camera on a marble table by a window.",
+               "descripcionToma":"La porción se acerca en una mesa junto a la ventana",
+               "texto":"Torta Tres Leches de casa"}],
+             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
+             "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
+             "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
+    /** Estructura CLÁSICA: válida para el nicho, pero el modo de tomas no la admite. */
+    private static final String GUION_CLASICO = """
+            {"estructura":"CLASICA","creatividad":"AMBIENTE",
              "idea":"La cámara descubre las fresas y termina en la porción servida.",
              "planos":[
               {"orden":1,"foto":2,"toma":"Slow push-in on the strawberries.",
@@ -63,18 +76,6 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                "descripcionToma":"Órbita alrededor de la torta","texto":"Torta Tres Leches de casa"},
               {"orden":3,"foto":3,"toma":"Gentle crane up over the slice.",
                "descripcionToma":"Grúa sobre la porción","texto":null}],
-             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
-             "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
-             "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
-    /** Estructura HISTORIA: dos tomas de 6 segundos con la misma foto principal. */
-    private static final String GUION_HISTORIA = """
-            {"estructura":"HISTORIA","creatividad":"AMBIENTE",
-             "idea":"La torta llega a la mesa de una celebración familiar.",
-             "planos":[
-              {"orden":1,"foto":1,"toma":"The cake on a festive table, slow dolly in.",
-               "descripcionToma":"La torta en una mesa de fiesta","texto":"Tu celebración merece esta torta"},
-              {"orden":2,"foto":1,"toma":"Slow orbit as warm light fills the room.",
-               "descripcionToma":"Órbita con luz cálida","texto":"Torta Tres Leches de casa"}],
              "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
              "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
              "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
@@ -155,25 +156,26 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.tipoVideo").value("Producto estrella"))
                 .andExpect(jsonPath("$.producto.nombre").value("Torta Tres Leches"))
                 .andExpect(jsonPath("$.plan.videosPorDia").value(1))
-                .andExpect(jsonPath("$.concepto.tomas").value("Tomas cortas"))
-                .andExpect(jsonPath("$.concepto.estructura").value("Clásica"))
+                .andExpect(jsonPath("$.concepto.tomas").value("Historia con ambiente y movimiento"))
+                .andExpect(jsonPath("$.concepto.estructura").value("Historia"))
                 .andExpect(jsonPath("$.concepto.creatividad").isString())
                 .andExpect(jsonPath("$.concepto.idea").value(
-                        "La cámara descubre las fresas y termina en la porción servida."))
-                .andExpect(jsonPath("$.planos", hasSize(3)))
+                        "La cámara revela la torta en la vitrina y termina en la porción servida."))
+                .andExpect(jsonPath("$.planos", hasSize(2)))
                 .andExpect(jsonPath("$.planos[0].nombre").value("Gancho"))
-                .andExpect(jsonPath("$.planos[0].segundos").value(4))
+                .andExpect(jsonPath("$.planos[0].segundos").value(6))
                 .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_2"))
                 .andExpect(jsonPath("$.planos[0].foto.url").isString())
                 .andExpect(jsonPath("$.planos[0].movimiento.id").doesNotExist())
-                .andExpect(jsonPath("$.planos[0].movimiento.descripcion").value("Acercamiento a las fresas"))
+                .andExpect(jsonPath("$.planos[0].movimiento.descripcion")
+                        .value("La cámara revela la torta en la vitrina"))
                 .andExpect(jsonPath("$.planos[0].texto").value("Un antojo de fresas frescas"))
-                .andExpect(jsonPath("$.planos[0].maxPalabras").value(6))
+                .andExpect(jsonPath("$.planos[0].maxPalabras").value(7))
                 .andExpect(jsonPath("$.planos[1].nombre").value("Toma 2"))
+                .andExpect(jsonPath("$.planos[1].segundos").value(6))
                 .andExpect(jsonPath("$.planos[1].foto.tipo").value("FOTO_1"))
-                .andExpect(jsonPath("$.planos[2].foto.tipo").value("FOTO_3"))
-                .andExpect(jsonPath("$.planos[2].texto").doesNotExist())
-                .andExpect(jsonPath("$.cierre.orden").value(4))
+                .andExpect(jsonPath("$.planos[1].texto").value("Torta Tres Leches de casa"))
+                .andExpect(jsonPath("$.cierre.orden").value(3))
                 .andExpect(jsonPath("$.cierre.segundos").value(3))
                 .andExpect(jsonPath("$.cierre.precio").doesNotExist())
                 .andExpect(jsonPath("$.cierre.frase").value("Hecha con cariño para ti"))
@@ -202,44 +204,41 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     }
 
     /**
-     * La estructura que elige la IA define cuántas tomas hay, cuánto dura cada una y dónde va el cierre. El modo de
-     * tomas que eligió el negocio en el chat (2026-11-25) limita las estructuras que puede elegir la IA.
+     * Hay un solo modo de tomas (2026-11-25): el esquema que recibe Gemini solo admite la estructura HISTORIA y la
+     * creatividad AMBIENTE, y un guion con otra estructura u otra creatividad se rechaza y se pide de nuevo.
      */
     @Test
-    void laEstructuraElegidaDefineLasTomasYElCierre() throws Exception {
+    void elGuionSoloAdmiteHistoriaConAmbienteYOtroSeCorrige() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
-        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null, "HISTORIA");
+        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
 
-        // Una estructura fuera del modo se corrige en el intento siguiente.
+        GEMINI.responderTexto(GUION_CLASICO);
+        GEMINI.responderTexto(GUION_VALIDO.replace("\"creatividad\":\"AMBIENTE\"", "\"creatividad\":\"PRODUCTO\""));
         GEMINI.responderTexto(GUION_VALIDO);
-        GEMINI.responderTexto(GUION_HISTORIA);
         guiones.procesar(videoId);
 
         JsonNode pedido = json.readTree(GEMINI.peticiones().getFirst().cuerpo());
         assertThat(pedido.at("/generationConfig/responseJsonSchema/properties/estructura/enum").toString())
                 .isEqualTo("[\"HISTORIA\"]");
-        assertThat(pedido.at("/contents/0/parts/0/text").asString()).contains("El negocio eligió Historia")
-                .doesNotContain("- CLASICA (");
-        assertThat(GEMINI.peticiones()).hasSize(2);
-        assertThat(GEMINI.peticiones().get(1).cuerpo()).contains("El negocio pidió Historia");
+        assertThat(pedido.at("/generationConfig/responseJsonSchema/properties/creatividad/enum").toString())
+                .isEqualTo("[\"AMBIENTE\"]");
+        assertThat(pedido.at("/contents/0/parts/0/text").asString())
+                .contains("Usa la estructura HISTORIA y la creatividad AMBIENTE", "- AMBIENTE (")
+                .doesNotContain("- CLASICA (", "- PRODUCTO (", "- ORIGEN (");
+        assertThat(GEMINI.peticiones()).hasSize(3);
+        assertThat(GEMINI.peticiones().get(1).cuerpo()).contains(
+                "El negocio pidió Historia con ambiente y movimiento: la estructura debe ser una de [HISTORIA].");
+        assertThat(GEMINI.peticiones().get(2).cuerpo()).contains(
+                "El negocio pidió Historia con ambiente y movimiento: la creatividad debe ser una de [AMBIENTE].");
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("STORYBOARD"))
-                .andExpect(jsonPath("$.concepto.tomas").value("Historia"))
-                .andExpect(jsonPath("$.concepto.estructura").value("Historia"))
                 .andExpect(jsonPath("$.planos", hasSize(2)))
-                .andExpect(jsonPath("$.planos[0].segundos").value(6))
-                .andExpect(jsonPath("$.planos[1].segundos").value(6))
-                .andExpect(jsonPath("$.planos[1].maxPalabras").value(7))
-                .andExpect(jsonPath("$.planos[1].foto.tipo").value("FOTO_1"))
                 .andExpect(jsonPath("$.cierre.orden").value(3))
                 .andExpect(jsonPath("$.cierre.segundos").value(3));
         Video video = videos.findById(videoId).orElseThrow();
         assertThat(video.getEstructura()).isEqualTo("HISTORIA");
         assertThat(video.getCreatividad()).isEqualTo("AMBIENTE");
-        // El cierre se edita en su propio orden, después de la última toma.
-        editar(negocio, videoId, 3, Map.of("frase", "Tu antojo te espera"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cierre.frase").value("Tu antojo te espera"));
+        assertThat(video.getIntentosGuion()).isEqualTo(3);
     }
 
     @Test
@@ -313,7 +312,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         guiones.procesar(videoId);
         mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
                 .andExpect(jsonPath("$.estado").value("STORYBOARD"))
-                .andExpect(jsonPath("$.planos", hasSize(3)));
+                .andExpect(jsonPath("$.planos", hasSize(2)));
         mvc.perform(post("/api/videos/" + videoId + "/reintentar").with(csrf()).cookie(negocio))
                 .andExpect(status().isConflict());
     }
@@ -417,7 +416,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("TEXTO_MUY_LARGO"))
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Este plano admite hasta 6 palabras, para que se lea en el video."));
+                        "Este plano admite hasta 7 palabras, para que se lea en el video."));
         editar(negocio, videoId, 1, Map.of("texto", "La mejor torta de Lima"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PALABRA_PROHIBIDA"));
@@ -448,23 +447,23 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
 
         // Cierre: el precio (hasta 40 caracteres) y la frase (hasta 6 palabras).
-        editar(negocio, videoId, 4, Map.of("precio", "S/ 65 la torta entera y llévate un postre"))
+        editar(negocio, videoId, 3, Map.of("precio", "S/ 65 la torta entera y llévate un postre"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PRECIO_MUY_LARGO"));
-        editar(negocio, videoId, 4, Map.of("precio", "S/ 59"))
+        editar(negocio, videoId, 3, Map.of("precio", "S/ 59"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cierre.precio").value("S/ 59"));
-        editar(negocio, videoId, 4, Map.of("frase", "Una torta para compartir con toda la familia"))
+        editar(negocio, videoId, 3, Map.of("frase", "Una torta para compartir con toda la familia"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("FRASE_MUY_LARGA"));
-        editar(negocio, videoId, 4, Map.of("frase", "La mejor de Lima"))
+        editar(negocio, videoId, 3, Map.of("frase", "La mejor de Lima"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PALABRA_PROHIBIDA"));
-        editar(negocio, videoId, 4, Map.of("precio", "", "frase", "  Tu antojo te espera "))
+        editar(negocio, videoId, 3, Map.of("precio", "", "frase", "  Tu antojo te espera "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cierre.precio").doesNotExist())
                 .andExpect(jsonPath("$.cierre.frase").value("Tu antojo te espera"));
-        editar(negocio, videoId, 4, Map.of("texto", "Hola"))
+        editar(negocio, videoId, 3, Map.of("texto", "Hola"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
         editar(negocio, videoId, 1, Map.of("frase", "Hola"))
@@ -527,13 +526,8 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(cuerpo)));
     }
 
-    /** Recorre el chat completo, con tomas cortas, y devuelve el video que nace al terminar. */
-    private long completarChat(Cookie cookie, String tipoVideo, String precio) throws Exception {
-        return completarChat(cookie, tipoVideo, precio, "CORTAS");
-    }
-
     /** Recorre el chat completo y devuelve el video que nace al terminar. */
-    private long completarChat(Cookie cookie, String tipoVideo, String precio, String tomas) throws Exception {
+    private long completarChat(Cookie cookie, String tipoVideo, String precio) throws Exception {
         long producto = crearProducto(cookie);
         long id = vista(mvc.perform(post("/api/chat/conversaciones").with(csrf()).cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"empezarDeNuevo\":true}"))).get("id").asLong();
@@ -547,8 +541,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
             responder(cookie, id, Map.of("paso", "precio", "texto", precio));
             procesarDespues(cookie, id);
         }
-        responder(cookie, id, Map.of("paso", "extra", "omitir", true));
-        JsonNode fin = responder(cookie, id, Map.of("paso", "tomas", "opcion", tomas));
+        JsonNode fin = responder(cookie, id, Map.of("paso", "extra", "omitir", true));
         assertThat(fin.get("estado").asString()).isEqualTo("COMPLETA");
         assertThat(fin.get("videoId").isNumber()).isTrue();
         return fin.get("videoId").asLong();

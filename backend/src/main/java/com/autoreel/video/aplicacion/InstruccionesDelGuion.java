@@ -41,8 +41,7 @@ final class InstruccionesDelGuion {
         valores.put("fotos", fotos.stream().map(numero -> "Foto " + numero).collect(Collectors.joining(", ")));
         valores.put("modoDeTomas", modo.indicacion());
         valores.put("estructuras", estructuras(paquete, modo));
-        valores.put("creatividades", creatividades(paquete));
-        valores.put("movimientos", movimientos(datos, paquete));
+        valores.put("creatividades", creatividades(paquete, modo));
         valores.put("distritoHashtag", datos.distritoHashtag());
         valores.put("hashtagsBase", String.join(" ", paquete.plantillaVideo().hashtagsBase()));
         valores.put("maxPalabrasFrase", String.valueOf(paquete.plantillaVideo().maxPalabrasCierre()));
@@ -83,7 +82,8 @@ final class InstruccionesDelGuion {
     static String esquema(PaqueteNicho paquete, ModoDeTomas modo, List<Integer> fotos, ObjectMapper json) {
         List<Estructura> permitidas = paquete.plantillaVideo().estructurasPara(modo);
         List<String> estructuras = permitidas.stream().map(Estructura::id).toList();
-        List<String> creatividades = paquete.movimientos().creatividades().stream().map(Creatividad::id).toList();
+        List<String> creatividades = paquete.movimientos().creatividades().stream()
+                .map(Creatividad::id).filter(modo::admiteCreatividad).toList();
         int maximoTomas = permitidas.stream().mapToInt(e -> e.tomas().size()).max().orElse(1);
         Map<String, Object> textoOpcional = Map.of("type", List.of("string", "null"));
         Map<String, Object> plano = Map.of(
@@ -160,16 +160,11 @@ final class InstruccionesDelGuion {
         return String.join("\n", lineas);
     }
 
-    private static String creatividades(PaqueteNicho paquete) {
+    private static String creatividades(PaqueteNicho paquete, ModoDeTomas modo) {
         return String.join("\n", paquete.movimientos().creatividades().stream()
+                .filter(creatividad -> modo.admiteCreatividad(creatividad.id()))
                 .map(creatividad -> "- " + creatividad.id() + " (" + creatividad.nombre() + "): "
                         + creatividad.descripcion() + " Cómo escribir la toma: " + creatividad.guia())
-                .toList());
-    }
-
-    private static String movimientos(DatosDelGuion datos, PaqueteNicho paquete) {
-        return String.join("\n", paquete.movimientos().para(datos.tipoVideo()).stream()
-                .map(movimiento -> "- " + movimiento.descripcion() + ": " + movimiento.instruccion())
                 .toList());
     }
 

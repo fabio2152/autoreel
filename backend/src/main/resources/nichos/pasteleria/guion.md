@@ -24,19 +24,20 @@ Si hay más de una, elige la que mejor sirva al producto y a sus fotos: con vari
 
 ## Nivel de creatividad
 
-Elige uno según el producto, el tipo de video y el negocio:
+Usa uno de estos:
 
 {creatividades}
 
-Sé creativo, pero con sentido: la toma debe verse como un comercial real de pastelería, el producto nunca se deforma, no se corta, no se come ni cambia su decoración, y no aparecen personas, manos ni letreros con texto.
+Sé creativo, pero con sentido: la toma debe verse como un comercial real de pastelería, el producto nunca se deforma, no se come ni cambia su decoración, y no aparecen personas, manos ni letreros con texto.
 
 ## Cómo escribir cada toma (campo "toma", en inglés)
 
 - Entre 40 y 110 palabras. Describe una sola toma continua: qué hace la cámara (o qué pasa alrededor del producto), con qué lente, luz y ritmo, y cómo termina.
-- Escribe lo que se ve, no lo que se siente ("the camera slowly rises and reveals the cake on a bakery display counter", no "an amazing magical moment").
+- Escribe lo que se ve, no lo que se siente ("the camera slowly rises and reveals the cake inside a bakery display case", no "an amazing magical moment").
+- **El fondo cuenta:** la cámara lleva el producto a un lugar bonito y creíble (la vitrina de la pastelería con luces cálidas, vidrio y mármol; una mesa elegante junto a la ventana con luz de día, sillas y flores desenfocadas). Nunca lo dejes sobre un fondo vacío o de estudio.
+- **El producto se mueve, no solo la cámara:** en cada toma algo del producto se mueve de forma realista y antojable: una porción que se levanta despacio de la torta (con la paleta si se ve en la foto) y se acerca a la cámara, frutos que se acomodan o ruedan suavemente, un glaseado que brilla y cae, migas o azúcar que caen. Termina cerca del detalle más rico (la fruta, el relleno).
+- **Nada de tomas simples:** no escribas tomas que solo acercan, alejan o giran alrededor del postre. El movimiento de cámara sirve para revelar el lugar y acompañar el movimiento del producto.
 - No pidas texto, letras, logos, personas ni manos: el sistema ya lo prohíbe y Veo puede rechazar la toma.
-- Estos movimientos de cámara funcionan bien; úsalos como inspiración o combínalos:
-{movimientos}
 
 En "descripcionToma" resume la toma en español, en pocas palabras, para que el dueño la entienda en el storyboard (por ejemplo "La cámara sube y revela la torta en la vitrina").
 
@@ -85,6 +86,7 @@ El cierre se muestra con el logo del negocio y su llamado a la acción. Tú escr
 - El negocio escribió como precio "la torta entera a 65 soles, la porcion a 8". Mal: `"precio": "S/ 60"` (cambia el número y la moneda). Bien: `"precio": "65 soles la torta entera"`.
 - Mal en pantalla: "Torta rica y bonita" (plano y sin antojo). Bien: "Cremosa en cada cucharada".
 - Mal: una toma que muestra la torta girando con el texto "Te esperamos en la tienda" (no se ve ninguna tienda). Bien: la cámara retrocede y la torta aparece en la vitrina, con el texto "Ya te espera en la vitrina".
+- Muy bien (toma 1): "Starting from the centered shot of the whole cake, the camera smoothly cranes upward and arcs, revealing the cake inside an elegant boutique pastry display case with warm lights and marble, while the glossy berries on top gently settle and glisten." Muy bien (toma 2): "Starting from the slice on the plate, the slice slowly lifts on the cake server and glides toward the camera as the camera pulls back to reveal a marble table by a sunny window, ending on a close-up of the fresh berries and the creamy mousse."
 
 ## Descripción y hashtags
 

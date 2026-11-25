@@ -131,6 +131,9 @@ public class PaquetePasteleria implements PaqueteNicho {
             exigir(pista.duracionSegundos() >= 15, "la pista " + pista.archivo() + " dura menos de 15 segundos");
         }
         validarMovimientos();
+        plantillaVideo.modosDeToma().forEach(modo -> modo.creatividades().forEach(creatividad -> exigir(
+                movimientos.creatividad(creatividad).isPresent(),
+                "el modo " + modo.id() + " usa la creatividad " + creatividad + ", que no existe")));
         guionDelChat.pasos().stream().filter(paso -> paso.id().equals("tomas")).findFirst().ifPresent(paso ->
                 paso.opciones().forEach(opcion -> exigir(plantillaVideo.modosDeToma().stream()
                                 .anyMatch(modo -> modo.id().equals(opcion.valor())),

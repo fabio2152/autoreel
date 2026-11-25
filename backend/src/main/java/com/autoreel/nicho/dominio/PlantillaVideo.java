@@ -67,15 +67,21 @@ public record PlantillaVideo(int duracionVideo, List<Estructura> estructuras, St
     /**
      * Cómo quiere el negocio las tomas del video (paso "tomas" del chat, 2026-11-25).
      *
-     * @param estructuras  las que puede elegir la IA con este modo.
+     * @param estructuras   las que puede elegir la IA con este modo.
+     * @param creatividades los niveles de creatividad que puede elegir la IA; vacío, todos.
      * @param transiciones cada toma termina en la foto de la siguiente (el modelo de video recibe la foto final).
      * @param indicacion   lo que se le dice a la IA en el guion.
      */
-    public record ModoDeTomas(String id, String nombre, List<String> estructuras, boolean transiciones,
-            String indicacion) {
+    public record ModoDeTomas(String id, String nombre, List<String> estructuras, List<String> creatividades,
+            boolean transiciones, String indicacion) {
 
         public ModoDeTomas {
             estructuras = estructuras == null ? List.of() : List.copyOf(estructuras);
+            creatividades = creatividades == null ? List.of() : List.copyOf(creatividades);
+        }
+
+        public boolean admiteCreatividad(String creatividad) {
+            return creatividades.isEmpty() || creatividades.contains(creatividad);
         }
     }
 
