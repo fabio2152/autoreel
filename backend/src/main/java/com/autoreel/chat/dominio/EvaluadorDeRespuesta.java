@@ -46,7 +46,7 @@ public final class EvaluadorDeRespuesta {
         return new Aceptada(limpio);
     }
 
-    /** "No, gracias" sin escribir: solo vale si la pregunta no es obligatoria en este momento. */
+    /** "No" sin escribir: solo vale si la pregunta no es obligatoria en este momento. */
     public static Evaluacion omitir(GuionChat guion, PasoChat paso, Map<String, Object> respuestas) {
         if (!paso.esObligatoria(respuestas)) {
             return new Aceptada(null);

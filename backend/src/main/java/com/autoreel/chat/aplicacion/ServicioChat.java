@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ServicioChat {
 
-    private static final String RESPUESTA_OMITIDA = "No, gracias";
+    private static final String RESPUESTA_OMITIDA = "No";
 
     private final ConversacionRepositorio conversaciones;
     private final NegocioRepositorio negocios;

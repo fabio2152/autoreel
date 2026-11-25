@@ -2,6 +2,13 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Un solo movimiento con pala y chat más simple] - 2026-11-25
+
+### Cambiado
+
+- **El producto hace un solo movimiento por toma**, de principio a fin y sin repetirlo: antes, Veo hacía caer la torta, la volvía a subir y la bajaba otra vez. Si sube, baja o se traslada, va **sobre una pala para tortas** que entra por el borde del cuadro (se ve solo una parte, nunca manos), así no parece que levita. Las prohibiciones del clip permiten esa pala y siguen prohibiendo cuchillos, tenedores, cucharas y manos. El producto entero ya no "se desliza" sobre su base (en una prueba, Veo puso una mano que empujaba la torta): siempre lo mueve la pala, y se prohíben manos, brazos y mangas incluso en los bordes del cuadro.
+- **Chat:** la primera pregunta ya no ofrece "Tortas por encargo"; "¿Qué lo hace especial hoy?" pasa a "¿Con qué frase quieres presentarlo?" (la IA se inspira en esa frase para el gancho); el botón para omitir una pregunta opcional dice "No" en lugar de "No, gracias".
+
 ## [El producto ya no gira] - 2026-11-25
 
 ### Cambiado

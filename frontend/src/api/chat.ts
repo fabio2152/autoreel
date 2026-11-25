@@ -11,7 +11,7 @@ export interface PasoChat {
   texto: string
   opciones: Opcion[]
   obligatoria: boolean
-  /** Se puede responder "No, gracias". */
+  /** Se puede responder "No" sin escribir. */
   omitible: boolean
   /** Punto de partida que se ofrece (la descripción del producto). */
   sugerencia: string | null

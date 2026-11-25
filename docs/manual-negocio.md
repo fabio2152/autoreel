@@ -479,7 +479,7 @@ Toca **Inicio**. El chat ocupa toda la pantalla y va **centrado**: las preguntas
 ```mermaid
 flowchart TD
     A["¿Qué video quieres crear hoy?"] --> B["¿Qué producto mostramos?"]
-    B -->|Elegir de tu catálogo| C["¿Qué lo hace especial hoy?"]
+    B -->|Elegir de tu catálogo| C["¿Con qué frase quieres presentarlo?"]
     B -->|Subir uno nuevo hoy| C
     C --> D["¿Hay precio o promoción que quieras mencionar?"]
     D --> E["¿Algo más que quieras que se diga?"]
@@ -492,9 +492,9 @@ flowchart TD
 
 | Pregunta | Cómo se responde | Ejemplo que ves | ¿Obligatoria? |
 |---|---|---|---|
-| **¡Hola! ¿Qué video quieres crear hoy?** | Toca un botón: **Producto estrella**, **Promoción**, **Tortas por encargo** o **Recién salido del horno**. O escríbelo con tus palabras en la caja de texto (ver abajo). | O escríbelo: "Quiero mostrar la torta de fresa que más nos piden". | Sí |
+| **¡Hola! ¿Qué video quieres crear hoy?** | Toca un botón: **Producto estrella**, **Promoción** o **Recién salido del horno** (desde el 2026-11-25 ya no está "Tortas por encargo"). O escríbelo con tus palabras en la caja de texto (ver abajo). | O escríbelo: "Quiero mostrar la torta de fresa que más nos piden". | Sí |
 | **¿Qué producto mostramos?** | Elige uno de tu catálogo o sube uno nuevo (sección 11.3). | — | Sí |
-| **¿Qué lo hace especial hoy?** | Escribe con tus palabras. Si tocas **Usar la descripción de mi producto**, se copia la descripción del catálogo en la caja de texto para que la ajustes antes de enviarla. | Ej.: "Bizcocho de vainilla con fresas frescas, recién hecho esta mañana". | Sí |
+| **¿Con qué frase quieres presentarlo?** (antes "¿Qué lo hace especial hoy?") | Escribe una frase o idea para presentar tu producto; la IA se inspira en ella para el gancho del video. Ej.: "La más pedida de la semana". Escribe con tus palabras. Si tocas **Usar la descripción de mi producto**, se copia la descripción del catálogo en la caja de texto para que la ajustes antes de enviarla. | Ej.: "Bizcocho de vainilla con fresas frescas, recién hecho esta mañana". | Sí |
 | **¿Hay precio o promoción que quieras mencionar?** | Escribe el precio o la promoción con sus números. AutoReel lo resume para el cierre con tus mismos números y moneda. También puedes pedir otra cosa: "no pongas precio, solo que están recién salidas del horno" (sección 12.6). | Ej.: "S/ 65" o "2x1 hasta el domingo". | Solo si elegiste **Promoción** |
 | **¿Algo más que quieras que se diga?** | Escribe lo que quieras agregar. | Ej.: "Atendemos pedidos hasta las 8 p. m.". | No |
 
@@ -534,7 +534,7 @@ Si falta algo, la ventana te lo dice: "Escribe el nombre y la descripción del p
 
 ### 11.4 Escribe con calma: tus mensajes seguidos se unen
 
-En las preguntas que se escriben (desde "¿Qué lo hace especial hoy?"), puedes responder en **un solo mensaje o en varios seguidos**. Toca **Enviar** o la tecla Enter (con Mayús + Enter haces un salto de línea). En la primera pregunta, lo que escribes se toma de inmediato como una sola respuesta (sección 11.2).
+En las preguntas que se escriben (desde "¿Con qué frase quieres presentarlo?"), puedes responder en **un solo mensaje o en varios seguidos**. Toca **Enviar** o la tecla Enter (con Mayús + Enter haces un salto de línea). En la primera pregunta, lo que escribes se toma de inmediato como una sola respuesta (sección 11.2).
 
 - **Los mensajes que envías con menos de 4 segundos entre uno y otro se unen en una sola respuesta.** Por ejemplo, "Torta de fresa", "con crema" y "recién hecha" se toman como "Torta de fresa con crema recién hecha".
 - **Cuando pasan 4 segundos sin que envíes otro mensaje, AutoReel toma tu respuesta** y hace la siguiente pregunta. En ese momento ves "escribiendo…" bajo la conversación.
@@ -552,7 +552,7 @@ En las preguntas que se escriben (desde "¿Qué lo hace especial hoy?"), puedes 
 | Elegiste **Promoción** y respondes "no" al precio | Responde: "Como es una promoción, necesito el precio o la promoción tal como quieres que aparezca. Por ejemplo: "S/ 65" o "2x1 hasta el domingo"." y repite la pregunta. |
 | El producto elegido se archivó o perdió una foto antes de terminar | Responde: "Ese producto ya no está disponible. Elige otro o sube uno nuevo." y vuelve a la pregunta del producto. |
 
-**"No, gracias".** Las preguntas opcionales (el precio, cuando el video no es una Promoción, y "¿Algo más…?") tienen el botón **No, gracias** sobre la caja de texto. Tócalo para pasar a la siguiente sin escribir. También puedes escribir "no", "nada" o "sin precio": se entiende igual. Si elegiste **Promoción**, el precio no tiene ese botón.
+**"No".** Las preguntas opcionales (el precio, cuando el video no es una Promoción, y "¿Algo más…?") tienen el botón **No** (antes "No, gracias") sobre la caja de texto. Tócalo para pasar a la siguiente sin escribir. También puedes escribir "no", "nada" o "sin precio": se entiende igual. Si elegiste **Promoción**, el precio no tiene ese botón.
 
 ### 11.6 Continuar o empezar de nuevo
 

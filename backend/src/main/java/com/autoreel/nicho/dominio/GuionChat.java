@@ -37,7 +37,7 @@ public record GuionChat(int minimoCaracteres, int maximoCaracteres, List<String>
     }
 
     /**
-     * @param omitible    se puede responder "No, gracias" sin escribir (solo si no es obligatoria en ese momento).
+     * @param omitible    se puede responder "No" sin escribir (solo si no es obligatoria en ese momento).
      * @param ejemplo     ejemplo corto de respuesta que se muestra bajo la caja de texto (2026-11-06).
      * @param opcionLibre en un paso de botones, la opción que se usa si el usuario escribe en lugar de tocar un botón:
      *                    su texto se guarda aparte ({@code <id>Libre}) y llega al guion como contexto (2026-11-06).

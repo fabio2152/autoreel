@@ -38,10 +38,6 @@
           "texto": "Promoción"
         },
         {
-          "valor": "TORTAS_POR_ENCARGO",
-          "texto": "Tortas por encargo"
-        },
-        {
           "valor": "RECIEN_HORNEADO",
           "texto": "Recién salido del horno"
         }
@@ -58,10 +54,10 @@
     {
       "id": "especial",
       "tipo": "TEXTO",
-      "texto": "¿Qué lo hace especial hoy?",
+      "texto": "¿Con qué frase quieres presentarlo?",
       "obligatoria": true,
       "sugerencia": "DESCRIPCION_PRODUCTO",
-      "ejemplo": "Ej.: \"Bizcocho de vainilla con fresas frescas, recién hecho esta mañana\"."
+      "ejemplo": "Ej.: \"La más pedida de la semana\" o \"Recién hecha con fresas del día\"."
     },
     {
       "id": "precio",
