@@ -308,6 +308,10 @@ public class FfmpegComponedor implements ComponedorDeVideo, ApplicationRunner {
         if (!vacio(whatsapp)) {
             pequenas.add(whatsapp);
         }
+        String web = Texto.soloDibujable(cierre.web());
+        if (!vacio(web)) {
+            pequenas.add(web);
+        }
         int tamanoPequeno = pequenas.stream()
                 .mapToInt(texto -> diseno.repartir(texto, ANCHO_UTIL, 1, 50, 44).tamano()).min().orElse(50);
 

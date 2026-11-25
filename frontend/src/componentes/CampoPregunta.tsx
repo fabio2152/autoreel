@@ -67,6 +67,23 @@ export function CampoPregunta({ pregunta, respuestas, onCambiar }: Props) {
   }
 
   const texto = typeof valor === 'string' ? valor : ''
+  if (pregunta.tipo === 'WEB') {
+    return (
+      <Campo
+        etiqueta={etiqueta}
+        ayuda={pregunta.ayuda}
+        type="text"
+        inputMode="url"
+        autoComplete="url"
+        autoCapitalize="none"
+        spellCheck={false}
+        placeholder="dulceencanto.pe"
+        maxLength={pregunta.maxLongitud ?? undefined}
+        value={texto}
+        onChange={(e) => onCambiar(pregunta.id, e.target.value)}
+      />
+    )
+  }
   return (
     <Campo
       etiqueta={etiqueta}

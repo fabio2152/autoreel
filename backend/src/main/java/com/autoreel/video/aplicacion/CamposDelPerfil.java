@@ -17,6 +17,15 @@ final class CamposDelPerfil {
     static final String PALABRAS_PROHIBIDAS = "palabrasProhibidas";
     /** Opción de {@link #CANALES}: el cierre muestra el número de WhatsApp. */
     static final String CANAL_WHATSAPP = "WHATSAPP";
+    static final String WEB = "web";
+    /** Opción de {@link #CANALES}: el cierre muestra la página web (2026-11-25). */
+    static final String CANAL_WEB = "WEB";
+
+    /** La página web que se muestra en el cierre: solo si el negocio vende por su web. */
+    static String paginaWebDelCierre(java.util.Map<String, Object> respuestas) {
+        return respuestas.get(CANALES) instanceof java.util.Collection<?> canales && canales.contains(CANAL_WEB)
+                && respuestas.get(WEB) instanceof String web && !web.isBlank() ? web : null;
+    }
 
     private CamposDelPerfil() {
     }

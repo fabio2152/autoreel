@@ -51,6 +51,7 @@
   "maxPalabrasCierre": 6,
   "llamados": {
     "WHATSAPP": "Pide por WhatsApp",
+    "WEB": "Pide en nuestra web",
     "DELIVERY": "Pídelo por delivery",
     "TIENDA": "Te esperamos en {distrito}"
   },

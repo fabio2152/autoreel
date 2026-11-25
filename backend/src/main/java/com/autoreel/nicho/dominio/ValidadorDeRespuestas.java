@@ -18,6 +18,9 @@ import com.autoreel.compartido.error.ExcepcionDeNegocio;
 public final class ValidadorDeRespuestas {
 
     private static final Pattern CELULAR_PERUANO = Pattern.compile("^(?:\\+?51)?(9\\d{8})$");
+    /** Un dominio con al menos un punto ("dulceencanto.pe") y, si quiere, una ruta ("/pedidos"). */
+    private static final Pattern PAGINA_WEB =
+            Pattern.compile("^[\\p{L}\\p{N}-]+(\\.[\\p{L}\\p{N}-]+)*\\.\\p{L}{2,}(/\\S*)?$");
 
     private ValidadorDeRespuestas() {
     }
@@ -67,6 +70,7 @@ public final class ValidadorDeRespuestas {
         return switch (pregunta.tipo()) {
             case TEXTO -> texto(pregunta, valor);
             case TELEFONO -> telefono(pregunta, valor);
+            case WEB -> paginaWeb(pregunta, valor);
             case SELECCION_MULTIPLE -> seleccion(pregunta, valor);
         };
     }
@@ -93,6 +97,20 @@ public final class ValidadorDeRespuestas {
             throw invalida("Escribe un celular de 9 dígitos que empiece con 9.");
         }
         return "+51" + coincidencia.group(1);
+    }
+
+    /** Sin "https://", sin "www." y sin la barra final, que no aportan en el cierre del video. */
+    private static String paginaWeb(Pregunta pregunta, Object valor) {
+        String texto = texto(pregunta, valor);
+        if (texto == null) {
+            return null;
+        }
+        String limpio = texto.replaceFirst("(?i)^https?://", "").replaceFirst("(?i)^www\\.", "")
+                .replaceFirst("/+$", "");
+        if (!PAGINA_WEB.matcher(limpio).matches()) {
+            throw invalida("Escribe la dirección de tu página web, por ejemplo dulceencanto.pe.");
+        }
+        return limpio;
     }
 
     private static List<String> seleccion(Pregunta pregunta, Object valor) {

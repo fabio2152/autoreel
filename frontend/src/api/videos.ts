@@ -54,6 +54,8 @@ export interface CierreVista {
   llamado: string | null
   ubicacion: string
   whatsapp: string | null
+  /** Página web, si el negocio vende por su web. */
+  web: string | null
   logo: string | null
   colorPrimario: string | null
   colorSecundario: string | null

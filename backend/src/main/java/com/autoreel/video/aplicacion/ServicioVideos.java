@@ -416,7 +416,8 @@ public class ServicioVideos {
         return new VideoVista.CierreVista(plano.getOrden(), PlantillaVideo.NOMBRE_CIERRE, plano.getSegundos(),
                 plano.getPrecio(), plantilla.maximoCaracteresPrecio(), plano.getFrase(), plantilla.maxPalabrasCierre(),
                 plano.getLlamado(), plano.getUbicacion(),
-                whatsapp, archivos.urlDeLectura(perfil.getLogoClave()), perfil.getColorPrimario(),
+                whatsapp, CamposDelPerfil.paginaWebDelCierre(perfil.getRespuestas()),
+                archivos.urlDeLectura(perfil.getLogoClave()), perfil.getColorPrimario(),
                 perfil.getColorSecundario(), archivos.urlDeLectura(perfil.getFotoLocalClave()));
     }
 

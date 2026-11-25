@@ -62,9 +62,11 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
      * @param frase                  se muestra en grande cuando no hay precio.
      * @param maxPalabrasFrase       palabras de la frase.
      * @param whatsapp               número a mostrar si el negocio vende por WhatsApp.
+     * @param web                    página web a mostrar si el negocio vende por su web.
      */
     public record CierreVista(int orden, String nombre, int segundos, String precio, int maximoCaracteresPrecio,
-            String frase, int maxPalabrasFrase, String llamado, String ubicacion, String whatsapp, String logo,
+            String frase, int maxPalabrasFrase, String llamado, String ubicacion, String whatsapp, String web,
+            String logo,
             String colorPrimario,
             String colorSecundario, String fotoLocal) {
     }

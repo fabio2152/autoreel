@@ -163,6 +163,7 @@ public class ServicioComposicion {
                 ? datos.guion().whatsapp() : null;
         CierreAComponer cierreAComponer = new CierreAComponer(cierre.getSegundos(), fotoDelLocal, logo,
                 cierre.textoPrincipalDelCierre(), cierre.getLlamado(), cierre.getUbicacion(), whatsapp,
+                CamposDelPerfil.paginaWebDelCierre(perfil.getRespuestas()),
                 perfil.getColorPrimario());
 
         byte[] musica = video.getPistaMusicalId() == null ? null
