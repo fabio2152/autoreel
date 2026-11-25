@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Movimiento del producto más marcado] - 2026-11-25
+
+### Cambiado
+
+- **El producto es el protagonista del movimiento** (`movimientos.json`, `plantilla.json`, `guion.md`): en la toma de la porción, la porción siempre se levanta (con la paleta si se ve en la foto), sube y viaja hacia la cámara hasta un primer plano de la fruta y el relleno; en la toma del producto entero, el producto también se mueve a la vista (gira sobre su base, los frutos se acomodan o el glaseado cae). La toma pide verbos claros, no "subtly". Probado con un video por torta con Veo 3.1 Fast.
+
 ## [Un solo modo de tomas] - 2026-11-25
 
 Decisión del usuario después de revisar 10 videos con Veo 3.1 (ADR 0025).
