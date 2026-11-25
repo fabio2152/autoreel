@@ -11,7 +11,7 @@
 - **Cierre de cada fase:**
   1. Casos de verificación de la fase (sección 17) revisados.
   2. `CHANGELOG.md` y la documentación de `docs/` actualizados.
-  3. Pull request abierto con el CI en verde (`.github/workflows/ci.yml`: `./mvnw -B verify` en el backend; `npm ci`, `npm run lint` y `npm run build` en el frontend).
+  3. Pull request abierto e integrado después de verificar en local: `./mvnw verify` en el backend; `npm run lint` y `npm run build` en el frontend. *Desde el 2026-11-25 no hay CI en GitHub Actions (ADR 0023).*
 - **Proyecto individual** (Fabio Malpartida). Por eso `docs/` y `.claude/` son locales y están en `.gitignore`.
 
 ## 2. Hoja de ruta del MVP

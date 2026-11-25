@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin CI en GitHub Actions] - 2026-11-25
+
+### Quitado
+
+- El workflow `.github/workflows/ci.yml`: GitHub tenía bloqueadas las Actions de la cuenta por facturación y cada push fallaba. Antes de integrar se corre en local `mvnw verify`, `npm run lint` y `npm run build` (ADR 0023).
+
 ## [Guion flexible] - 2026-11-25
 
 Videos menos de plantilla y más creativos, pedidos por el usuario para la demo. Decisiones en el ADR 0022.
