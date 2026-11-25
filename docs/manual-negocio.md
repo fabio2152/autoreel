@@ -169,7 +169,7 @@ Debajo del título dice: "Así se verán tus videos."
 | Campo | Qué poner | ¿Obligatorio? |
 |---|---|---|
 | **Nombre comercial** | Ya viene escrito, tal como lo registró el administrador. Puedes corregirlo. Hasta 120 caracteres. | Sí |
-| **Logo** | Toca el recuadro o **Subir** y elige tu logo. Debe ser **PNG** de hasta **5 MB** y medir al menos **200 px** en su lado más corto. La vista previa se muestra sobre un fondo a cuadros para que veas si es transparente. Para reemplazarlo, toca **Cambiar**. | Sí |
+| **Logo** | Toca el recuadro o **Subir** y elige tu logo. Debe ser **PNG** de hasta **5 MB**; puede tener cualquier tamaño. La vista previa se muestra sobre un fondo a cuadros para que veas si es transparente. Para reemplazarlo, toca **Cambiar**. | Sí |
 | **Tus dos colores de marca** | Un color **Principal** y uno **Secundario**. Toca cada círculo para elegirlo; debajo ves su código (por ejemplo `#BE123C`). Vienen con dos colores sugeridos que puedes cambiar. | Sí |
 | **Tomar del logo** | Aparece al lado de los colores después de subir el logo. Toca y AutoReel toma los dos colores más fuertes de tu logo. Si tu logo es casi todo blanco o negro, verás "No encontramos colores claros en tu logo. Elígelos a mano." | — |
 | **Estilo de tus videos** | Elige uno: **Casero**, **Elegante** o **Divertido**. Define el tono de los textos, la tipografía y la música. | Sí |
