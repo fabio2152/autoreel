@@ -34,12 +34,17 @@ public final class ServidorOmniSimulado implements AutoCloseable {
     public static final byte[] CLIP = "clip-omni-de-prueba".getBytes(StandardCharsets.UTF_8);
     /** 4 segundos a 720p (5.792 tokens por segundo). */
     public static final int TOKENS_DE_VIDEO = 4 * 5792;
-    /** Un guion válido para la Torta Tres Leches con "Fresas frescas de Huaral" de un negocio de Miraflores. */
+    /** Un guion válido (estructura CLÁSICA, tres tomas de 4 s) para la Torta Tres Leches con "Fresas frescas de Huaral" de un negocio de Miraflores. */
     public static final String GUION = """
-            {"planos":[
-              {"orden":1,"movimiento":"MACRO_DETALLE","texto":"Un antojo de fresas frescas"},
-              {"orden":2,"movimiento":"ORBITA_FRONTAL","texto":"Torta Tres Leches de casa"},
-              {"orden":3,"movimiento":"PARALAJE_LATERAL","texto":"Cada porción con fresas de Huaral"}],
+            {"estructura":"CLASICA","creatividad":"PRODUCTO",
+             "idea":"La cámara descubre las fresas y termina en la porción servida.",
+             "planos":[
+              {"orden":1,"foto":2,"toma":"Slow push-in on the strawberries.",
+               "descripcionToma":"Acercamiento a las fresas","texto":"Un antojo de fresas frescas"},
+              {"orden":2,"foto":1,"toma":"Slow orbit around the whole cake.",
+               "descripcionToma":"Órbita alrededor de la torta","texto":"Torta Tres Leches de casa"},
+              {"orden":3,"foto":3,"toma":"Gentle crane up over the slice.",
+               "descripcionToma":"Grúa sobre la porción","texto":"Cada porción con fresas de Huaral"}],
              "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
              "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
              "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";

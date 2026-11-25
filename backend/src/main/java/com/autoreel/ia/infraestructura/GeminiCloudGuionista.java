@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.autoreel.ia.dominio.Guionista;
+import com.autoreel.ia.dominio.Guionista.ImagenAdjunta;
 import com.autoreel.ia.dominio.ModeloIA;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -36,9 +37,10 @@ public class GeminiCloudGuionista implements Guionista {
     }
 
     @Override
-    public RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson) {
+    public RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson,
+            List<ImagenAdjunta> imagenes) {
         Map<String, Object> cuerpo = Map.of(
-                "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", instrucciones)))),
+                "contents", List.of(Map.of("role", "user", "parts", partes(instrucciones, imagenes))),
                 "generationConfig", Map.of(
                         "responseMimeType", "application/json",
                         "responseJsonSchema", json.readTree(esquemaJson),
@@ -61,5 +63,16 @@ public class GeminiCloudGuionista implements Guionista {
     private static double temperatura(ModeloIA modelo) {
         Object valor = modelo.getParametros() == null ? null : modelo.getParametros().get("temperatura");
         return valor instanceof Number numero ? numero.doubleValue() : TEMPERATURA_POR_DEFECTO;
+    }
+
+    /** El texto y, después, cada imagen en línea (base64). */
+    static List<Map<String, Object>> partes(String instrucciones, List<ImagenAdjunta> imagenes) {
+        List<Map<String, Object>> partes = new java.util.ArrayList<>();
+        partes.add(Map.of("text", instrucciones));
+        for (ImagenAdjunta imagen : imagenes) {
+            partes.add(Map.of("inlineData", Map.of("mimeType", imagen.tipo(),
+                    "data", java.util.Base64.getEncoder().encodeToString(imagen.contenido()))));
+        }
+        return partes;
     }
 }

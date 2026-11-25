@@ -2,7 +2,7 @@
 
 Guía de uso del **panel de administración de AutoReel** (`/admin`). Explica cómo crear negocios, entregarles su acceso, cobrarles, configurar la IA y darles soporte.
 
-> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). *Actualización del 2026-11-12:* con la **mejora de la calidad del video** (ADR 0021), **el guion tampoco tiene respaldo sin IA** (sección 18.2). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) y la **fase 8** (despliegue en AWS) están **pendientes** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
+> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). *Actualización del 2026-11-12:* con la **mejora de la calidad del video** (ADR 0021), **el guion tampoco tiene respaldo sin IA** (sección 18.2). *Actualización del 2026-11-25 (guion flexible, ADR 0022):* el plan Lite usa **Veo 3.1 Lite** en Google Cloud para los clips y hay dos modelos nuevos, **Veo 3.1 Fast** y **Veo 3.1** (secciones 15.1, 15.4, 16.1 y 19). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) y la **fase 8** (despliegue en AWS) están **pendientes** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
 
 ---
 
@@ -615,7 +615,7 @@ Regla RF-07 y RN-32. Pulsa **Costos** en la barra superior (`/admin/costos`). La
 
 **De dónde salen los números.** Cada llamada que el proveedor cobra guarda una fila en `registro_costo` (secciones 18.4 y 19.7):
 - **Guion:** cada respuesta de Gemini, aunque el guion no sirva, con el costo por guion del modelo (US$ 0.01 en la semilla).
-- **Clip:** cada clip entregado, y también cada tarea enviada que se abandonó (por tiempo o porque el video pasó a error), porque el proveedor la cobra igual. Con Gemini Omni Flash, un clip de 4 s cuesta unos **US$ 0.28** (US$ 0.07 por segundo).
+- **Clip:** cada clip entregado, y también cada tarea enviada que se abandonó (por tiempo o porque el video pasó a error), porque el proveedor la cobra igual. Con Gemini Omni Flash, un clip de 4 s cuesta unos **US$ 0.28** (US$ 0.07 por segundo). Desde el 2026-11-25 (`V11`), con Veo 3.1 Lite, el del plan Lite, un clip de 4 s cuesta unos **US$ 0.20** (US$ 0.05 por segundo); los clips duran 4, 6 u 8 s según el momento del video (sección 19.7).
 
 El costo de cada modelo se edita en **Ajustes → Integraciones y claves** (sección 15.4). Cambiarlo no recalcula los costos ya registrados.
 
@@ -639,10 +639,10 @@ AutoReel puede usar Google por dos caminos, y la elección es un dato de la base
 
 | Camino | Clave | Texto (guion) | Video (clips) | Estado |
 |---|---|---|---|---|
-| **Google AI Studio** | Una clave de API (secreto `autoreel/gemini`) | **Gemini** (`gemini-3.8-flash`, adaptador `GEMINI`) | **Gemini Omni Flash** (`gemini-omni-1.2-flash`, adaptador `GEMINI_OMNI`) | **Activo**: lo usa el plan Lite |
-| **Google Cloud (Vertex AI)** | Una clave de API de Google Cloud más el parámetro `proyecto`, o una cuenta de servicio en JSON (secreto `autoreel/google-cloud`) | **Gemini (Google Cloud)** (`gemini-3.8-flash`, adaptador `GEMINI_CLOUD`) | **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`, adaptador `VEO`) | Listo e **inactivo** |
+| **Google AI Studio** | Una clave de API (secreto `autoreel/gemini`) | **Gemini** (`gemini-3.8-flash`, adaptador `GEMINI`) | **Gemini Omni Flash** (`gemini-omni-1.2-flash`, adaptador `GEMINI_OMNI`) | **Activo**: el plan Lite usa su Gemini para el guion. Gemini Omni Flash está activo, pero sin plan desde el 2026-11-25 |
+| **Google Cloud (Vertex AI)** | Una clave de API de Google Cloud más el parámetro `proyecto`, o una cuenta de servicio en JSON (secreto `autoreel/google-cloud`) | **Gemini (Google Cloud)** (`gemini-3.8-flash`, adaptador `GEMINI_CLOUD`) | **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`), **Veo 3.1 Fast** (`veo-3.1-fast-generate-001`) y **Veo 3.1** (`veo-3.1-generate-001`), adaptador `VEO` | Desde el 2026-11-25 (`V11`), **los tres Veo están activos y el plan Lite usa Veo 3.1 Lite** para los clips. Gemini (Google Cloud) sigue inactivo |
 
-**Hoy basta una sola clave, la de Google AI Studio**, para el guion y los clips. Cómo pasar a Google Cloud está en la sección 19.2.
+*Cambio del 2026-11-25 (ADR 0022, `V11`):* hasta esa fecha bastaba la clave de Google AI Studio, para el guion y los clips con Gemini Omni Flash. Con esa clave solo existe Gemini Omni Flash: Veo salió de la API de Gemini el 2026-10-22 y hoy solo se usa en Google Cloud. Por decisión del dueño del producto, los clips se hacen con Veo en Google Cloud. **Hoy se necesitan las dos claves:** la de Google AI Studio para el guion y la de Google Cloud para los clips (sección 19.2).
 
 ### 15.2 Claves de los proveedores
 
@@ -698,14 +698,18 @@ Los modelos se agrupan en **Video (clips)** y **Texto (guion)**. Cada tarjeta mu
 - "El adaptador *X* no existe en el código." si el modelo apunta a un adaptador que no está programado.
 - El resultado de su **última prueba de conexión**, con fecha y hora.
 
-**Modelos actuales** (migraciones `V2`, `V6` y `V7`):
+**Modelos actuales** (migraciones `V2`, `V6`, `V7`, `V10` y `V11`):
 
 | Modelo | Tipo | Adaptador | Identificador | Costo de referencia | Clave | Estado |
 |---|---|---|---|---|---|---|
 | Gemini | Texto | `GEMINI` | `gemini-3.8-flash` | US$ 0.01 por guion | `autoreel/gemini` | Activo (plan Lite) |
-| Gemini Omni Flash | Video | `GEMINI_OMNI` | `gemini-omni-1.2-flash` | US$ 0.07 por segundo | `autoreel/gemini` | Activo (plan Lite) |
+| Gemini Omni Flash | Video | `GEMINI_OMNI` | `gemini-omni-1.2-flash` | US$ 0.07 por segundo | `autoreel/gemini` | Activo, sin plan desde el 2026-11-25 (antes, plan Lite) |
 | Gemini (Google Cloud) | Texto | `GEMINI_CLOUD` | `gemini-3.8-flash` | US$ 0.01 por guion | `autoreel/google-cloud` | Inactivo |
-| Veo 3.1 Lite | Video | `VEO` | `veo-3.1-lite-generate-001` | US$ 0.05 por segundo (sin confirmar) | `autoreel/google-cloud` | Inactivo |
+| Veo 3.1 Lite | Video | `VEO` | `veo-3.1-lite-generate-001` | US$ 0.05 por segundo (sin confirmar) | `autoreel/google-cloud` | Activo (plan Lite) desde el 2026-11-25 |
+| Veo 3.1 Fast | Video | `VEO` | `veo-3.1-fast-generate-001` | US$ 0.10 por segundo | `autoreel/google-cloud` | Activo, sin plan (nuevo, `V11`) |
+| Veo 3.1 | Video | `VEO` | `veo-3.1-generate-001` | US$ 0.40 por segundo | `autoreel/google-cloud` | Activo, sin plan (nuevo, `V11`) |
+
+*Desde el 2026-11-25 (ADR 0022):* `V11` creó **Veo 3.1 Fast** y **Veo 3.1** copiando la configuración de Veo 3.1 Lite (proyecto, región, 720p, 9:16, sin audio y clips de 4, 6 u 8 s), para comparar los tres a 720p: Lite, luego Fast y luego el estándar. Sus costos son referenciales y conservadores (los de Google con audio, a 720p; sin audio Google cobra menos): ajústalos en **Editar** con la factura real. Para probar uno en los videos, asígnalo a un plan (sección 16.2).
 
 **Probar conexión.** Pulsa **Probar conexión** en el modelo. Funciona aunque el modelo esté inactivo y **no gasta**: no genera ningún texto ni video (ADR 0018). Con AI Studio pide la ficha del modelo; con Gemini en Google Cloud cuenta los tokens de un texto; con Veo pide un token con la cuenta de servicio. El resultado aparece en la tarjeta, en verde o en rojo, y se guarda:
 
@@ -737,7 +741,7 @@ Los modelos se agrupan en **Video (clips)** y **Texto (guion)**. Cada tarjeta mu
 | **Identificador del modelo** | "El nombre exacto que exige la API del proveedor", por ejemplo `veo-3.1-fast-generate-001`. |
 | **Costo por segundo (US$)** o **Costo por guion (US$)** | El costo de referencia, para estimar los costos (sección 14). |
 | **Clave que usa** | El nombre del secreto, por ejemplo `autoreel/gemini` o `autoreel/google-cloud` (el campo los sugiere). |
-| **Parámetros (JSON)** | Un objeto JSON con los parámetros del adaptador, por ejemplo `{"relacionAspecto": "9:16", "resolucion": "720p", "duracionClipSegundos": 4}`. |
+| **Parámetros (JSON)** | Un objeto JSON con los parámetros del adaptador, por ejemplo `{"relacionAspecto": "9:16", "resolucion": "720p", "duracionClipSegundos": 4}`. Desde el 2026-11-25, un modelo de video puede llevar `duracionesClip`, la lista de duraciones que admite (en Veo, `[4, 6, 8]`): cada momento del video pide la más corta que lo cubre. Sin esa lista, todos los clips piden `duracionClipSegundos`. |
 
 3. Pulsa **Agregar modelo** (o **Guardar**). **Un modelo nuevo nace inactivo:** pruébalo y actívalo después.
 
@@ -759,7 +763,7 @@ Reglas RF-10, RN-47 y RN-49. En **Ajustes**, abre la pestaña **Planes**. "Cada 
 
 Cada plan se ve como una tarjeta con su nombre (y la etiqueta **Inactivo**, si lo está), su descripción y estos datos: **Videos por día**, **Regeneraciones** (por video), **Modelo de texto**, **Modelo de video**, **Precio de referencia** ("—" si no tiene) y **Negocios** (cuántos negocios tienen ese plan en su suscripción).
 
-**Hoy existe el plan Lite** (semilla de `V2`, con el modelo de video cambiado en `V7`): 1 video por día, 3 regeneraciones por video, **Gemini** para el texto y **Gemini Omni Flash** para el video. Su precio de referencia está sin definir (P-04).
+**Hoy existe el plan Lite** (semilla de `V2`, con el modelo de video cambiado en `V7` y en `V11`): 1 video por día, 3 regeneraciones por video, **Gemini** para el texto y **Veo 3.1 Lite** (Google Cloud) para el video. Su precio de referencia está sin definir (P-04). *Cambio del 2026-11-25 (ADR 0022, `V11`):* de `V7` a `V10` su modelo de video era **Gemini Omni Flash**; los videos creados antes conservan el modelo con el que nacieron (RN-54).
 
 ### 16.2 Crear o editar un plan
 
@@ -856,7 +860,7 @@ Gemini usa la clave de **Google AI Studio** (secreto `autoreel/gemini`), la mism
 - La tarea que escribe los guiones (`ProcesadorDeGuiones`) revisa cada **3 segundos** los videos en `GUION_PENDIENTE` cuya espera ya pasó. Ningún video queda esperando para siempre: a los 5 minutos de reintentos termina en `ERROR`.
 - **Qué hacer si ves avisos de integración del modelo Gemini:** pulsa **Probar conexión**, revisa la clave y la facturación de AI Studio, y avísale al negocio que reintente su propuesta.
 
-> **Ojo: con AI Studio, sin clave no hay ni propuesta ni clips.** Gemini y Gemini Omni Flash usan la misma clave. Sin ella, la propuesta queda en error y el botón **Crear mi video** queda desactivado (sección 19.5).
+> **Ojo: con AI Studio, sin clave no hay ni propuesta ni clips.** Gemini y Gemini Omni Flash usan la misma clave. Sin ella, la propuesta queda en error y el botón **Crear mi video** queda desactivado (sección 19.5). *Desde el 2026-11-25 (`V11`)*, los clips del plan Lite usan Veo 3.1 Lite con la clave de Google Cloud: sin la clave de AI Studio no hay propuesta, y sin la de Google Cloud no hay clips.
 
 En los videos creados antes del 2026-11-12, las columnas `video.guion_de_respaldo` y `video.motivo_respaldo` siguen guardadas (motivos `SIN_CREDENCIAL`, `CREDENCIAL_INVALIDA`, `CONFIGURACION_INVALIDA`, `PROVEEDOR_NO_DISPONIBLE`, `MODELO_INACTIVO`, `GUION_INVALIDO` o `PROCESO_INTERRUMPIDO`). Los videos nuevos siempre tienen `guion_de_respaldo = false`.
 
@@ -910,7 +914,9 @@ Son consultas de solo lectura. **No modifiques estas tablas a mano.**
 
 Cuando un negocio toca **"Crear mi video"**, AutoReel crea un clip corto para cada uno de los tres momentos con foto con el **modelo de video** de su plan, y luego **compone** el Reel final de 15 segundos con **FFmpeg** (textos, cierre con la marca y música). En el plan **Lite** el modelo es **Gemini Omni Flash** (`gemini-omni-1.2-flash`, adaptador `GEMINI_OMNI`), en Google AI Studio.
 
-### 19.1 Camino activo: Gemini Omni Flash (Google AI Studio)
+*Cambio del 2026-11-25 (ADR 0022):* el video tiene de 1 a 4 momentos con foto, según la estructura que eligió la IA, y cada clip pide la duración que necesita su momento (en Veo, 4, 6 u 8 s). Desde `V11`, **el modelo del plan Lite es Veo 3.1 Lite** (`veo-3.1-lite-generate-001`, adaptador `VEO`) en Google Cloud (sección 19.2); Gemini Omni Flash (19.1) queda activo, pero sin plan.
+
+### 19.1 Gemini Omni Flash (Google AI Studio; sin plan desde el 2026-11-25)
 
 - **Usa la misma clave** que el guion: la de Google AI Studio (sección 15.3). El proyecto de la clave necesita **facturación activa**, porque Omni no tiene plan gratuito.
 - **Costo:** unos **US$ 0.07 por segundo** a 720p. Cada clip pide 4 s, así que cuesta unos **US$ 0.28**, y los tres clips de un video, unos **US$ 0.84**. Si Omni informa cuántos segundos generó (sus tokens de video), el costo usa esos segundos.
@@ -918,9 +924,9 @@ Cuando un negocio toca **"Crear mi video"**, AutoReel crea un clip corto para ca
 - **Cómo funciona:** AutoReel llama a la API de interacciones (`POST /v1beta/interactions`) en modo **síncrono**, el que documenta Google para Omni: la llamada devuelve el clip, y puede tardar minutos (tiempo de espera de 5 minutos, `autoreel.ia.omni`). Con `segundoPlano: true` en los parámetros usaría el modo en segundo plano, que Google no documenta para video.
 - **Limitaciones** (ADR 0017): Omni no admite prompt negativo ni temperatura (las prohibiciones van en la instrucción) y siempre genera audio, que se paga y se descarta. Por eso Veo queda listo como alternativa.
 
-### 19.2 Camino alternativo: Veo y Gemini en Google Cloud
+### 19.2 Veo y Gemini en Google Cloud
 
-Está **listo e inactivo**. Tiene más control (Veo 3.1 y Veo 3.1 Fast son estables en Google Cloud), pero la configuración es más trabajosa. Acepta dos credenciales: una **clave de API de Google Cloud** (la más simple, desde el 2026-11-14) o una **cuenta de servicio** en JSON.
+*Desde el 2026-11-25 (`V11`), Veo 3.1 Lite, Veo 3.1 Fast y Veo 3.1 están activos y Veo 3.1 Lite es el modelo de video del plan Lite;* Gemini (Google Cloud) sigue inactivo. Configura la clave de Google Cloud y el `proyecto` de Veo como se explica abajo; los dos Veo nuevos copiaron los parámetros que tenía Veo 3.1 Lite al aplicar `V11`, así que, si agregas el `proyecto` después, agrégalo también en ellos. Hasta esa fecha estaba **listo e inactivo**. Tiene más control (Veo 3.1 y Veo 3.1 Fast son estables en Google Cloud), pero la configuración es más trabajosa. Acepta dos credenciales: una **clave de API de Google Cloud** (la más simple, desde el 2026-11-14) o una **cuenta de servicio** en JSON.
 
 **Opción A, clave de API (recomendada):**
 
@@ -947,7 +953,7 @@ Está **listo e inactivo**. Tiene más control (Veo 3.1 y Veo 3.1 Fast son estab
 
 Es un cambio de datos, sin programar. Los videos ya creados conservan su modelo (RN-54).
 
-**Sobre Veo** (al 4 de noviembre de 2026): Veo 3.1 (`veo-3.1-generate-001`) y Veo 3.1 Fast (`veo-3.1-fast-generate-001`) son de disponibilidad general; **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`) está en vista previa. Veo funciona solo en la región `us-central1`. Sus parámetros (`V6`) son: `region` `us-central1`, clips de 4 s, 9:16, 720p, sin audio y `ajuste` `crop`. Su precio por segundo (US$ 0.05 en la semilla) **no está confirmado** en la página oficial: ajústalo en **Editar** cuando lo confirmes.
+**Sobre Veo** (al 4 de noviembre de 2026): Veo 3.1 (`veo-3.1-generate-001`) y Veo 3.1 Fast (`veo-3.1-fast-generate-001`) son de disponibilidad general; **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`) está en vista previa. Veo funciona solo en la región `us-central1`. Sus parámetros (`V6`) son: `region` `us-central1`, clips de 4 s, 9:16, 720p, sin audio y `ajuste` `crop`. Desde `V10` (2026-11-25) también `duracionesClip` `[4, 6, 8]`: cada momento pide la duración más corta que lo cubre (un momento de 3 o 4 s pide 4 s, uno de 6 s pide 6 y uno de 8 s pide 8), y FFmpeg recorta lo que sobra. Su precio por segundo (US$ 0.05 en la semilla) **no está confirmado** en la página oficial: ajústalo en **Editar** cuando lo confirmes.
 
 **Cómo funciona por dentro:** `TokenDeGoogle` firma un JWT con la `private_key` de la cuenta de servicio y lo cambia por un token de acceso en `oauth2.googleapis.com/token`. Veo envía cada foto con `predictLongRunning` y consulta el resultado con `fetchPredictOperation`. Gemini en Google Cloud usa el endpoint `global`.
 
@@ -1021,11 +1027,11 @@ Cada clip que el proveedor entrega **se registra como costo** (RN-32), y tambié
 | `negocio_id`, `video_id` | El negocio y el video |
 | `proveedor` | `GOOGLE` |
 | `concepto` | `CLIP` |
-| `cantidad` | Los segundos generados: los que informa el proveedor, si los informa, o los pedidos (**4**, `duracionClipSegundos`) |
-| `costo_usd` | `cantidad` × costo de referencia del modelo por segundo: con Gemini Omni Flash (**US$ 0.07**), unos **US$ 0.28 por clip** |
+| `cantidad` | Los segundos generados: los que informa el proveedor, si los informa, o los pedidos (**4**, `duracionClipSegundos`; desde el 2026-11-25, con Veo, 4, 6 u 8 según el momento) |
+| `costo_usd` | `cantidad` × costo de referencia del modelo por segundo: con Gemini Omni Flash (**US$ 0.07**), unos **US$ 0.28 por clip**; con Veo 3.1 Lite (**US$ 0.05**), US$ 0.20 un clip de 4 s, US$ 0.30 uno de 6 s y US$ 0.40 uno de 8 s |
 | `fecha_hora` | Momento en que se registró (UTC) |
 
-El mismo costo se suma en `video.costo_estimado`. Los tres clips de un video cuestan unos **US$ 0.84** y cada regeneración que entrega clip, unos US$ 0.28 más. Las tareas que fallan sin enviarse y las que el proveedor termina sin clip no se registran.
+El mismo costo se suma en `video.costo_estimado`. Los tres clips de un video cuestan unos **US$ 0.84** y cada regeneración que entrega clip, unos US$ 0.28 más. *Desde el 2026-11-25 (ADR 0022)*, con Veo 3.1 Lite, los clips de un video cuestan según la estructura que eligió la IA: **US$ 0.80** la Rápida (4 clips de 4 s), **US$ 0.60** la Clásica (3 de 4 s) y la Historia (2 de 6 s) y **US$ 0.40** el Plano único (1 de 8 s). Con Veo 3.1 Fast, el doble; con Veo 3.1, ocho veces más. Las tareas que fallan sin enviarse y las que el proveedor termina sin clip no se registran.
 
 Se ven en la página **Costos** (sección 14) y en el detalle del negocio (sección 7). Para revisar un caso puntual en desarrollo:
 

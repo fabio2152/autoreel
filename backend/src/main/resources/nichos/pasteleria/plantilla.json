@@ -1,19 +1,66 @@
 {
-  "planos": [
-    { "orden": 1, "nombre": "Gancho", "foto": "DETALLE", "maxPalabras": 6, "segundos": 3, "conIa": true,
-      "movimientoDeRespaldo": "MACRO_DETALLE" },
-    { "orden": 2, "nombre": "Producto", "foto": "ENTERO", "maxPalabras": 5, "segundos": 4, "conIa": true,
-      "movimientoDeRespaldo": "ORBITA_FRONTAL" },
-    { "orden": 3, "nombre": "Relleno", "foto": "PORCION", "maxPalabras": 7, "segundos": 4, "conIa": true,
-      "movimientoDeRespaldo": "PARALAJE_LATERAL" },
-    { "orden": 4, "nombre": "Cierre", "maxPalabras": 6, "segundos": 4, "conIa": false }
+  "duracionVideo": 15,
+  "estructuras": [
+    {
+      "id": "RAPIDA",
+      "nombre": "Rápida",
+      "descripcion": "Cuatro tomas cortas con ritmo de Reel. Sirve para mostrar variedad: varias fotos, varios ángulos o un producto muy vistoso.",
+      "tomas": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "cierre": 3,
+      "maxPalabras": 5
+    },
+    {
+      "id": "CLASICA",
+      "nombre": "Clásica",
+      "descripcion": "Tres tomas: el gancho, el producto y el antojo final. Funciona con casi todo.",
+      "tomas": [
+        4,
+        4,
+        4
+      ],
+      "cierre": 3,
+      "maxPalabras": 6
+    },
+    {
+      "id": "HISTORIA",
+      "nombre": "Historia",
+      "descripcion": "Dos tomas largas y cinematográficas que cuentan algo: de dónde viene el producto o a dónde llega (la mesa, la tienda, la celebración).",
+      "tomas": [
+        6,
+        6
+      ],
+      "cierre": 3,
+      "maxPalabras": 7
+    },
+    {
+      "id": "PLANO_UNICO",
+      "nombre": "Plano único",
+      "descripcion": "Una sola toma continua de 8 segundos, muy cuidada, y un cierre largo con el logo. Para un producto que luce con una sola gran foto.",
+      "tomas": [
+        8
+      ],
+      "cierre": 7,
+      "maxPalabras": 8
+    }
   ],
+  "maxPalabrasCierre": 6,
   "llamados": {
     "WHATSAPP": "Pide por WhatsApp",
     "DELIVERY": "Pídelo por delivery",
     "TIENDA": "Te esperamos en {distrito}"
   },
-  "hashtagsBase": ["#pasteleria", "#postres", "#reposteria", "#dulces", "#antojo"],
+  "hashtagsBase": [
+    "#pasteleria",
+    "#postres",
+    "#reposteria",
+    "#dulces",
+    "#antojo"
+  ],
   "maximoCaracteresPrecio": 40,
   "maximoCaracteresUbicacion": 40,
   "tipografias": {

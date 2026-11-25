@@ -1,14 +1,15 @@
 import { pedir } from './cliente'
 
-export type TipoFoto = 'ENTERO' | 'DETALLE' | 'PORCION'
+/** Foto 1 obligatoria; Foto 2 y Foto 3 opcionales, de cualquier ángulo (2026-11-25). La IA elige cuál usa en cada toma. */
+export type TipoFoto = 'FOTO_1' | 'FOTO_2' | 'FOTO_3'
 export type EstadoProducto = 'ACTIVO' | 'ARCHIVADO'
 
-export const TIPOS_FOTO: TipoFoto[] = ['ENTERO', 'DETALLE', 'PORCION']
+export const TIPOS_FOTO: TipoFoto[] = ['FOTO_1', 'FOTO_2', 'FOTO_3']
 
 export const NOMBRE_FOTO: Record<TipoFoto, string> = {
-  ENTERO: 'Producto entero',
-  DETALLE: 'Detalle',
-  PORCION: 'Porción',
+  FOTO_1: 'Foto principal',
+  FOTO_2: 'Foto 2 (opcional)',
+  FOTO_3: 'Foto 3 (opcional)',
 }
 
 export interface FotoProducto {
@@ -26,7 +27,7 @@ export interface Producto {
   descripcion: string
   temporadas: string[]
   estado: EstadoProducto
-  /** Tiene sus tres fotos y puede usarse en un video (RN-12). */
+  /** Tiene su foto principal y puede usarse en un video (RN-12). */
   completo: boolean
   fotos: FotoProducto[]
   fechaCreacion: string

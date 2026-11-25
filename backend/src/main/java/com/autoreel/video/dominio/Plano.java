@@ -16,8 +16,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 /**
- * Uno de los cuatro planos del video (sección 7.4). Los planos 1 a 3 tienen foto, movimiento y texto; el 4 (cierre)
- * tiene precio o frase (los propone la IA), llamado a la acción y ubicación, y no tiene clip.
+ * Un plano del video (sección 7.4, guion flexible del 2026-11-25). Las tomas (1 a 4, según la estructura que eligió
+ * la IA) tienen foto, toma de cámara y texto; el cierre (el plano sin foto, después de la última toma) tiene precio o
+ * frase (los propone la IA), llamado a la acción y ubicación, y no tiene clip.
  */
 @Entity
 @Table(name = "plano")
@@ -40,8 +41,19 @@ public class Plano {
 
     private String claveFoto;
 
+    /** Movimiento del catálogo: solo en los videos anteriores al guion flexible (sin {@link #toma}). */
     private String movimiento;
 
+    /** La toma de cámara en inglés que escribió la IA, para el modelo de video; vacía en el cierre. */
+    private String toma;
+
+    /** La toma en pocas palabras, en español, para el storyboard. */
+    private String descripcionToma;
+
+    @Column(nullable = false)
+    private int segundos;
+
+    /** Texto en pantalla; puede faltar en las tomas que no son el gancho. */
     private String texto;
 
     private String precio;
@@ -80,22 +92,26 @@ public class Plano {
     protected Plano() {
     }
 
-    static Plano conFoto(Video video, int orden, TipoFoto tipoFoto, String claveFoto, String movimiento,
-            String texto) {
+    static Plano conFoto(Video video, int orden, int segundos, TipoFoto tipoFoto, String claveFoto, String toma,
+            String descripcionToma, String texto) {
         Plano plano = new Plano();
         plano.video = video;
         plano.orden = orden;
+        plano.segundos = segundos;
         plano.tipoFoto = tipoFoto;
         plano.claveFoto = claveFoto;
-        plano.movimiento = movimiento;
+        plano.toma = toma;
+        plano.descripcionToma = descripcionToma;
         plano.texto = texto;
         return plano;
     }
 
-    static Plano cierre(Video video, int orden, String precio, String frase, String llamado, String ubicacion) {
+    static Plano cierre(Video video, int orden, int segundos, String precio, String frase, String llamado,
+            String ubicacion) {
         Plano plano = new Plano();
         plano.video = video;
         plano.orden = orden;
+        plano.segundos = segundos;
         plano.precio = precio;
         plano.frase = frase;
         plano.llamado = llamado;
@@ -223,6 +239,18 @@ public class Plano {
 
     public String getMovimiento() {
         return movimiento;
+    }
+
+    public String getToma() {
+        return toma;
+    }
+
+    public String getDescripcionToma() {
+        return descripcionToma;
+    }
+
+    public int getSegundos() {
+        return segundos;
     }
 
     public String getTexto() {

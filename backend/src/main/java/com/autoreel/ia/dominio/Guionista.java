@@ -10,14 +10,20 @@ public interface Guionista {
     String adaptador();
 
     /**
-     * Pide el guion en JSON.
+     * Pide el guion en JSON. Las imágenes van después del texto, en orden.
      *
      * @return la respuesta del modelo. Una respuesta sin texto o bloqueada vuelve con {@code texto} vacío y el
      *         {@code problema}, y cuenta como un intento (se cobra).
      * @throws ErrorDeProveedor si el proveedor no está disponible, la credencial no sirve o la configuración del
      *                          modelo es inválida. En esos casos no tiene sentido reintentar.
      */
-    RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson);
+    RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson,
+            java.util.List<ImagenAdjunta> imagenes);
+
+    /** Sin imágenes. */
+    default RespuestaDelModelo escribir(ModeloIA modelo, String credencial, String instrucciones, String esquemaJson) {
+        return escribir(modelo, credencial, instrucciones, esquemaJson, java.util.List.of());
+    }
 
     /**
      * RF-11, "Probar conexión": verifica la credencial y el modelo con una llamada sin costo (o casi).
@@ -25,6 +31,14 @@ public interface Guionista {
      * @throws ErrorDeProveedor si no funciona; el mensaje dice por qué y nunca incluye la credencial.
      */
     void probar(ModeloIA modelo, String credencial);
+
+    /**
+     * Una imagen que el modelo ve junto con las instrucciones (las fotos del producto), en el orden en que se nombran.
+     *
+     * @param contenido la imagen ya reducida (JPEG).
+     */
+    record ImagenAdjunta(byte[] contenido, String tipo) {
+    }
 
     /** @param problema motivo por el que no hay texto utilizable; vacío si la respuesta es normal. */
     record RespuestaDelModelo(String texto, String problema) {

@@ -10,7 +10,6 @@ import com.autoreel.almacenamiento.dominio.AlmacenDeArchivos;
 import com.autoreel.almacenamiento.dominio.ArchivoAlmacenado;
 import com.autoreel.negocio.dominio.PerfilNegocio;
 import com.autoreel.nicho.dominio.PaqueteNicho;
-import com.autoreel.nicho.dominio.PlantillaVideo;
 import com.autoreel.video.dominio.ComponedorDeVideo;
 import com.autoreel.video.dominio.ComponedorDeVideo.CierreAComponer;
 import com.autoreel.video.dominio.ComponedorDeVideo.Composicion;
@@ -145,25 +144,24 @@ public class ServicioComposicion {
         Video video = videos.findById(videoId).orElseThrow();
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
         PaqueteNicho paquete = datos.paquete();
-        PlantillaVideo plantilla = paquete.plantillaVideo();
         PerfilNegocio perfil = datos.perfil();
 
         List<PlanoAComponer> planos = new ArrayList<>();
         for (Plano plano : video.planosConFoto()) {
-            int segundos = plantilla.plano(plano.getOrden()).segundos();
+            int segundos = plano.getSegundos();
             boolean conClip = plano.getEstado() == EstadoPlano.LISTO && plano.getClaveClip() != null;
             byte[] clip = conClip ? leer(plano.getClaveClip()) : null;
             byte[] foto = conClip ? null : preparador.vertical(leer(plano.getClaveFoto()));
             planos.add(new PlanoAComponer(plano.getOrden(), segundos, clip, foto, plano.getTexto()));
         }
 
-        Plano cierre = video.plano(plantilla.cierre().orden()).orElseThrow();
+        Plano cierre = video.cierre().orElseThrow();
         byte[] fotoDelLocal = perfil.getFotoLocalClave() == null ? null
                 : preparador.vertical(leer(perfil.getFotoLocalClave()));
         byte[] logo = perfil.getLogoClave() == null ? null : leer(perfil.getLogoClave());
         String whatsapp = datos.guion().canales().contains(CamposDelPerfil.CANAL_WHATSAPP)
                 ? datos.guion().whatsapp() : null;
-        CierreAComponer cierreAComponer = new CierreAComponer(plantilla.cierre().segundos(), fotoDelLocal, logo,
+        CierreAComponer cierreAComponer = new CierreAComponer(cierre.getSegundos(), fotoDelLocal, logo,
                 cierre.textoPrincipalDelCierre(), cierre.getLlamado(), cierre.getUbicacion(), whatsapp,
                 perfil.getColorPrimario());
 

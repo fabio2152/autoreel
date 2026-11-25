@@ -131,15 +131,6 @@ public class PaquetePasteleria implements PaqueteNicho {
             exigir(pista.duracionSegundos() >= 15, "la pista " + pista.archivo() + " dura menos de 15 segundos");
         }
         validarMovimientos();
-        exigir(movimientos.minimoPlanosCamara3d() <= plantillaVideo.planosConIa().size(),
-                "el mínimo de planos con cámara 3D pasa del número de planos con IA");
-        exigir(movimientos.minimoPlanosCamara3d() == 0 || movimientos.movimientos().stream()
-                        .anyMatch(movimiento -> movimiento.camara3d() && movimiento.soloTiposVideo().isEmpty()),
-                "falta un movimiento de cámara 3D que sirva para todos los tipos de video");
-        for (var plano : plantillaVideo.planosConIa()) {
-            exigir(movimientos.buscar(plano.movimientoDeRespaldo()).isPresent(),
-                    "el movimiento de respaldo del plano " + plano.orden() + " no existe");
-        }
         // Los llamados fijos del cierre deben cumplir el propio vocabulario del nicho.
         for (String texto : plantillaVideo.llamados().values()) {
             for (String frase : vocabulario.prohibidas()) {
@@ -161,6 +152,13 @@ public class PaquetePasteleria implements PaqueteNicho {
         exigir(movimientos.negativos() != null && !movimientos.negativos().isBlank(),
                 "faltan los negativos de los movimientos");
         exigir(!movimientos.movimientos().isEmpty(), "no hay movimientos");
+        exigir(!movimientos.creatividades().isEmpty(), "no hay niveles de creatividad");
+        Set<String> creatividades = new HashSet<>();
+        for (var creatividad : movimientos.creatividades()) {
+            exigir(creatividades.add(creatividad.id()), "creatividad repetida: " + creatividad.id());
+            exigir(creatividad.nombre() != null && creatividad.descripcion() != null && creatividad.guia() != null,
+                    "a la creatividad " + creatividad.id() + " le falta el nombre, la descripción o la guía");
+        }
         Set<String> ids = new HashSet<>();
         for (var movimiento : movimientos.movimientos()) {
             exigir(ids.add(movimiento.id()), "movimiento repetido: " + movimiento.id());

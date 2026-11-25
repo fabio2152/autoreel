@@ -9,6 +9,11 @@ Guía sencilla para la persona que usa **AutoReel** en el negocio. AutoReel conv
 > - los movimientos de cámara 3D (sección 12.3);
 > - los fundidos entre momentos.
 >
+> *Actualización del 2026-11-25 (guion flexible, ADR 0022):*
+> - cada producto tiene una foto principal obligatoria y dos fotos opcionales (secciones 7 y 8);
+> - AutoReel mira tus fotos y decide cuántos momentos tiene tu video, cómo es cada toma y qué foto usa (sección 12.3);
+> - solo el primer momento lleva texto obligatorio (sección 12.4).
+>
 > Cubre, además, la revisión del flujo del negocio (2026-11-06) y todo el recorrido: primer ingreso, perfil del negocio (onboarding, con la opción "Otros"), catálogo de productos, guía de fotos, Ajustes (perfil y contraseña), el chat para crear el video del día, la propuesta del video (storyboard), la creación del video, su revisión, la aprobación, la descarga y Mis videos. La publicación en Instagram todavía no existe y está marcada como **pendiente (fase 6)**. Las capturas de pantalla se agregan cuando cada pantalla esté terminada (sección 23 de la especificación); por ahora están marcadas como *Captura pendiente*.
 
 ---
@@ -38,7 +43,7 @@ Guía sencilla para la persona que usa **AutoReel** en el negocio. AutoReel conv
 - **El mensaje de bienvenida de AutoReel.** Te lo envía el administrador, por WhatsApp o por correo, y trae tu enlace, tu correo y una contraseña temporal.
 - **Un celular o una computadora con internet.** AutoReel está pensado para usarse cómodamente desde el celular.
 - **Tu logo en PNG**, idealmente con fondo transparente. Lo pide el primer paso del onboarding.
-- **Fotos de tus productos:** tres por producto (entero, detalle y porción). Mira [cómo tomarlas](#8-cómo-tomar-buenas-fotos).
+- **Fotos de tus productos:** una foto principal por producto y, si quieres, dos más de otros ángulos. Mira [cómo tomarlas](#8-cómo-tomar-buenas-fotos).
 - **Para publicar:** una cuenta **profesional** de Instagram, de empresa o de creador. *Pendiente (fase 6): por ahora descargas tu video y lo subes a Instagram a mano.*
 
 ### El recorrido completo de tu primer día
@@ -54,7 +59,7 @@ flowchart TD
     G -->|Registrar mi primer producto| H[Catálogo: nuevo producto]
     G -->|Más tarde| I["Inicio: el chat de tu video del día"]
     H --> I
-    I --> J["Tu propuesta: revisas los 4 momentos del video"]
+    I --> J["Tu propuesta: revisas los momentos del video"]
     J -->|Crear mi video| K["Creando tu video: puedes salir"]
     K --> L["Tu video está listo: lo revisas"]
     L --> M["Aprobar y descargar"]
@@ -221,7 +226,7 @@ Toca **Terminar**.
 
 > *Captura pendiente: pantalla "¡Tu perfil está listo!".*
 
-AutoReel te sugiere registrar tus productos: "Ahora registra tus productos con tres fotos cada uno. Solo lo haces una vez y luego eliges cuál mostrar en cada video."
+AutoReel te sugiere registrar tus productos: "Ahora registra tus productos con hasta tres fotos cada uno. Solo lo haces una vez y luego eliges cuál mostrar en cada video."
 
 - **Registrar mi primer producto:** abre el formulario de un producto nuevo (sección 7).
 - **Más tarde:** te lleva a **Inicio**.
@@ -247,7 +252,7 @@ Con el onboarding terminado, tienes cuatro secciones. En el celular están en un
 
 ## 7. Tu catálogo de productos
 
-Registras cada producto **una sola vez**, con sus tres fotos, y luego lo eliges al crear cada video.
+Registras cada producto **una sola vez**, con su foto principal y hasta dos fotos más, y luego lo eliges al crear cada video.
 
 ### 7.1 La lista
 
@@ -260,11 +265,11 @@ Toca **Catálogo**. Arriba hay dos pestañas:
 
 Cada producto se muestra como una tarjeta con:
 
-- La **foto del producto entero** (o la primera que tenga).
+- La **foto principal** (o la primera que tenga).
 - El **nombre**.
-- La etiqueta amarilla **"Faltan fotos"** si no tiene las tres fotos. Un producto así se guarda, pero **no se podrá usar en un video** hasta que las completes (regla RN-12).
+- La etiqueta amarilla **"Faltan fotos"** si no tiene su foto principal. Un producto así se guarda, pero **no se podrá usar en un video** hasta que la subas (regla RN-12). La Foto 2 y la Foto 3 son opcionales: sin ellas el producto ya se puede usar.
 
-Los productos más recientes aparecen primero. Si no tienes ninguno, verás "Todavía no tienes productos. Registra tu producto estrella con tres fotos."
+Los productos más recientes aparecen primero. Si no tienes ninguno, verás "Todavía no tienes productos. Registra tu producto estrella con hasta tres fotos."
 
 Los productos que subes desde el chat (sección 11.3) aparecen aquí **solo si elegiste guardarlos en tu catálogo**. Puedes editarlos como cualquier otro.
 
@@ -279,19 +284,19 @@ Los productos que subes desde el chat (sección 11.3) aparecen aquí **solo si e
 |---|---|---|
 | **Nombre** | El nombre con que lo vendes, por ejemplo "Torta Tres Leches de Fresa". | Obligatorio, hasta **50** caracteres. El contador muestra cuántos llevas. |
 | **Descripción** | Sabor, relleno e ingredientes destacados. | Obligatoria, hasta **200** caracteres. **Es lo único que usaremos para hablar de tu producto: no inventamos sabores ni ingredientes.** Escribe aquí todo lo que quieras que se diga. |
-| **Fotos** | **Producto entero**, **Detalle** y **Porción**. Cada una tiene un dibujo de ejemplo y sus indicaciones. Toca el recuadro o **Subir** para elegir la foto. | Las tres son necesarias para usar el producto en un video. El texto te dice cuántas faltan ("Te faltan 2."). |
+| **Fotos** | **Foto principal**, **Foto 2 (opcional)** y **Foto 3 (opcional)**. Cada una tiene un dibujo de ejemplo y sus indicaciones. Toca el recuadro o **Subir** para elegir la foto. | "La foto principal es necesaria para usar el producto en un video. Con 2 o 3 fotos distintas, la IA tiene más ideas para tu Reel." Si no la subiste, el texto agrega "Te falta la foto principal." |
 
 3. Espera a que cada foto termine de subir: el recuadro muestra el porcentaje y el botón dice **"Subiendo fotos…"**.
 4. Toca **Guardar**. Vuelves al catálogo y el producto ya aparece.
 
-> **¿No tienes las tres fotos ahora?** Puedes guardar el producto con una o dos. Aparecerá con **"Faltan fotos"** y lo completas después.
+> **¿No tienes la foto principal ahora?** Puedes guardar el producto sin ella. Aparecerá con **"Faltan fotos"** y la subes después. Con la foto principal ya puedes usarlo en un video; la Foto 2 y la Foto 3 las agregas cuando quieras.
 
 ### 7.3 Editar un producto
 
 1. En el catálogo, toca el producto. Se abre **Editar producto** con sus datos.
 2. Cambia lo que necesites:
    - **Reemplazar una foto:** toca **Cambiar** debajo de esa foto y elige otra.
-   - **Quitar una foto:** toca **Quitar**. El producto quedará con "Faltan fotos" hasta que subas otra.
+   - **Quitar una foto:** toca **Quitar**. Si quitas la foto principal, el producto quedará con "Faltan fotos" hasta que subas otra; quitar la Foto 2 o la Foto 3 no cambia nada.
 3. Toca **Guardar**.
 
 Para volver sin guardar, toca **← Catálogo**.
@@ -308,14 +313,14 @@ En esta versión no se pueden borrar productos.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> FaltanFotos : guardas con menos de 3 fotos
-    [*] --> Listo : guardas con las 3 fotos
-    FaltanFotos --> Listo : subes las fotos que faltan
-    Listo --> FaltanFotos : quitas una foto
+    [*] --> FaltanFotos : guardas sin la foto principal
+    [*] --> Listo : guardas con la foto principal
+    FaltanFotos --> Listo : subes la foto principal
+    Listo --> FaltanFotos : quitas la foto principal
     Listo --> Archivado : Archivar
     FaltanFotos --> Archivado : Archivar
-    Archivado --> Listo : Reactivar (si tiene sus 3 fotos)
-    Archivado --> FaltanFotos : Reactivar (si le faltan fotos)
+    Archivado --> Listo : Reactivar (si tiene su foto principal)
+    Archivado --> FaltanFotos : Reactivar (si no la tiene)
 ```
 
 ---
@@ -326,13 +331,17 @@ stateDiagram-v2
 
 Las fotos son la materia prima de tu video. Con fotos buenas, el video sale bien a la primera.
 
-### 8.1 Las tres fotos de cada producto
+### 8.1 Las fotos de cada producto
+
+Cada producto tiene **una foto principal obligatoria y dos opcionales**, de cualquier ángulo:
 
 | Foto | Qué mostrar | Ejemplo |
 |---|---|---|
-| **Producto entero** | El producto completo, de frente. | La torta entera sobre la mesa o la vitrina. |
-| **Detalle** | Muy cerca: la crema, el glaseado o la fruta. | Las fresas y la crema de la superficie, llenando la foto. |
-| **Porción** | Una porción ya cortada, mostrando el relleno. | Una tajada en un plato, de lado, para que se vean las capas. |
+| **Foto principal** (obligatoria) | La que mejor muestra tu producto: completo y bien iluminado. | La torta entera sobre la mesa o la vitrina. |
+| **Foto 2** (opcional) | Otro ángulo: muy cerca de la crema o la fruta, una porción o el producto en tu vitrina. | Las fresas y la crema de la superficie, llenando la foto. |
+| **Foto 3** (opcional) | Otra más, distinta de las anteriores. | Una tajada en un plato, de lado, para que se vean las capas. |
+
+**AutoReel mira tus fotos y elige cuáles usar en cada momento del video.** Puede usar todas, solo algunas o repetir la mejor. Por eso conviene que sean **distintas**: el producto entero, un detalle de cerca, una porción o el producto en tu local. Con 2 o 3 fotos variadas, la IA tiene más ideas para tu Reel.
 
 ### 8.2 Tres reglas para cada foto
 
@@ -445,7 +454,7 @@ Toca **Cerrar sesión**, al final de Ajustes.
 Crear un video tiene cuatro momentos:
 
 1. **Chat.** Respondes unas pocas preguntas sobre el video de hoy (secciones 11.1 a 11.7).
-2. **Propuesta (storyboard).** Revisas los 4 momentos propuestos, ajustas los textos, las fotos y el precio si quieres, y tocas **"Crear mi video"** (sección 12).
+2. **Propuesta (storyboard).** Revisas los momentos propuestos, ajustas los textos, las fotos y el precio si quieres, y tocas **"Crear mi video"** (sección 12).
 3. **Video.** AutoReel crea el video. Tarda unos minutos y puedes salir: te avisará cuando esté listo (secciones 13.1 y 13.2).
 4. **Revisión.** Miras el video. Si hace falta, tocas **"Regenerar este plano"** o **"Editar texto"**, y luego **"Aprobar mi video"** y **"Descargar"** (secciones 13.3 a 13.8).
 
@@ -502,25 +511,25 @@ En la pregunta del producto, que se responde con el carrusel, no hay caja de tex
 
 **Desde tu catálogo:**
 
-1. Desliza el carrusel. Solo aparecen los productos **activos y con sus tres fotos**, del más reciente al más antiguo.
+1. Desliza el carrusel. Solo aparecen los productos **activos y con su foto principal**, del más reciente al más antiguo. Cada uno se muestra con su foto principal.
 2. Toca el producto: queda marcado.
 3. Toca **Usar *nombre del producto***.
 
 Si algún producto no aparece porque le faltan fotos, el chat lo dice (por ejemplo, "1 producto no aparece porque le faltan fotos.") con el enlace **Completar**, que te lleva al catálogo. Los productos archivados tampoco aparecen.
 
-Si todavía no tienes ningún producto listo, el chat te dice "Todavía no tienes productos con sus tres fotos. Súbelo ahora mismo." y solo verás **Subir uno nuevo hoy**.
+Si todavía no tienes ningún producto listo, el chat te dice "Todavía no tienes productos con su foto principal. Súbelo ahora mismo." y solo verás **Subir uno nuevo hoy**.
 
 **Subir uno nuevo hoy:**
 
 1. Toca **Subir uno nuevo hoy**. Se abre **Subir un producto nuevo**.
 2. Escribe el **Nombre** (hasta 50 caracteres) y la **Descripción** (sabor, relleno, ingredientes destacados; hasta 200).
-3. Sube las **tres fotos**: Producto entero, Detalle y Porción. Aquí las tres son necesarias. Sigue la [guía de fotos](#8-cómo-tomar-buenas-fotos).
+3. Sube la **Foto principal** (obligatoria) y, si quieres, la **Foto 2** y la **Foto 3** (opcionales). Sigue la [guía de fotos](#8-cómo-tomar-buenas-fotos).
 4. Responde **"¿Lo guardo en tu catálogo?"** con uno de los dos botones:
    - **Sí, usarlo y guardarlo en mi catálogo:** se usa hoy y queda en tu catálogo, para elegirlo en otros videos.
    - **No, usarlo solo para este video:** se usa hoy y **no aparece en tu catálogo** ni en el carrusel de los próximos videos (regla RN-14).
 5. Para volver sin subir nada, toca **Cancelar**.
 
-Si falta algo, la ventana te lo dice: "Escribe el nombre y la descripción del producto." o "Sube las tres fotos: entero, detalle y porción."
+Si falta algo, la ventana te lo dice: "Escribe el nombre y la descripción del producto." o "Sube al menos la foto principal del producto."
 
 ### 11.4 Escribe con calma: tus mensajes seguidos se unen
 
@@ -569,8 +578,8 @@ Después de la última pregunta, el chat dice **"¡Listo! Estoy preparando tu pr
 
 | Mensaje que ves | Qué significa | Qué hacer |
 |---|---|---|
-| "Ese producto no está disponible: necesita estar activo y tener sus tres fotos." | El producto se archivó o perdió una foto mientras elegías. | Elige otro o completa sus fotos en el catálogo. |
-| "Para usar el producto en tu video necesitamos sus tres fotos: entero, detalle y porción." | Al subir un producto nuevo falta alguna foto. | Sube las tres. |
+| "Ese producto no está disponible: necesita estar activo y tener su foto principal." | El producto se archivó o perdió su foto principal mientras elegías. | Elige otro o sube su foto principal en el catálogo. |
+| "Para usar el producto en tu video necesitamos al menos su foto principal." | Al subir un producto nuevo falta la foto principal. | Súbela. |
 | "Esta conversación ya terminó." | El chat se completó en otra pestaña o dispositivo. | La pantalla se actualiza sola. |
 | "Completa el perfil de tu negocio para crear tu primer video." | El onboarding no está completo. | Termínalo (sección 5). |
 | Un aviso de error con el botón **Reintentar** en lugar del chat | No se pudo abrir el chat (por ejemplo, se cortó internet). | Toca **Reintentar**. |
@@ -581,7 +590,7 @@ Los mensajes del nombre, la descripción y las fotos de un producto nuevo son lo
 
 ## 12. Revisa tu propuesta (storyboard)
 
-Al terminar el chat, AutoReel arma la **propuesta** de tu video: los cuatro momentos del Reel de 15 segundos, con su foto, su movimiento y su texto, más el texto de la publicación. Antes de crear el video la revisas y la ajustas a tu gusto.
+Al terminar el chat, AutoReel arma la **propuesta** de tu video: la idea del video y los momentos del Reel de 15 segundos, cada uno con su foto, su toma y su texto, más el cierre y el texto de la publicación. Antes de crear el video la revisas y la ajustas a tu gusto.
 
 ### 12.1 Cómo llegar
 
@@ -598,26 +607,33 @@ Al abrirla recién terminado el chat, verás **"Estoy preparando tu propuesta…
 - **Si el servicio de IA no responde,** AutoReel vuelve a intentarlo solo, durante unos 5 minutos. Mientras tanto sigues viendo "Estoy preparando tu propuesta…". Si no lo logra, verás un aviso con el botón **Reintentar** (sección 12.7).
 - Si se corta internet, verás un aviso con el botón **Reintentar**.
 
-### 12.3 Los cuatro momentos de tu video
+### 12.3 Los momentos de tu video
 
-> *Captura pendiente: propuesta con sus cuatro tarjetas.*
+> *Captura pendiente: propuesta con la idea y sus tarjetas.*
 
-Arriba ves el tipo de video (por ejemplo, "Promoción") y el nombre del producto. Debajo, una tarjeta por momento, en el orden en que se verán:
+**AutoReel decide cómo contar tu video.** Mira las fotos de tu producto y tus respuestas, y elige:
 
-| Momento | Duración | Foto que usa | Texto en pantalla |
+- **Cuántos momentos tiene** (una de estas cuatro formas, todas de 15 segundos):
+
+| Forma | Momentos con tu producto | Cierre | Texto en pantalla |
 |---|---|---|---|
-| **1. Gancho** | 3 s | Detalle | Hasta **6** palabras, para atrapar la mirada. |
-| **2. Producto** | 4 s | Producto entero | Hasta **5** palabras. |
-| **3. Relleno** | 4 s | Porción | Hasta **7** palabras. |
-| **4. Cierre** | 4 s | Foto del local o, si no la subiste, el final del momento 3 desenfocado | Tu logo, el precio o una frase, y cómo pedir. |
+| **Rápida** | 4 de 3 s | 3 s | Hasta **5** palabras por momento. |
+| **Clásica** | 3 de 4 s | 3 s | Hasta **6** palabras. |
+| **Historia** | 2 de 6 s | 3 s | Hasta **7** palabras. |
+| **Plano único** | 1 de 8 s | 7 s | Hasta **8** palabras. |
+
+- **Qué tan creativo es:** **Producto** (tu producto en su propia escena, con movimientos de cámara de comercial), **Ambiente** (tu mismo producto aparece en otro lugar que tiene sentido, como tu vitrina o una mesa de cumpleaños) u **Origen** (los ingredientes que se ven en la foto o que dice la descripción caen o flotan alrededor de tu producto). En todos los casos **tu producto no cambia de forma, no se corta ni cambia su decoración**, y no aparecen personas, manos ni letreros con texto.
+- **Qué foto usa cada momento:** puede usar todas tus fotos, solo algunas o repetir la mejor.
+
+Arriba ves el tipo de video (por ejemplo, "Promoción") y el nombre del producto, y debajo el recuadro **La idea**, con la forma y la creatividad que eligió (por ejemplo, "La idea · Clásica · Ambiente") y la idea del video en una o dos frases. Debajo, una tarjeta por momento, en el orden en que se verán, con su número, su nombre y su duración (por ejemplo, "1. Gancho · 4 s" o "2. Toma 2 · 4 s"). La última es el **Cierre**, con tu logo, el precio o una frase y cómo pedirte (sección 12.6).
 
 Entre un momento y otro, la imagen pasa con un fundido suave. Los textos aparecen en la parte de abajo, sin tapar el producto.
 
-En cada uno de los tres primeros ves:
+En cada momento con tu producto ves:
 
 - **La foto** que se animará.
-- **Movimiento:** cómo se moverá la cámara, en palabras simples. Por ejemplo, "La cámara gira alrededor del producto en un arco suave", "La cámara entra hasta un primer plano de la textura y la decoración" o "La cámara sube desde la base y revela la decoración de arriba". La cámara se mueve alrededor de tu producto, como en un comercial: al menos dos momentos la rodean, la suben o la cruzan, y tu producto no cambia de forma ni de decoración.
-- **El texto** que aparecerá en pantalla. AutoReel lo escribe como publicidad a partir de tus respuestas: no copia tus frases tal cual y corrige las tildes.
+- **Toma:** qué pasará en ese momento, en palabras simples. Por ejemplo, "La cámara se acerca a las fresas brillantes" o "La cámara retrocede y revela la torta en la vitrina".
+- **El texto** que aparecerá en pantalla. AutoReel lo escribe como publicidad a partir de tus respuestas: no copia tus frases tal cual y corrige las tildes. **El primer momento, el gancho, siempre tiene texto**, pensado para que la gente se detenga a mirar y que tenga sentido con lo que se ve. Los demás pueden ir **sin texto** cuando la imagen se explica sola: la tarjeta dice "Sin texto en pantalla".
 
 Al final está el **Texto de la publicación**: la descripción y los hashtags que acompañarán al Reel en Instagram. Por ahora solo se puede leer (puedes copiarlo al subir tu video a mano); editarlo antes de publicar está *pendiente (fase 6)*.
 
@@ -625,22 +641,22 @@ Al final está el **Texto de la publicación**: la descripción y los hashtags q
 
 ### 12.4 Cambiar un texto
 
-1. Toca **Editar texto** debajo del texto del momento.
-2. Escribe el nuevo texto. Debajo ves cuántas palabras llevas, por ejemplo **"4 de 6 palabras"**. Si te pasas, el contador se pone en rojo y no puedes guardar.
+1. Toca **Editar texto** debajo del texto del momento (en un momento sin texto, el botón dice **Agregar texto**).
+2. Escribe el nuevo texto. Debajo ves cuántas palabras llevas, por ejemplo **"4 de 6 palabras"**. El máximo depende de la forma del video (sección 12.3). Si te pasas, el contador se pone en rojo y no puedes guardar.
 3. Toca **Guardar**. Para dejarlo como estaba, toca **Cancelar**.
 
 **Cómo se cuentan las palabras:** cuenta todo lo separado por espacios que tenga al menos una letra o un número. "S/ 65" son 2 palabras; un guion suelto ("—") no cuenta.
 
 **Reglas de los textos:**
 
-- No pueden quedar vacíos.
+- El texto del **gancho** (el momento 1) no puede quedar vacío. En los demás momentos puedes borrarlo y guardar: ese momento queda sin texto.
 - Sin emojis ni saltos de línea: no se pueden dibujar en el video.
 - Sin las palabras prohibidas de AutoReel (por ejemplo, promesas de salud o superlativos como "el mejor") ni las que marcaste en tu perfil.
 
 ### 12.5 Cambiar una foto
 
 1. Toca **Cambiar foto** debajo de la foto del momento. Se abre **Foto del momento N**.
-2. Elige una de las fotos de tu producto (**Entero**, **Detalle** o **Porción**). La que está en uso aparece marcada.
+2. Elige una de las fotos de tu producto (**Foto 1**, **Foto 2** o **Foto 3**, las que tenga). La que está en uso aparece marcada. La toma se mantiene: si la nueva foto es muy distinta, revisa el resultado en el video.
 3. O toca **Subir otra foto** y elige una nueva. Sigue la [guía de fotos](#8-cómo-tomar-buenas-fotos): vertical, con buena luz y de al menos 720 px en su lado más corto.
 
 Al elegirla, la ventana se cierra y la tarjeta muestra la foto nueva.
@@ -664,7 +680,7 @@ La tarjeta del cierre muestra:
 - **Ubicación:** tu distrito o, si en el chat dijiste dónde estás (por ejemplo, "nuestro local está en Plaza Lima Sur, Chorrillos"), ese lugar: "Plaza Lima Sur, Chorrillos". No se repite si el llamado ya lo dice.
 - **WhatsApp:** tu número, si vendes por WhatsApp.
 
-Al lado ves una vista pequeña del cierre: tu logo, el texto grande y el llamado sobre la foto de tu local o sobre tus dos colores. En el video, si no subiste la foto del local, el fondo es el final del momento 3, desenfocado y más oscuro, y el llamado va en el color de tu marca.
+Al lado ves una vista pequeña del cierre: tu logo, el texto grande y el llamado sobre la foto de tu local o sobre tus dos colores. En el video, si no subiste la foto del local, el fondo es el final del último momento con tu producto, desenfocado y más oscuro, y el llamado va en el color de tu marca.
 
 **Para cambiar el precio o la frase:**
 
@@ -710,7 +726,7 @@ Al descartarla, vas a **Mis videos**, donde aparece como **Descartado**. Ya no s
 | Mensaje que ves | Qué significa | Qué hacer |
 |---|---|---|
 | "Este plano admite hasta 6 palabras, para que se lea en el video." | El texto es muy largo para leerse en pantalla. | Acórtalo. |
-| "Escribe el texto de este plano." | Dejaste el texto vacío. | Escribe algo o toca **Cancelar**. |
+| "Escribe el texto de este plano." | Dejaste vacío el texto del gancho (el momento 1). | Escribe algo o toca **Cancelar**. |
 | "Quita los emojis, los saltos de línea y los símbolos especiales: no se pueden mostrar en el video." | El texto o el precio tiene emojis, varias líneas o símbolos que las letras del video no tienen. Las tildes, la ñ, ¿, ¡ y el símbolo € sí se pueden usar. | Escríbelo en una sola línea, sin emojis ni símbolos raros. |
 | "No podemos usar "…" en tus videos. Escríbelo de otra forma." | El texto o el precio tiene una palabra prohibida (de AutoReel o de tu perfil). | Usa otras palabras. |
 | "El precio admite hasta 40 caracteres." | El precio es muy largo. | Acórtalo. |
@@ -730,7 +746,7 @@ Los mensajes al subir una foto nueva son los mismos del catálogo (sección 10).
 
 ## 13. Tu video: espera, revisión y descarga
 
-Después de tocar **Crear mi video**, AutoReel da vida a tus fotos: cada uno de los tres primeros momentos se convierte en un clip corto con el movimiento de la propuesta, y luego arma el Reel de **15 segundos**, vertical, con tus textos, el cierre con tu marca y música según tu estilo.
+Después de tocar **Crear mi video**, AutoReel da vida a tus fotos: cada momento con tu producto se convierte en un clip corto con la toma de la propuesta, y luego arma el Reel de **15 segundos**, vertical, con tus textos, el cierre con tu marca y música según tu estilo.
 
 ```mermaid
 flowchart TD
@@ -746,7 +762,7 @@ flowchart TD
 
 > *Captura pendiente: pantalla "Creando tu video".*
 
-Verás **"Creando tu video"** con mensajes que van cambiando (por ejemplo, "Estamos dando vida a tus fotos…") y la lista de los cuatro momentos con su avance:
+Verás **"Creando tu video"** con mensajes que van cambiando (por ejemplo, "Estamos dando vida a tus fotos…") y la lista de los momentos con tu producto, con su avance:
 
 | Lo que ves junto al momento | Qué significa |
 |---|---|
@@ -754,7 +770,7 @@ Verás **"Creando tu video"** con mensajes que van cambiando (por ejemplo, "Esta
 | **Creando el clip…** | AutoReel está creando el clip de ese momento. |
 | **Listo** | El clip de ese momento ya está. |
 
-Cuando los tres clips están, la pantalla cambia a **"Armando tu video"**: "Le estamos poniendo los textos, tu logo y la música…".
+Cuando todos los clips están, la pantalla cambia a **"Armando tu video"**: "Le estamos poniendo los textos, tu logo y la música…".
 
 - **Suele tardar unos minutos.** La pantalla se actualiza sola; no tienes que recargarla.
 - **Puedes salir.** Cierra la página o usa otra sección: tu video te esperará en **Mis videos** (sección 14).
@@ -772,13 +788,13 @@ Si sigues usando AutoReel mientras se crea el video (en el catálogo, en Ajustes
 
 Al abrir tu video listo verás "Tu video está listo. Míralo y, si quieres, cambia un texto o pide otra versión de un momento." y el **reproductor** vertical. Toca ▶ para verlo.
 
-Debajo están las tarjetas de los cuatro momentos, igual que en la propuesta, con estas opciones:
+Debajo están la idea y las tarjetas de los momentos, igual que en la propuesta, con estas opciones:
 
 | Opción | Qué hace | ¿Gasta algo? |
 |---|---|---|
-| **Editar texto** (momentos 1 a 3) | Cambia el texto en pantalla (sección 13.6). | No |
+| **Editar texto** o **Agregar texto** (momentos con tu producto) | Cambia, agrega o quita el texto en pantalla (sección 13.6). | No |
 | **Editar precio y frase** (cierre) | Cambia el precio o la frase del cierre (sección 13.6). | No |
-| **Cambiar foto** (momentos 1 a 3) | Usa otra foto en ese momento y crea su clip de nuevo (sección 13.6). Solo aparece si te quedan regeneraciones y se pueden crear clips (sección 13.5). | 1 regeneración |
+| **Cambiar foto** (momentos con tu producto) | Usa otra foto en ese momento y crea su clip de nuevo (sección 13.6). Solo aparece si te quedan regeneraciones y se pueden crear clips (sección 13.5). | 1 regeneración |
 | **Regenerar este plano (te quedan *N*)** | Pide otra versión del clip de ese momento (sección 13.4). Solo aparece si se pueden crear clips (sección 13.5). | 1 regeneración |
 | **Aprobar mi video** | Das el video por terminado (sección 13.7). | No |
 | **Descargar** | Guarda el video en tu celular o computadora (sección 13.8). | No |

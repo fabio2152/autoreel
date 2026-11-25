@@ -43,6 +43,8 @@ public class PreparadorDeFotos {
     public static final int ALTO = 1920;
     /** Lado mayor a partir del cual se lee la foto submuestreada, para no decodificar fotos enormes enteras. */
     private static final int LADO_MAXIMO_DE_LECTURA = 4320;
+    /** Lado mayor de la foto que ve el modelo de texto: suficiente para entenderla y barata en tokens. */
+    public static final int LADO_PARA_LA_IA = 1024;
 
     public byte[] vertical(byte[] foto) {
         BufferedImage imagen = orientar(leer(foto), orientacion(foto));
@@ -56,6 +58,27 @@ public class PreparadorDeFotos {
             int ancho = (int) Math.ceil(imagen.getWidth() * escala);
             int alto = (int) Math.ceil(imagen.getHeight() * escala);
             lienzo.drawImage(imagen, (ANCHO - ancho) / 2, (ALTO - alto) / 2, ancho, alto, null);
+        } finally {
+            lienzo.dispose();
+        }
+        return jpeg(salida);
+    }
+
+    /**
+     * La foto como la ve el modelo de texto al escribir el guion: bien orientada, sin recortar, con el lado mayor de
+     * {@value #LADO_PARA_LA_IA} px como máximo y sin metadatos.
+     */
+    public byte[] paraLaIa(byte[] foto) {
+        BufferedImage imagen = orientar(leer(foto), orientacion(foto));
+        double escala = Math.min(1.0, (double) LADO_PARA_LA_IA / Math.max(imagen.getWidth(), imagen.getHeight()));
+        int ancho = Math.max(1, (int) Math.round(imagen.getWidth() * escala));
+        int alto = Math.max(1, (int) Math.round(imagen.getHeight() * escala));
+        BufferedImage salida = new BufferedImage(ancho, alto, BufferedImage.TYPE_INT_RGB);
+        Graphics2D lienzo = salida.createGraphics();
+        try {
+            lienzo.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            lienzo.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            lienzo.drawImage(imagen, 0, 0, ancho, alto, null);
         } finally {
             lienzo.dispose();
         }

@@ -185,19 +185,33 @@ class GestionNegociosIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$[0].videosPorDia").value(1))
                 .andExpect(jsonPath("$[0].regeneracionesPorVideo").value(3))
                 .andExpect(jsonPath("$[0].modeloTexto").value("Gemini"))
-                .andExpect(jsonPath("$[0].modeloVideo").value("Gemini Omni Flash"));
+                .andExpect(jsonPath("$[0].modeloVideo").value("Veo 3.1 Lite"));
 
-        // Los dos caminos de Google (V7): activos los de AI Studio, listos e inactivos los de Google Cloud.
-        var porAdaptador = modelos.findAll().stream()
+        // Los dos caminos de Google (V7): el texto sigue en AI Studio y, desde V11, los clips del plan Lite los hace
+        // Veo 3.1 Lite en Google Cloud. Veo 3.1 Fast y Veo 3.1 copian sus parámetros para compararlos desde el panel.
+        var todos = modelos.findAll();
+        var porAdaptador = todos.stream().filter(m -> !m.getAdaptador().equals("VEO"))
                 .collect(java.util.stream.Collectors.toMap(m -> m.getAdaptador(), m -> m));
         assertThat(porAdaptador.get("GEMINI").getEstado()).isEqualTo(EstadoModelo.ACTIVO);
-        assertThat(porAdaptador.get("GEMINI_OMNI").getEstado()).isEqualTo(EstadoModelo.ACTIVO);
-        assertThat(porAdaptador.get("GEMINI_OMNI").getNombreSecreto()).isEqualTo("autoreel/gemini");
-        assertThat(porAdaptador.get("GEMINI_OMNI").getParametros()).containsEntry("relacionAspecto", "9:16");
-        assertThat(porAdaptador.get("VEO").getEstado()).isEqualTo(EstadoModelo.INACTIVO);
-        assertThat(porAdaptador.get("VEO").getNombreSecreto()).isEqualTo("autoreel/google-cloud");
         assertThat(porAdaptador.get("GEMINI_CLOUD").getEstado()).isEqualTo(EstadoModelo.INACTIVO);
         assertThat(porAdaptador.get("GEMINI_CLOUD").getParametros()).containsEntry("ubicacion", "global");
+        assertThat(porAdaptador.get("GEMINI_OMNI").getEstado()).isEqualTo(EstadoModelo.ACTIVO);
+        assertThat(porAdaptador.get("GEMINI_OMNI").getNombreSecreto()).isEqualTo("autoreel/gemini");
+        var porIdentificador = todos.stream().filter(m -> m.getAdaptador().equals("VEO"))
+                .collect(java.util.stream.Collectors.toMap(m -> m.getIdentificadorModelo(), m -> m));
+        var veoLite = porIdentificador.get("veo-3.1-lite-generate-001");
+        assertThat(veoLite.getEstado()).isEqualTo(EstadoModelo.ACTIVO);
+        assertThat(veoLite.getNombreSecreto()).isEqualTo("autoreel/google-cloud");
+        assertThat(veoLite.getParametros()).containsEntry("relacionAspecto", "9:16")
+                .containsEntry("duracionesClip", java.util.List.of(4, 6, 8));
+        for (String identificador : java.util.List.of("veo-3.1-fast-generate-001", "veo-3.1-generate-001")) {
+            var veo = porIdentificador.get(identificador);
+            assertThat(veo).as(identificador).isNotNull();
+            assertThat(veo.getAdaptador()).isEqualTo("VEO");
+            assertThat(veo.getEstado()).isEqualTo(EstadoModelo.ACTIVO);
+            assertThat(veo.getNombreSecreto()).isEqualTo("autoreel/google-cloud");
+            assertThat(veo.getParametros()).isEqualTo(veoLite.getParametros());
+        }
         assertThat(planes.findAll().getFirst().getOpcionesProduccionPermitidas()).containsEntry("vozEnOff", false);
     }
 }

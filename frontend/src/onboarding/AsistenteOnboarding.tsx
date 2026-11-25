@@ -212,7 +212,7 @@ function PantallaFinal({ sinTransparencia }: { sinTransparencia: boolean }) {
         </p>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">¡Tu perfil está listo!</h1>
         <p className="mt-2 text-stone-600">
-          Ahora registra tus productos con tres fotos cada uno. Solo lo haces una vez y luego eliges cuál mostrar en
+          Ahora registra tus productos con hasta tres fotos cada uno. Solo lo haces una vez y luego eliges cuál mostrar en
           cada video.
         </p>
       </div>

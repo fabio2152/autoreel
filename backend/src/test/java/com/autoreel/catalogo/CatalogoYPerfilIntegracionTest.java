@@ -47,31 +47,30 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$[*].id", hasItem((int) producto)));
     }
 
+    /** RN-12 (2026-11-25): la foto principal basta; las otras dos son opcionales. */
     @Test
-    void v11UnProductoConDosFotosQuedaIncompleto() throws Exception {
+    void v11UnProductoSoloConLaFotoPrincipalEstaCompleto() throws Exception {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
-        Map<String, String> dos = new HashMap<>(fotosCompletas(negocio));
-        dos.remove("PORCION");
+        Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
+        fotos.remove("FOTO_1");
 
-        JsonNode producto = crearProducto(negocio, dos);
+        JsonNode producto = crearProducto(negocio, fotos);
         assertThat(producto.get("completo").asBoolean()).isFalse();
 
         // Las fotos ya guardadas se envían con su clave definitiva; la nueva, con su clave de subida.
-        Map<String, String> tres = new HashMap<>();
-        tres.put("ENTERO", foto(producto, "ENTERO"));
-        tres.put("DETALLE", foto(producto, "DETALLE"));
-        tres.put("PORCION", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
-        actualizarProducto(negocio, producto.get("id").asLong(), tres)
+        Map<String, String> soloLaPrincipal = new HashMap<>();
+        soloLaPrincipal.put("FOTO_1", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+        actualizarProducto(negocio, producto.get("id").asLong(), soloLaPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.completo").value(true))
-                .andExpect(jsonPath("$.fotos.length()").value(3));
+                .andExpect(jsonPath("$.fotos.length()").value(1));
     }
 
     @Test
     void v12UnaFotoDeMenosDe720PixelesSeRechaza() throws Exception {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
         Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
-        fotos.put("DETALLE", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(700, 1200), "image/jpeg"));
+        fotos.put("FOTO_2", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(700, 1200), "image/jpeg"));
 
         mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
@@ -84,21 +83,21 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
         Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
         JsonNode producto = crearProducto(negocio, fotos);
-        String enteroAnterior = foto(producto, "ENTERO");
-        assertThat(enteroAnterior).startsWith("negocios/").doesNotContain("subidas/");
+        String principalAnterior = foto(producto, "FOTO_1");
+        assertThat(principalAnterior).startsWith("negocios/").doesNotContain("subidas/");
 
         Map<String, String> nuevas = new HashMap<>();
-        nuevas.put("ENTERO", subir(negocio, "FOTO_PRODUCTO", Imagenes.png(1920, 1080, false), "image/png"));
-        nuevas.put("DETALLE", foto(producto, "DETALLE"));
-        nuevas.put("PORCION", foto(producto, "PORCION"));
+        nuevas.put("FOTO_1", subir(negocio, "FOTO_PRODUCTO", Imagenes.png(1920, 1080, false), "image/png"));
+        nuevas.put("FOTO_2", foto(producto, "FOTO_2"));
+        nuevas.put("FOTO_3", foto(producto, "FOTO_3"));
         JsonNode actualizado = json.readTree(actualizarProducto(negocio, producto.get("id").asLong(), nuevas)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.avisos[0]").value("FOTO_HORIZONTAL"))
                 .andReturn().getResponse().getContentAsString());
 
-        assertThat(foto(actualizado, "ENTERO")).isNotEqualTo(enteroAnterior).endsWith(".png");
-        assertThat(almacen.existe(nuevas.get("ENTERO"))).as("la subida temporal se borra").isFalse();
-        assertThat(almacen.existe(foto(actualizado, "ENTERO"))).isTrue();
+        assertThat(foto(actualizado, "FOTO_1")).isNotEqualTo(principalAnterior).endsWith(".png");
+        assertThat(almacen.existe(nuevas.get("FOTO_1"))).as("la subida temporal se borra").isFalse();
+        assertThat(almacen.existe(foto(actualizado, "FOTO_1"))).isTrue();
     }
 
     @Test
@@ -106,7 +105,7 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
         Cookie a = sesionNegocioListo(correoUnico(), "MiClave2026");
         Cookie b = sesionNegocioListo(correoUnico(), "MiClave2026");
         String deA = subir(a, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
-        String definitivaDeA = foto(crearProducto(a, fotosCompletas(a)), "ENTERO");
+        String definitivaDeA = foto(crearProducto(a, fotosCompletas(a)), "FOTO_1");
         String deB = subir(b, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
         // Recorridos de carpeta armados desde el prefijo del propio negocio B, que apuntan a otra carpeta.
         String conRecorrido = deB.replaceFirst("/foto_producto/", "/foto_producto/../../../");
@@ -114,7 +113,7 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
 
         for (String ajena : List.of(deA, definitivaDeA, conRecorrido, conRecorridoCodificado)) {
             Map<String, String> fotos = new HashMap<>(fotosCompletas(b));
-            fotos.put("ENTERO", ajena);
+            fotos.put("FOTO_1", ajena);
             mvc.perform(post("/api/productos").with(csrf()).cookie(b)
                             .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
                     .andExpect(status().isBadRequest())
@@ -200,16 +199,16 @@ class CatalogoYPerfilIntegracionTest extends PruebaDeIntegracion {
         Cookie negocio = sesionNegocioListo(correoUnico(), "MiClave2026");
         String foto = subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
         Map<String, String> fotos = new HashMap<>(fotosCompletas(negocio));
-        fotos.put("ENTERO", foto);
-        fotos.put("DETALLE", "subidas/negocios/999999/foto_producto/00000000-0000-0000-0000-000000000000.jpg");
+        fotos.put("FOTO_1", foto);
+        fotos.put("FOTO_2", "subidas/negocios/999999/foto_producto/00000000-0000-0000-0000-000000000000.jpg");
 
-        // La foto ENTERO se verifica y se copia, pero DETALLE falla: la transacción se deshace.
+        // La foto 1 se verifica y se copia, pero la 2 falla: la transacción se deshace.
         mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
                 .andExpect(status().isBadRequest());
         assertThat(almacen.existe(foto)).as("la subida sigue disponible para reintentar").isTrue();
 
-        fotos.put("DETALLE", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+        fotos.put("FOTO_2", subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
         mvc.perform(post("/api/productos").with(csrf()).cookie(negocio)
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud(fotos))))
                 .andExpect(status().isCreated())

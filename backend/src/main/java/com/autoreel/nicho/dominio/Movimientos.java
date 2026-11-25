@@ -4,18 +4,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Lista cerrada de movimientos de cámara (sección 7.5): el modelo de texto solo puede elegir entre ellos y el
- * sistema arma la instrucción para el modelo de video con la plantilla de toma del nicho (fase 5).
+ * Las tomas de cámara del nicho (sección 7.5, guion flexible del 2026-11-25). La IA escribe la toma de cada plano con
+ * libertad, guiada por el nivel de creatividad que elige; los movimientos del catálogo le sirven de inspiración y son
+ * los que usan los videos anteriores. El sistema envuelve la toma con la plantilla y las prohibiciones del nicho.
  *
  * @param plantillaDeToma envoltorio en inglés común a todos los clips; {@value #MARCA_INSTRUCCION} se reemplaza por la
- *                        instrucción del movimiento.
+ *                        toma.
  * @param prohibiciones   lo que nunca debe aparecer, en frases; va al final de cada prompt.
  * @param negativos       lo mismo como lista de sustantivos, para los proveedores con prompt negativo.
- * @param minimoPlanosCamara3d cuántos planos de un video, como mínimo, usan un movimiento de cámara 3D (órbita,
- *                        arco, grúa, paralaje o diagonal), para que el video no sea solo acercamientos.
+ * @param creatividades   los niveles de creatividad que puede elegir la IA.
  */
-public record Movimientos(String plantillaDeToma, String prohibiciones, String negativos, Integer minimoPlanosCamara3d,
-        List<Movimiento> movimientos) {
+public record Movimientos(String plantillaDeToma, String prohibiciones, String negativos,
+        List<Creatividad> creatividades, List<Movimiento> movimientos) {
 
     public static final String MARCA_INSTRUCCION = "{instruccion}";
 
@@ -38,27 +38,49 @@ public record Movimientos(String plantillaDeToma, String prohibiciones, String n
         }
     }
 
-    public Movimientos {
-        minimoPlanosCamara3d = minimoPlanosCamara3d == null ? 0 : minimoPlanosCamara3d;
-        movimientos = movimientos == null ? List.of() : List.copyOf(movimientos);
+    /**
+     * Cuánto se aleja la toma de la foto.
+     *
+     * @param descripcion        en español, para la IA y el storyboard.
+     * @param guia               en inglés: cómo escribir la toma con este nivel.
+     * @param prohibicionesExtra se suman a las prohibiciones generales en el prompt del clip.
+     * @param negativosExtra     se suman a los negativos generales.
+     */
+    public record Creatividad(String id, String nombre, String descripcion, String guia, String prohibicionesExtra,
+            String negativosExtra) {
     }
 
-    /** Si el movimiento existe y es de cámara 3D. */
-    public boolean esCamara3d(String id) {
-        return buscar(id).map(Movimiento::camara3d).orElse(false);
+    public Movimientos {
+        creatividades = creatividades == null ? List.of() : List.copyOf(creatividades);
+        movimientos = movimientos == null ? List.of() : List.copyOf(movimientos);
     }
 
     public Optional<Movimiento> buscar(String id) {
         return movimientos.stream().filter(movimiento -> movimiento.id().equals(id)).findFirst();
     }
 
-    /** Movimientos que el modelo puede elegir para un tipo de video. */
+    public Optional<Creatividad> creatividad(String id) {
+        return creatividades.stream().filter(creatividad -> creatividad.id().equals(id)).findFirst();
+    }
+
+    /** Movimientos que el modelo puede tomar como inspiración en un tipo de video. */
     public List<Movimiento> para(String tipoVideo) {
         return movimientos.stream().filter(movimiento -> movimiento.admiteTipoVideo(tipoVideo)).toList();
     }
 
-    /** El prompt completo de un clip: la plantilla de toma con la instrucción del movimiento, y las prohibiciones. */
-    public String promptDeToma(Movimiento movimiento) {
-        return plantillaDeToma.replace(MARCA_INSTRUCCION, movimiento.instruccion()).strip() + " " + prohibiciones.strip();
+    /**
+     * El prompt completo de un clip: la plantilla con la toma, las prohibiciones generales y las del nivel de
+     * creatividad (si el video tiene uno).
+     */
+    public String promptDeToma(String toma, String creatividad) {
+        String extra = creatividad(creatividad).map(Creatividad::prohibicionesExtra)
+                .filter(texto -> texto != null && !texto.isBlank()).map(texto -> " " + texto.strip()).orElse("");
+        return plantillaDeToma.replace(MARCA_INSTRUCCION, toma.strip()).strip() + " " + prohibiciones.strip() + extra;
+    }
+
+    /** Los negativos generales y los del nivel de creatividad. */
+    public String negativos(String creatividad) {
+        return negativos + creatividad(creatividad).map(Creatividad::negativosExtra)
+                .filter(texto -> texto != null && !texto.isBlank()).map(texto -> ", " + texto.strip()).orElse("");
     }
 }

@@ -76,7 +76,7 @@ public class ServicioCatalogo {
     }
 
     /**
-     * Carrusel del chat (RF-20, V11): productos activos del catálogo con sus tres fotos, del más reciente al más
+     * Carrusel del chat (RF-20, V11): productos activos del catálogo con su foto principal, del más reciente al más
      * antiguo, y cuántos se quedaron fuera por faltarles fotos.
      */
     public record Carrusel(List<Producto> productos, int incompletos) {
@@ -106,16 +106,15 @@ public class ServicioCatalogo {
     }
 
     /**
-     * Producto subido desde el chat (RF-20): exige las tres fotos para usarse en el video y, si el usuario no aceptó
+     * Producto subido desde el chat (RF-20): exige la foto principal para usarse en el video y, si el usuario no aceptó
      * guardarlo, queda fuera del catálogo (RN-14). Su temporada es "Todo el año" (no se piden en el MVP).
      */
     @Transactional
     public Producto crearDesdeChat(Long negocioId, String nombre, String descripcion, Map<TipoFoto, String> fotos,
             boolean guardarEnCatalogo) {
-        if (fotos == null || Arrays.stream(TipoFoto.values()).anyMatch(tipo -> fotos.get(tipo) == null
-                || fotos.get(tipo).isBlank())) {
+        if (fotos == null || fotos.get(TipoFoto.FOTO_1) == null || fotos.get(TipoFoto.FOTO_1).isBlank()) {
             throw new ExcepcionDeNegocio("PRODUCTO_INCOMPLETO",
-                    "Para usar el producto en tu video necesitamos sus tres fotos: entero, detalle y porción.");
+                    "Para usar el producto en tu video necesitamos al menos su foto principal.");
         }
         Negocio negocio = negocios.findById(negocioId)
                 .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos tu negocio."));

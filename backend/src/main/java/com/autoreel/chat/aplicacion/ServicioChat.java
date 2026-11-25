@@ -134,7 +134,7 @@ public class ServicioChat {
             Producto producto = catalogo.paraVideo(conversacion.getNegocio().getId(), solicitud.productoId())
                     .filter(Producto::isEnCatalogo)
                     .orElseThrow(() -> new ExcepcionDeNegocio("PRODUCTO_NO_DISPONIBLE",
-                            "Ese producto no está disponible: necesita estar activo y tener sus tres fotos."));
+                            "Ese producto no está disponible: necesita estar activo y tener su foto principal."));
             conversacion.decirUsuario(producto.getNombre(), ahora);
             aceptar(conversacion, guion, paso, producto.getId(), ahora);
         } else if (solicitud.productoNuevo() != null) {
@@ -312,7 +312,7 @@ public class ServicioChat {
     }
 
     private ConversacionVista.ProductoCarrusel paraCarrusel(Producto producto) {
-        String foto = producto.foto(TipoFoto.ENTERO).map(catalogo::urlDeFoto).orElse(null);
+        String foto = producto.foto(TipoFoto.FOTO_1).map(catalogo::urlDeFoto).orElse(null);
         return new ConversacionVista.ProductoCarrusel(producto.getId(), producto.getNombre(),
                 producto.getDescripcion(), foto);
     }

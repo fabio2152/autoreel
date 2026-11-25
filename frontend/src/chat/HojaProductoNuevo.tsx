@@ -23,7 +23,7 @@ interface Props {
 }
 
 /**
- * "Subir uno nuevo hoy" (sección 7.3): nombre, descripción y las tres fotos. Al final, el usuario decide de forma
+ * "Subir uno nuevo hoy" (sección 7.3): nombre, descripción y hasta tres fotos (la principal es obligatoria). Al final, el usuario decide de forma
  * explícita si lo guarda en su catálogo o lo usa solo en este video (RN-14).
  */
 export function HojaProductoNuevo({ abierto, enviando, error, onCerrar, onUsar }: Props) {
@@ -38,8 +38,8 @@ export function HojaProductoNuevo({ abierto, enviando, error, onCerrar, onUsar }
       setFaltante('Escribe el nombre y la descripción del producto.')
       return
     }
-    if (TIPOS_FOTO.some((tipo) => !fotos[tipo])) {
-      setFaltante('Sube las tres fotos: entero, detalle y porción.')
+    if (!fotos.FOTO_1) {
+      setFaltante('Sube al menos la foto principal del producto.')
       return
     }
     setFaltante(null)

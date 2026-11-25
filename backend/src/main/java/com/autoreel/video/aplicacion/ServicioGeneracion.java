@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -71,11 +73,15 @@ public class ServicioGeneracion {
             "No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.";
 
     private record Trabajo(Long videoId, Long negocioId, ModeloIA modelo, Movimientos movimientos,
-            List<PlanoATrabajar> planos) {
+            String creatividad, List<PlanoATrabajar> planos) {
     }
 
+    /**
+     * @param toma     la toma que escribió la IA; vacía en los videos anteriores, que usan {@code movimiento}.
+     * @param segundos lo que dura el plano en el video.
+     */
     private record PlanoATrabajar(int orden, EstadoPlano estado, int intentos, String idTarea, Instant enviadoEn,
-            String claveFoto, String movimiento) {
+            String claveFoto, String toma, String movimiento, int segundos) {
     }
 
     private final VideoRepositorio videos;
@@ -189,14 +195,16 @@ public class ServicioGeneracion {
             return false;
         }
         byte[] foto = preparador.vertical(leerArchivo(plano.claveFoto()));
-        Movimientos.Movimiento movimiento = trabajo.movimientos().buscar(plano.movimiento())
+        String toma = plano.toma() != null ? plano.toma() : trabajo.movimientos().buscar(plano.movimiento())
+                .map(Movimientos.Movimiento::instruccion)
                 .orElseThrow(() -> new IllegalStateException("Movimiento desconocido: " + plano.movimiento()));
-        int segundos = segundosDelClip(trabajo.modelo());
+        int segundos = segundosDelClip(trabajo.modelo(), plano.segundos());
         // Se cuenta el intento antes de llamar: si algo se corta después, no se reenvía sin límite.
         conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.prepararEnvio(reloj.instant()));
         try {
             String idTarea = generador.iniciar(trabajo.modelo(), credencial, new SolicitudDeClip(foto, "image/jpeg",
-                    trabajo.movimientos().promptDeToma(movimiento), trabajo.movimientos().negativos(), segundos));
+                    trabajo.movimientos().promptDeToma(toma, trabajo.creatividad()),
+                    trabajo.movimientos().negativos(trabajo.creatividad()), segundos));
             conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.enviado(idTarea));
             return false;
         } catch (ErrorDeProveedor e) {
@@ -262,7 +270,7 @@ public class ServicioGeneracion {
                 + "-" + UUID.randomUUID() + ".mp4";
         almacen.guardar(clave, listo.video(), listo.tipoContenido());
         conPlano(trabajo, plano.orden(), (video, entidad) -> {
-            registrarCosto(trabajo, video, listo.segundosGenerados());
+            registrarCosto(trabajo, video, entidad, listo.segundosGenerados());
             borrarAlConfirmar(entidad.clipListo(clave));
         });
     }
@@ -273,7 +281,7 @@ public class ServicioGeneracion {
     private void sinClip(Trabajo trabajo, PlanoATrabajar plano, MotivoRespaldoPlano motivo, boolean cobrar) {
         conPlano(trabajo, plano.orden(), (video, entidad) -> {
             if (cobrar) {
-                registrarCosto(trabajo, video);
+                registrarCosto(trabajo, video, entidad);
             }
             sinClip(trabajo, video, entidad, motivo);
         });
@@ -288,7 +296,7 @@ public class ServicioGeneracion {
                 }
                 if (entidad.getEstado() == EstadoPlano.GENERANDO) {
                     // La tarea ya se había enviado y se abandona: el proveedor la cobra igual (RN-32).
-                    registrarCosto(trabajo, video);
+                    registrarCosto(trabajo, video, entidad);
                 }
                 entidad.reintentar();
                 if (entidad.getIntentos() >= INTENTOS_POR_CLIP) {
@@ -313,7 +321,7 @@ public class ServicioGeneracion {
         }
         for (Plano otro : video.planosConFoto()) {
             if (otro != plano && otro.getEstado() == EstadoPlano.GENERANDO) {
-                registrarCosto(trabajo, video);
+                registrarCosto(trabajo, video, otro);
             }
         }
         video.marcarError(MOTIVO_SIN_CLIPS, reloj.instant());
@@ -322,18 +330,18 @@ public class ServicioGeneracion {
         }
     }
 
-    private void registrarCosto(Trabajo trabajo, Video video) {
-        registrarCosto(trabajo, video, null);
+    private void registrarCosto(Trabajo trabajo, Video video, Plano plano) {
+        registrarCosto(trabajo, video, plano, null);
     }
 
     /**
      * RN-32: el costo de un clip. Si el proveedor informa cuántos segundos generó (y cobra), se usan esos; si no, la
      * duración pedida.
      */
-    private void registrarCosto(Trabajo trabajo, Video video, Double segundosGenerados) {
+    private void registrarCosto(Trabajo trabajo, Video video, Plano plano, Double segundosGenerados) {
         BigDecimal segundos = segundosGenerados != null && segundosGenerados > 0
                 ? BigDecimal.valueOf(segundosGenerados).setScale(3, java.math.RoundingMode.HALF_UP)
-                : BigDecimal.valueOf(segundosDelClip(trabajo.modelo()));
+                : BigDecimal.valueOf(segundosDelClip(trabajo.modelo(), plano.getSegundos()));
         BigDecimal costo = costos.registrar(trabajo.negocioId(), trabajo.videoId(), trabajo.modelo(),
                 ConceptoCosto.CLIP, segundos);
         video.sumarCosto(costo);
@@ -357,11 +365,11 @@ public class ServicioGeneracion {
         PaqueteNicho paquete = nichos.de(nicho);
         List<PlanoATrabajar> planos = video.planosConFoto().stream()
                 .map(plano -> new PlanoATrabajar(plano.getOrden(), plano.getEstado(), plano.getIntentos(),
-                        plano.getIdTareaProveedor(), plano.getEnviadoEn(), plano.getClaveFoto(),
-                        plano.getMovimiento()))
+                        plano.getIdTareaProveedor(), plano.getEnviadoEn(), plano.getClaveFoto(), plano.getToma(),
+                        plano.getMovimiento(), plano.getSegundos()))
                 .toList();
         return new Trabajo(video.getId(), video.getNegocioId(), video.getModeloVideoUsado(), paquete.movimientos(),
-                planos);
+                video.getCreatividad(), planos);
     }
 
     private byte[] leerArchivo(String clave) {
@@ -385,9 +393,25 @@ public class ServicioGeneracion {
         });
     }
 
-    static int segundosDelClip(ModeloIA modelo) {
-        Object valor = modelo.getParametros() == null ? null : modelo.getParametros().get("duracionClipSegundos");
-        return valor instanceof Number numero ? numero.intValue() : SEGUNDOS_POR_DEFECTO;
+    /**
+     * Duración que se le pide al proveedor para un plano: la más corta que admite el modelo y que cubre el plano
+     * ({@code duracionesClip} en sus parámetros, por ejemplo [4, 6, 8] en Veo). Si ninguna alcanza, la más larga: la
+     * composición congela el último cuadro. Un modelo sin esa lista usa {@code duracionClipSegundos}.
+     */
+    static int segundosDelClip(ModeloIA modelo, int segundosDelPlano) {
+        Map<String, Object> parametros = modelo.getParametros() == null ? Map.of() : modelo.getParametros();
+        List<Integer> duraciones = new ArrayList<>();
+        if (parametros.get("duracionesClip") instanceof List<?> lista) {
+            lista.stream().filter(Number.class::isInstance).map(valor -> ((Number) valor).intValue())
+                    .forEach(duraciones::add);
+        }
+        if (duraciones.isEmpty()) {
+            duraciones.add(parametros.get("duracionClipSegundos") instanceof Number numero ? numero.intValue()
+                    : SEGUNDOS_POR_DEFECTO);
+        }
+        duraciones.sort(null);
+        return duraciones.stream().filter(duracion -> duracion >= segundosDelPlano).findFirst()
+                .orElse(duraciones.getLast());
     }
 
     private static MotivoRespaldoPlano motivo(ErrorDeProveedor.Tipo tipo) {

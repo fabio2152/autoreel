@@ -81,6 +81,15 @@ public class Video {
 
     private String descripcionPublicacion;
 
+    /** Estructura que eligió la IA (paquete de nicho); vacía mientras no hay guion. */
+    private String estructura;
+
+    /** Nivel de creatividad que eligió la IA. */
+    private String creatividad;
+
+    /** La idea del video en una o dos frases, para el storyboard. */
+    private String idea;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
     private List<String> hashtags = new ArrayList<>();
@@ -173,14 +182,26 @@ public class Video {
         this.fechaActualizacion = ahora;
     }
 
-    /** Agrega un plano con foto (1 a 3). */
-    public void agregarPlano(int orden, TipoFoto tipoFoto, String claveFoto, String movimiento, String texto) {
-        planos.add(Plano.conFoto(this, orden, tipoFoto, claveFoto, movimiento, texto));
+    /**
+     * Lo que eligió la IA para este video: la estructura (cuántas tomas y de cuántos segundos), el nivel de
+     * creatividad y la idea en una frase.
+     */
+    public void elegirConcepto(String estructura, String creatividad, String idea) {
+        this.estructura = estructura;
+        this.creatividad = creatividad;
+        this.idea = idea;
+    }
+
+    /** Agrega una toma con foto (1 a 4, según la estructura). */
+    public void agregarPlano(int orden, int segundos, TipoFoto tipoFoto, String claveFoto, String toma,
+            String descripcionToma, String texto) {
+        planos.add(Plano.conFoto(this, orden, segundos, tipoFoto, claveFoto, toma, descripcionToma, texto));
     }
 
     /** Agrega el cierre: precio o frase de la IA, llamado de la plantilla y ubicación. */
-    public void agregarCierre(int orden, String precio, String frase, String llamado, String ubicacion) {
-        planos.add(Plano.cierre(this, orden, precio, frase, llamado, ubicacion));
+    public void agregarCierre(int orden, int segundos, String precio, String frase, String llamado,
+            String ubicacion) {
+        planos.add(Plano.cierre(this, orden, segundos, precio, frase, llamado, ubicacion));
     }
 
     /** Inicio del plazo de los reintentos automáticos del guion. */
@@ -378,8 +399,15 @@ public class Video {
         this.fechaActualizacion = ahora;
     }
 
+    /** Las tomas, en orden. */
     public List<Plano> planosConFoto() {
-        return planos.stream().filter(plano -> !plano.esCierre()).toList();
+        return planos.stream().filter(plano -> !plano.esCierre())
+                .sorted(java.util.Comparator.comparingInt(Plano::getOrden)).toList();
+    }
+
+    /** El cierre: el plano sin foto. */
+    public Optional<Plano> cierre() {
+        return planos.stream().filter(Plano::esCierre).findFirst();
     }
 
     public Plano planoConFoto(int orden) {
@@ -404,6 +432,18 @@ public class Video {
 
     public Long getId() {
         return id;
+    }
+
+    public String getEstructura() {
+        return estructura;
+    }
+
+    public String getCreatividad() {
+        return creatividad;
+    }
+
+    public String getIdea() {
+        return idea;
     }
 
     public Long getNegocioId() {

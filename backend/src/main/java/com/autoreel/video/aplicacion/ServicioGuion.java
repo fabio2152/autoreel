@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+import com.autoreel.almacenamiento.dominio.AlmacenDeArchivos;
+import com.autoreel.almacenamiento.dominio.ArchivoAlmacenado;
 import com.autoreel.catalogo.aplicacion.ServicioCatalogo;
 import com.autoreel.catalogo.dominio.FotoProducto;
 import com.autoreel.catalogo.dominio.Producto;
@@ -18,17 +21,19 @@ import com.autoreel.ia.aplicacion.FabricaDeProveedores;
 import com.autoreel.ia.dominio.AvisoDeIntegracion;
 import com.autoreel.ia.dominio.ErrorDeProveedor;
 import com.autoreel.ia.dominio.Guionista;
+import com.autoreel.ia.dominio.Guionista.ImagenAdjunta;
 import com.autoreel.ia.dominio.Guionista.RespuestaDelModelo;
 import com.autoreel.ia.dominio.ModeloIA;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.PlantillaVideo;
-import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
+import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
 import com.autoreel.video.dominio.DatosDelGuion;
 import com.autoreel.video.dominio.EstadoVideo;
 import com.autoreel.video.dominio.GuionPropuesto;
 import com.autoreel.video.dominio.ValidadorDeGuion;
 import com.autoreel.video.dominio.Video;
+import com.autoreel.video.infraestructura.PreparadorDeFotos;
 import com.autoreel.video.infraestructura.VideoRepositorio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +57,7 @@ public class ServicioGuion {
 
     /** RN-25: un intento y hasta dos reintentos cuando la respuesta no pasa el validador. */
     static final int INTENTOS = 3;
+    private static final long TAMANO_MAXIMO_FOTO = 30L * 1024 * 1024;
     /** Después de este plazo no se empieza otro intento de la misma ronda. */
     static final Duration PLAZO_TOTAL = Duration.ofSeconds(60);
     /** Tiempo que el video queda tomado; si vence sin terminar (por ejemplo, un reinicio), se vuelve a intentar. */
@@ -71,8 +77,13 @@ public class ServicioGuion {
     public static final String MOTIVO_FALLA_INTERNA =
             "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo.";
 
+    /** @param fotos claves de las fotos del producto, por número (1 a 3), en orden. */
     private record Contexto(Long videoId, Long negocioId, ModeloIA modelo, PaqueteNicho paquete,
-            DatosDelGuion datos) {
+            DatosDelGuion datos, Map<Integer, String> fotos) {
+
+        List<Integer> numerosDeFotos() {
+            return List.copyOf(fotos.keySet());
+        }
     }
 
     /** Lo que pasó al pedir el guion. */
@@ -99,13 +110,16 @@ public class ServicioGuion {
     private final AvisoDeIntegracion aviso;
     private final ServicioCostos costos;
     private final ObjectMapper json;
+    private final AlmacenDeArchivos almacen;
+    private final PreparadorDeFotos preparador;
     private final Clock reloj;
     private final TransactionTemplate transaccion;
     private final TransactionTemplate lectura;
 
     public ServicioGuion(VideoRepositorio videos, LectorDeDatosDelVideo lector, ServicioCatalogo catalogo,
             FabricaDeProveedores proveedores, ProveedorDeSecretos secretos, AvisoDeIntegracion aviso,
-            ServicioCostos costos, ObjectMapper json, Clock reloj, PlatformTransactionManager transacciones) {
+            ServicioCostos costos, ObjectMapper json, AlmacenDeArchivos almacen, PreparadorDeFotos preparador,
+            Clock reloj, PlatformTransactionManager transacciones) {
         this.videos = videos;
         this.lector = lector;
         this.catalogo = catalogo;
@@ -114,6 +128,8 @@ public class ServicioGuion {
         this.aviso = aviso;
         this.costos = costos;
         this.json = json;
+        this.almacen = almacen;
+        this.preparador = preparador;
         this.reloj = reloj;
         this.transaccion = new TransactionTemplate(transacciones);
         this.lectura = new TransactionTemplate(transacciones);
@@ -172,17 +188,22 @@ public class ServicioGuion {
                     "No hay credencial configurada para el secreto " + modelo.getNombreSecreto());
             return new SinProveedor();
         }
-        String esquema = InstruccionesDelGuion.esquema(contexto.datos(), contexto.paquete(), json);
+        List<Integer> fotos = contexto.numerosDeFotos();
+        String esquema = InstruccionesDelGuion.esquema(contexto.paquete(), fotos, json);
+        // La IA ve las fotos del producto para elegir cuáles usa y escribir tomas que tengan sentido con ellas.
+        List<ImagenAdjunta> imagenes = contexto.fotos().values().stream()
+                .map(clave -> new ImagenAdjunta(preparador.paraLaIa(leerArchivo(clave)), "image/jpeg"))
+                .toList();
         List<String> errores = List.of();
         Instant inicio = reloj.instant();
         for (int intento = 1; intento <= INTENTOS; intento++) {
             if (intento > 1 && Duration.between(inicio, reloj.instant()).compareTo(PLAZO_TOTAL) > 0) {
                 break;
             }
-            String instrucciones = InstruccionesDelGuion.armar(contexto.datos(), contexto.paquete(), errores);
+            String instrucciones = InstruccionesDelGuion.armar(contexto.datos(), contexto.paquete(), fotos, errores);
             RespuestaDelModelo respuesta;
             try {
-                respuesta = guionista.get().escribir(modelo, credencial.get(), instrucciones, esquema);
+                respuesta = guionista.get().escribir(modelo, credencial.get(), instrucciones, esquema, imagenes);
             } catch (ErrorDeProveedor e) {
                 aviso.avisar(modelo, e.getTipo(), e.getMessage());
                 return new SinProveedor();
@@ -203,7 +224,7 @@ public class ServicioGuion {
                 continue;
             }
             GuionPropuesto guion = leido.get().limpio();
-            errores = ValidadorDeGuion.validar(guion, contexto.datos(), contexto.paquete());
+            errores = ValidadorDeGuion.validar(guion, contexto.datos(), contexto.paquete(), Set.copyOf(fotos));
             if (errores.isEmpty()) {
                 return new Escrito(guion, comoMapa(respuesta.texto()));
             }
@@ -236,17 +257,21 @@ public class ServicioGuion {
                 return;
             }
             PlantillaVideo plantilla = contexto.paquete().plantillaVideo();
-            for (PlanoPlantilla plano : plantilla.planosConIa()) {
-                TipoFoto tipo = TipoFoto.valueOf(plano.foto());
-                FotoProducto foto = producto.get().foto(tipo).orElseGet(() -> producto.get().getFotos().getFirst());
-                GuionPropuesto.PlanoPropuesto propuesto = escrito.guion().plano(plano.orden());
-                video.agregarPlano(plano.orden(), foto.getTipo(), foto.getClaveS3(), propuesto.movimiento(),
-                        propuesto.texto());
+            GuionPropuesto guion = escrito.guion();
+            Estructura estructura = plantilla.estructura(guion.estructura()).orElseThrow();
+            video.elegirConcepto(estructura.id(), guion.creatividad(), guion.idea());
+            for (int orden = 1; orden <= estructura.tomas().size(); orden++) {
+                GuionPropuesto.PlanoPropuesto propuesto = guion.plano(orden);
+                // Si la foto elegida se borró mientras se escribía el guion, se usa la principal.
+                FotoProducto foto = TipoFoto.deNumero(propuesto.foto()).flatMap(producto.get()::foto)
+                        .orElseGet(() -> producto.get().fotosEnOrden().getFirst());
+                video.agregarPlano(orden, estructura.segundos(orden), foto.getTipo(), foto.getClaveS3(),
+                        propuesto.toma(), propuesto.descripcionToma(), propuesto.texto());
             }
             DatosDelGuion datos = contexto.datos();
-            GuionPropuesto.CierrePropuesto cierre = escrito.guion().cierre();
+            GuionPropuesto.CierrePropuesto cierre = guion.cierre();
             String ubicacion = cierre.ubicacion() != null ? cierre.ubicacion() : datos.distrito();
-            video.agregarCierre(plantilla.cierre().orden(), cierre.precio(), cierre.frase(),
+            video.agregarCierre(estructura.ordenDelCierre(), estructura.cierre(), cierre.precio(), cierre.frase(),
                     plantilla.llamadoPrincipal(datos.canales(), datos.distrito()).orElse(null), ubicacion);
             video.mostrarStoryboard(escrito.guion().descripcion(), escrito.guion().hashtags(),
                     escrito.guionDelModelo(), ahora);
@@ -292,8 +317,15 @@ public class ServicioGuion {
             return Optional.empty();
         }
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
+        Map<Integer, String> fotos = new java.util.LinkedHashMap<>();
+        producto.get().fotosEnOrden().forEach(foto -> fotos.put(foto.getTipo().numero(), foto.getClaveS3()));
         return Optional.of(new Contexto(video.getId(), video.getNegocioId(), video.getModeloTextoUsado(),
-                datos.paquete(), datos.guion()));
+                datos.paquete(), datos.guion(), fotos));
+    }
+
+    private byte[] leerArchivo(String clave) {
+        return almacen.leer(clave, TAMANO_MAXIMO_FOTO).map(ArchivoAlmacenado::contenido)
+                .orElseThrow(() -> new IllegalStateException("No está la foto " + clave));
     }
 
     private Map<String, Object> comoMapa(String respuesta) {

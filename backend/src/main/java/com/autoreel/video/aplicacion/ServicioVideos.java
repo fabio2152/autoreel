@@ -21,7 +21,7 @@ import com.autoreel.negocio.infraestructura.NegocioRepositorio;
 import com.autoreel.nicho.dominio.Opcion;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.PlantillaVideo;
-import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
+import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
 import com.autoreel.nicho.dominio.RegistroDeNichos;
 import com.autoreel.nicho.dominio.Texto;
 import com.autoreel.video.api.SolicitudPlano;
@@ -82,7 +82,7 @@ public class ServicioVideos {
         return videos.listarDeNegocio(negocioId, Limit.of(MAXIMO_EN_LISTA)).stream()
                 .map(video -> {
                     Optional<Producto> producto = catalogo.elegidoParaVideo(negocioId, video.getProductoId());
-                    String foto = producto.flatMap(p -> p.foto(TipoFoto.ENTERO)).map(catalogo::urlDeFoto).orElse(null);
+                    String foto = producto.flatMap(p -> p.foto(TipoFoto.FOTO_1)).map(catalogo::urlDeFoto).orElse(null);
                     return new VideoResumen(video.getId(), video.getEstado(), tipoVideo(paquete, video),
                             producto.map(Producto::getNombre).orElse("—"), foto, video.getFechaCreacion());
                 })
@@ -115,16 +115,18 @@ public class ServicioVideos {
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
         PlantillaVideo plantilla = datos.paquete().plantillaVideo();
         Plano plano = video.plano(orden).orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("Ese plano no existe."));
-        if (orden == plantilla.cierre().orden()) {
+        if (plano.esCierre()) {
             editarCierre(plano, solicitud, plantilla, datos);
         } else {
-            PlanoPlantilla dePlantilla = plantilla.plano(orden);
+            int maxPalabras = plantilla.estructuraOPrimera(video.getEstructura()).maxPalabras();
             if (solicitud.precio() != null || solicitud.frase() != null
                     || (solicitud.texto() == null && solicitud.foto() == null)) {
                 throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Envía el texto o la foto nueva del plano.");
             }
             if (solicitud.texto() != null) {
-                plano.cambiarTexto(textoValido(solicitud.texto(), dePlantilla.maxPalabras(), datos));
+                // Solo el gancho exige texto: las demás tomas pueden ir sin texto.
+                plano.cambiarTexto(orden > 1 && solicitud.texto().isBlank() ? null
+                        : textoValido(solicitud.texto(), maxPalabras, datos));
             }
             if (solicitud.foto() != null) {
                 cambiarFoto(negocioId, plano, solicitud.foto(), datos.producto());
@@ -297,7 +299,7 @@ public class ServicioVideos {
         }
         if (solicitud.frase() != null) {
             String frase = solicitud.frase().strip();
-            int maxPalabras = plantilla.cierre().maxPalabras();
+            int maxPalabras = plantilla.maxPalabrasCierre();
             if (frase.length() > maximo || Texto.contarPalabras(frase) > maxPalabras) {
                 throw new ExcepcionDeNegocio("FRASE_MUY_LARGA", "La frase admite hasta " + maxPalabras
                         + " palabras y " + maximo + " caracteres, para que se lea en el video.");
@@ -360,22 +362,29 @@ public class ServicioVideos {
         PaqueteNicho paquete = datos.paquete();
         Producto producto = datos.producto();
         PlantillaVideo plantilla = paquete.plantillaVideo();
-        List<VideoVista.PlanoVista> planos = video.getPlanos().stream()
-                .filter(plano -> plano.getOrden() != plantilla.cierre().orden())
+        Estructura estructura = plantilla.estructuraOPrimera(video.getEstructura());
+        List<VideoVista.PlanoVista> planos = video.planosConFoto().stream()
                 .map(plano -> {
-                    PlanoPlantilla dePlantilla = plantilla.plano(plano.getOrden());
-                    VideoVista.MovimientoVista movimiento = paquete.movimientos().buscar(plano.getMovimiento())
-                            .map(m -> new VideoVista.MovimientoVista(m.id(), m.descripcion()))
-                            .orElse(new VideoVista.MovimientoVista(plano.getMovimiento(), plano.getMovimiento()));
-                    return new VideoVista.PlanoVista(plano.getOrden(), dePlantilla.nombre(), dePlantilla.segundos(),
+                    VideoVista.MovimientoVista movimiento = plano.getDescripcionToma() != null
+                            ? new VideoVista.MovimientoVista(null, plano.getDescripcionToma())
+                            : paquete.movimientos().buscar(plano.getMovimiento())
+                                    .map(m -> new VideoVista.MovimientoVista(m.id(), m.descripcion()))
+                                    .orElse(new VideoVista.MovimientoVista(plano.getMovimiento(),
+                                            plano.getMovimiento()));
+                    return new VideoVista.PlanoVista(plano.getOrden(), PlantillaVideo.nombreDelPlano(plano.getOrden()),
+                            plano.getSegundos(),
                             new VideoVista.FotoVista(plano.getTipoFoto(), archivos.urlDeLectura(plano.getClaveFoto())),
-                            movimiento, plano.getTexto(), dePlantilla.maxPalabras(), plano.getEstado(),
+                            movimiento, plano.getTexto(), estructura.maxPalabras(), plano.getEstado(),
                             plano.isUsoRespaldo());
                 })
                 .toList();
-        VideoVista.CierreVista cierre = video.plano(plantilla.cierre().orden())
+        VideoVista.CierreVista cierre = video.cierre()
                 .map(plano -> cierre(plano, plantilla, datos.perfil(), datos.guion()))
                 .orElse(null);
+        VideoVista.ConceptoVista concepto = video.getEstructura() == null ? null : new VideoVista.ConceptoVista(
+                estructura.nombre(),
+                paquete.movimientos().creatividad(video.getCreatividad()).map(c -> c.nombre()).orElse(null),
+                video.getIdea());
         List<VideoVista.FotoVista> fotos = Arrays.stream(TipoFoto.values())
                 .flatMap(tipo -> producto.foto(tipo).stream())
                 .map(foto -> new VideoVista.FotoVista(foto.getTipo(), catalogo.urlDeFoto(foto)))
@@ -385,7 +394,7 @@ public class ServicioVideos {
                 new VideoVista.PlanDelVideo(video.getPlanAplicado().getNombre(),
                         video.getPlanAplicado().getVideosPorDia(),
                         video.getPlanAplicado().getRegeneracionesPorVideo()),
-                planos, cierre,
+                concepto, planos, cierre,
                 video.getDescripcionPublicacion(), video.getHashtags(), ValidadorDeGuion.MAXIMO_PUBLICACION, fotos,
                 video.getFechaCreacion(), video.inicioDelGuion(), generacion(video));
     }
@@ -403,10 +412,9 @@ public class ServicioVideos {
 
     private VideoVista.CierreVista cierre(Plano plano, PlantillaVideo plantilla, PerfilNegocio perfil,
             DatosDelGuion guion) {
-        PlanoPlantilla dePlantilla = plantilla.cierre();
         String whatsapp = guion.canales().contains(CamposDelPerfil.CANAL_WHATSAPP) ? guion.whatsapp() : null;
-        return new VideoVista.CierreVista(plano.getOrden(), dePlantilla.nombre(), dePlantilla.segundos(),
-                plano.getPrecio(), plantilla.maximoCaracteresPrecio(), plano.getFrase(), dePlantilla.maxPalabras(),
+        return new VideoVista.CierreVista(plano.getOrden(), PlantillaVideo.NOMBRE_CIERRE, plano.getSegundos(),
+                plano.getPrecio(), plantilla.maximoCaracteresPrecio(), plano.getFrase(), plantilla.maxPalabrasCierre(),
                 plano.getLlamado(), plano.getUbicacion(),
                 whatsapp, archivos.urlDeLectura(perfil.getLogoClave()), perfil.getColorPrimario(),
                 perfil.getColorSecundario(), archivos.urlDeLectura(perfil.getFotoLocalClave()));

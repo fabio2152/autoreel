@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.autoreel.Imagenes;
 import com.autoreel.PruebaDeIntegracion;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -198,11 +199,11 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
-    void v11UnProductoConDosFotosNoApareceParaElegir() throws Exception {
+    void v11UnProductoSinSuFotoPrincipalNoApareceParaElegir() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
-        Map<String, String> dos = new HashMap<>(fotosCompletas(negocio));
-        dos.remove("PORCION");
-        long incompleto = crearProducto(negocio, dos, "Pie de Limón");
+        Map<String, String> sinPrincipal = new HashMap<>(fotosCompletas(negocio));
+        sinPrincipal.remove("FOTO_1");
+        long incompleto = crearProducto(negocio, sinPrincipal, "Pie de Limón");
         long id = iniciar(negocio).get("id").asLong();
 
         responder(negocio, id, Map.of("paso", "tipoVideo", "opcion", "PRODUCTO_ESTRELLA"))
@@ -244,17 +245,24 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
     }
 
     @Test
-    void unProductoNuevoSinSusTresFotosSeRechaza() throws Exception {
+    void unProductoNuevoNecesitaSoloSuFotoPrincipal() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
         long id = iniciar(negocio).get("id").asLong();
         responder(negocio, id, Map.of("paso", "tipoVideo", "opcion", "RECIEN_HORNEADO"));
-        Map<String, String> dos = new HashMap<>(fotosCompletas(negocio));
-        dos.remove("DETALLE");
+        Map<String, String> sinPrincipal = new HashMap<>(fotosCompletas(negocio));
+        sinPrincipal.remove("FOTO_1");
 
         responder(negocio, id, Map.of("paso", "producto", "productoNuevo", Map.of("nombre", "Pan",
-                        "descripcion", "Rico.", "fotos", dos, "guardarEnCatalogo", true)))
+                        "descripcion", "Rico.", "fotos", sinPrincipal, "guardarEnCatalogo", true)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("PRODUCTO_INCOMPLETO"));
+
+        Map<String, String> soloLaPrincipal = Map.of("FOTO_1",
+                subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+        responder(negocio, id, Map.of("paso", "producto", "productoNuevo", Map.of("nombre", "Pan",
+                        "descripcion", "Rico.", "fotos", soloLaPrincipal, "guardarEnCatalogo", true)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paso.id").value("especial"));
     }
 
     @Test

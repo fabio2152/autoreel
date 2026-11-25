@@ -56,14 +56,14 @@ export function PaginaCatalogo() {
             {estado === 'ACTIVO' ? 'Todavía no tienes productos.' : 'No tienes productos archivados.'}
           </p>
           {estado === 'ACTIVO' && (
-            <p className="mt-1 text-sm text-stone-600">Registra tu producto estrella con tres fotos.</p>
+            <p className="mt-1 text-sm text-stone-600">Registra tu producto estrella con hasta tres fotos.</p>
           )}
         </div>
       )}
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {productos.data?.map((producto) => {
-          const portada = fotoDe(producto, 'ENTERO') ?? producto.fotos[0]
+          const portada = fotoDe(producto, 'FOTO_1') ?? producto.fotos[0]
           return (
             <li key={producto.id}>
               <Link

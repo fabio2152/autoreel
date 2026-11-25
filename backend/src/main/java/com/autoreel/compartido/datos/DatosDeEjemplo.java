@@ -190,9 +190,9 @@ public class DatosDeEjemplo implements ApplicationRunner {
         centrar(g, producto.nombre(), 860);
         g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 56));
         centrar(g, switch (tipo) {
-            case ENTERO -> "Foto: producto entero";
-            case DETALLE -> "Foto: detalle";
-            case PORCION -> "Foto: porción";
+            case FOTO_1 -> "Foto 1: producto entero";
+            case FOTO_2 -> "Foto 2: detalle";
+            case FOTO_3 -> "Foto 3: porción";
         }, 960);
         g.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 40));
         centrar(g, "Imagen de ejemplo", 1800);
