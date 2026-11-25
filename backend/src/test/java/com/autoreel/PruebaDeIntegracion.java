@@ -152,9 +152,9 @@ public abstract class PruebaDeIntegracion {
 
     protected Map<String, String> fotosCompletas(Cookie cookie) throws Exception {
         return Map.of(
-                "ENTERO", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "DETALLE", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "PORCION", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+                "FOTO_1", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
+                "FOTO_2", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
+                "FOTO_3", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
     }
 
     /** Negocio con contraseña propia y onboarding completo (RN-09), listo para crear videos. */

@@ -1,6 +1,6 @@
 # AutoReel — API REST
 
-> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google (V7) y la revisión del flujo del negocio (2026-11-06). *Actualización del 2026-11-12:* incluye `POST /api/videos/{id}/reintentar` (PR #12) y los cambios de la mejora de la calidad del video (ADR 0021): la `frase` del cierre, sin `avisoDeRespaldo` y "Reintentar" en la etapa del guion. Describe los endpoints que existen hoy en el código; los de Instagram (fase 6, en pausa) se marcan como **(futuro, fase 6)**. Arquitectura, flujo de seguridad, subida de archivos y agrupación de mensajes del chat: `docs/arquitectura.md`.
+> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google (V7) y la revisión del flujo del negocio (2026-11-06). *Actualización del 2026-11-12:* incluye `POST /api/videos/{id}/reintentar` (PR #12) y los cambios de la mejora de la calidad del video (ADR 0021): la `frase` del cierre, sin `avisoDeRespaldo` y "Reintentar" en la etapa del guion. *Actualización del 2026-11-25 (guion flexible, ADR 0022):* tipos de foto `FOTO_1`, `FOTO_2` y `FOTO_3`, `concepto` en `VideoVista` y las tomas según la estructura. Describe los endpoints que existen hoy en el código; los de Instagram (fase 6, en pausa) se marcan como **(futuro, fase 6)**. Arquitectura, flujo de seguridad, subida de archivos y agrupación de mensajes del chat: `docs/arquitectura.md`.
 
 ---
 
@@ -98,7 +98,7 @@ curl -s -X PUT -H "Content-Type: image/jpeg" --data-binary @$FOTO "$(echo $SUBID
 
 # 3. Usar la clave temporal: el backend la verifica y la copia a su clave definitiva
 curl -s -b $JAR -c $JAR -H "X-XSRF-TOKEN: $XSRF" -H "Content-Type: application/json" \
-     -d "{\"nombre\":\"Torta de chocolate\",\"descripcion\":\"Bizcocho de cacao con fudge.\",\"fotos\":{\"ENTERO\":\"$(echo $SUBIDA | jq -r .clave)\"}}" \
+     -d "{\"nombre\":\"Torta de chocolate\",\"descripcion\":\"Bizcocho de cacao con fudge.\",\"fotos\":{\"FOTO_1\":\"$(echo $SUBIDA | jq -r .clave)\"}}" \
      $API/api/productos
 ```
 
@@ -141,12 +141,13 @@ PUT() { curl -s -b $JAR -c $JAR -H "X-XSRF-TOKEN: $XSRF" -H "Content-Type: appli
 VIDEO=$(curl -s -b $JAR $API/api/chat/conversaciones/actual | jq .videoId)
 
 # 2. Consultar hasta que deje GUION_PENDIENTE (el procesador revisa cada 3 s)
-curl -s -b $JAR $API/api/videos/$VIDEO | jq '.estado, [.planos[].texto], .cierre.precio, .cierre.frase'
+curl -s -b $JAR $API/api/videos/$VIDEO | jq '.estado, .concepto, [.planos[].texto], .cierre.precio, .cierre.frase'
 
 # 3. Cambiar el texto del plano 1, la foto del plano 2 y el precio y la frase del cierre
 PUT -d '{"texto":"Fresas recién llegadas hoy"}' $API/api/videos/$VIDEO/planos/1 | jq '.planos[0].texto'
-PUT -d '{"foto":{"tipo":"DETALLE"}}' $API/api/videos/$VIDEO/planos/2 | jq '.planos[1].foto.tipo'
-PUT -d '{"precio":"S/ 65","frase":"Recién salida del horno"}' $API/api/videos/$VIDEO/planos/4 | jq '.cierre.precio, .cierre.frase'
+PUT -d '{"foto":{"tipo":"FOTO_2"}}' $API/api/videos/$VIDEO/planos/2 | jq '.planos[1].foto.tipo'
+CIERRE=$(curl -s -b $JAR $API/api/videos/$VIDEO | jq .cierre.orden)   # 4 en la estructura Clásica; cambia con la estructura
+PUT -d '{"precio":"S/ 65","frase":"Recién salida del horno"}' $API/api/videos/$VIDEO/planos/$CIERRE | jq '.cierre.precio, .cierre.frase'
 
 # 4. Lista de "Mis videos"
 curl -s -b $JAR $API/api/videos | jq '.[] | {id, estado, producto}'
@@ -281,9 +282,9 @@ Todos usan el negocio de la sesión. Un video de otro negocio responde `404 NO_E
 |---|---|---|---|---|---|
 | `GET` | `/api/videos` | NEGOCIO | — | `200` `VideoResumen[]`: "Mis videos", los 50 más recientes (por `fechaCreacion` y luego `id`, de mayor a menor). Es el historial (RF-26) | — |
 | `GET` | `/api/videos/{id}` | NEGOCIO | — | `200` `VideoVista`. Mientras el video está en `GUION_PENDIENTE`, `planos` viene vacío, `cierre` en `null` y `hashtags` vacío: la pantalla vuelve a consultar. En `GENERANDO` y `COMPONIENDO` también vuelve a consultar (cada 5 s) | `NO_ENCONTRADO` |
-| `PUT` | `/api/videos/{id}/planos/{orden}` | NEGOCIO | `SolicitudPlano` (sección 4.6): en los planos 1 a 3, `texto`, `foto` o ambos; en el plano 4 (cierre), `precio`, `frase` (desde el 2026-11-12) o ambos | `200` `VideoVista` con el cambio. En `LISTO` (fase 5), el video pasa a `COMPONIENDO` o a `GENERANDO` (ver abajo) | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` y `SIN_REGENERACIONES` (foto nueva en `LISTO`), `SOLICITUD_INVALIDA`, `TEXTO_VACIO`, `TEXTO_MUY_LARGO`, `CARACTER_NO_PERMITIDO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `FRASE_MUY_LARGA`, `FOTO_NO_DISPONIBLE` y los errores de archivos de la sección 5.2 |
-| `POST` | `/api/videos/{id}/aprobar-storyboard` | NEGOCIO | — | `200` `VideoVista` con `estado: "GENERANDO"` y los planos 1 a 3 en `PENDIENTE`. "Crear mi video": consume el video del día (RN-26, V22). **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` (desde la revisión del 2026-11-06), `VIDEOS_DEL_DIA_AGOTADOS` |
-| `POST` | `/api/videos/{id}/planos/{orden}/regenerar` | NEGOCIO | — (`orden` de 1 a 3) | `200` `VideoVista` con `estado: "GENERANDO"`, ese plano en `PENDIENTE` y `regeneracionesUsadas` + 1 (RN-28, V26). El clip anterior se conserva hasta que llegue el nuevo. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE`, `SIN_REGENERACIONES` |
+| `PUT` | `/api/videos/{id}/planos/{orden}` | NEGOCIO | `SolicitudPlano` (sección 4.6): en los planos 1 a 3, `texto`, `foto` o ambos; en el plano 4 (cierre), `precio`, `frase` (desde el 2026-11-12) o ambos. Desde el 2026-11-25 (ADR 0022): en las tomas (de 1 a 4, según la estructura) y en el cierre, que es el `cierre.orden` de la vista (de 2 a 5) | `200` `VideoVista` con el cambio. En `LISTO` (fase 5), el video pasa a `COMPONIENDO` o a `GENERANDO` (ver abajo) | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` y `SIN_REGENERACIONES` (foto nueva en `LISTO`), `SOLICITUD_INVALIDA`, `TEXTO_VACIO`, `TEXTO_MUY_LARGO`, `CARACTER_NO_PERMITIDO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `FRASE_MUY_LARGA`, `FOTO_NO_DISPONIBLE` y los errores de archivos de la sección 5.2 |
+| `POST` | `/api/videos/{id}/aprobar-storyboard` | NEGOCIO | — | `200` `VideoVista` con `estado: "GENERANDO"` y los planos 1 a 3 (desde el 2026-11-25, todas las tomas) en `PENDIENTE`. "Crear mi video": consume el video del día (RN-26, V22). **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE` (desde la revisión del 2026-11-06), `VIDEOS_DEL_DIA_AGOTADOS` |
+| `POST` | `/api/videos/{id}/planos/{orden}/regenerar` | NEGOCIO | — (`orden` de 1 a 3; desde el 2026-11-25, el de una toma) | `200` `VideoVista` con `estado: "GENERANDO"`, ese plano en `PENDIENTE` y `regeneracionesUsadas` + 1 (RN-28, V26). El clip anterior se conserva hasta que llegue el nuevo. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE`, `IA_NO_DISPONIBLE`, `SIN_REGENERACIONES` |
 | `POST` | `/api/videos/{id}/aprobar` | NEGOCIO | — | `200` `VideoVista` con `estado: "APROBADO"` (RF-24). La publicación llega en la fase 6. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE` |
 | `GET` | `/api/videos/{id}/descarga` | NEGOCIO | — | `200` `Descarga` `{url}`: enlace firmado al MP4 final, vence en **15 minutos** y baja como archivo (`Content-Disposition: attachment`) con el nombre `autoreel-{producto}-{id}.mp4` (RF-25). En `LISTO`, `APROBADO`, `PROGRAMADO` o `PUBLICADO`. **Fase 5** | `NO_ENCONTRADO`, `VIDEO_NO_DISPONIBLE` |
 | `POST` | `/api/videos/{id}/reintentar` | NEGOCIO | — | `200` `VideoVista`. Solo en `ERROR` con `generacion.puedeReintentar: true`. Si el video falló **al generarse** (PR #12), vuelve a `GENERANDO`, **consume el video del día** (RN-26) y pide solo los clips que faltan. Si falló **al escribir su guion** (desde el 2026-11-12, `reintentoUsaVideoDelDia: false`), vuelve a `GUION_PENDIENTE` con un plazo nuevo de 5 minutos, **sin consumir** el video del día y sin exigir la IA de video | `NO_ENCONTRADO`, `VIDEO_NO_EDITABLE` (fuera de `ERROR`), `VIDEO_NO_REINTENTABLE`, `IA_NO_DISPONIBLE` y `VIDEOS_DEL_DIA_AGOTADOS` (solo si falló al generarse) |
@@ -295,7 +296,7 @@ Todos usan el negocio de la sesión. Un video de otro negocio responde `404 NO_E
   - Un **texto**, un **precio** o una **frase** solo vuelven a componer: el video pasa a `COMPONIENDO` sin gastar regeneraciones ni videos del día (RN-29, V25).
   - Una **foto** nueva regenera ese clip y **cuenta como una regeneración** (`Video.regenerarPlano`, la misma puerta que `/regenerar`); con texto y foto en la misma solicitud cuenta una sola. Sin regeneraciones restantes, `409 SIN_REGENERACIONES` y no se guarda nada.
   - Una foto nueva **sin la IA disponible** (`iaDisponible: false`) responde `409 IA_NO_DISPONIBLE` y no se guarda nada (desde la revisión del 2026-11-06; antes el plano usaba el acercamiento de FFmpeg). El frontend desactiva el cambio de foto en la revisión.
-- **Regenerar (RN-28).** Con la IA no disponible (sin credencial, modelo inactivo o sin adaptador), `409 IA_NO_DISPONIBLE`; con las regeneraciones del plan agotadas (`regeneracionesPorVideo`, 3 en Lite), `409 SIN_REGENERACIONES`. Un `orden` que no es un plano con foto (por ejemplo, el 4) responde `404 NO_ENCONTRADO` ("Ese plano no existe."). **Una regeneración que falla no se cobra:** se descuenta al pedirla y, si el plano no consigue el clip nuevo, el plano conserva su clip anterior, la regeneración se devuelve y la vista trae `generacion.avisoRevision` ("No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.").
+- **Regenerar (RN-28).** Con la IA no disponible (sin credencial, modelo inactivo o sin adaptador), `409 IA_NO_DISPONIBLE`; con las regeneraciones del plan agotadas (`regeneracionesPorVideo`, 3 en Lite), `409 SIN_REGENERACIONES`. Un `orden` que no es un plano con foto (por ejemplo, el 4; desde el 2026-11-25, el del cierre) responde `404 NO_ENCONTRADO` ("Ese plano no existe."). **Una regeneración que falla no se cobra:** se descuenta al pedirla y, si el plano no consigue el clip nuevo, el plano conserva su clip anterior, la regeneración se devuelve y la vista trae `generacion.avisoRevision` ("No pudimos crear el clip nuevo. Dejamos el anterior y no se descontó la regeneración.").
 - **Cómo se generan los clips** (sin endpoint, fase 5): la tarea `ProcesadorDeVideos` (`@Scheduled`) tiene dos métodos, uno para los clips (`autoreel.tareas.clips-cada`, 10 s) y otro para la composición (`autoreel.tareas.composicion-cada`, 10 s). Cada uno toma hasta 5 videos y los reclama **5 minutos** con un `UPDATE` condicional (`video.trabajo_reclamado_hasta`).
   - `ServicioGeneracion`, por plano: `PENDIENTE` → envía la foto (normalizada en Java: orientación EXIF, recorte 9:16, JPEG) al modelo de video del plan con el puerto `GeneradorDeClips` (adaptador `GEMINI_OMNI` en el plan Lite desde V7, o `VEO` en Google Cloud) y pasa a `GENERANDO`; el intento se cuenta **antes** de enviar. `GENERANDO` → consulta: con el clip listo, lo guarda y registra su costo (segundos × costo referencial, RN-32; con Omni, los segundos que informa el proveedor); con una falla, vuelve a enviar.
   - **Sin clip (sección 8.5, RN-30), desde la revisión del 2026-11-06 sin respaldo sin IA (ADR 0020):** con **2 intentos fallidos**, **10 minutos** sin el clip desde el envío, **20 minutos** desde el último envío de un plano pendiente, o sin credencial, modelo inactivo o credencial o configuración rechazadas, el plano se queda sin clip. En una **regeneración**, conserva su clip anterior y la regeneración se devuelve (ver arriba). En la **primera generación**, el video pasa a `ERROR` con `motivoError` "No pudimos crear los clips con IA. Te devolvimos el video del día; inténtalo de nuevo en un rato.", los clips ya enviados se cobran (RN-32) y se devuelve el video del día (RN-27). Cada falla del proveedor crea además una notificación `INTEGRACION_CON_ERROR` para el administrador (RN-57, sección 3.7). El estado `RESPALDO` y `usoRespaldo` solo aparecen en videos anteriores a ese cambio.
@@ -570,8 +571,8 @@ Si el onboarding ya estaba completo, el perfil resultante debe seguir completo (
 ```json
 { "nombre": "Torta Tres Leches de Fresa",
   "descripcion": "Bizcocho húmedo de tres leches, relleno de fresas frescas y cubierto con crema batida.",
-  "fotos": { "ENTERO": "subidas/negocios/1/foto_producto/....jpg",
-             "DETALLE": "negocios/1/foto_producto/....jpg" } }
+  "fotos": { "FOTO_1": "subidas/negocios/1/foto_producto/....jpg",
+             "FOTO_2": "negocios/1/foto_producto/....jpg" } }
 ```
 
 | Campo | Regla |
@@ -579,25 +580,25 @@ Si el onboarding ya estaba completo, el perfil resultante debe seguir completo (
 | `nombre` | Se recortan los espacios; de 1 a 50 caracteres (`PRODUCTO_NOMBRE_INVALIDO`) |
 | `descripcion` | Se recortan los espacios; de 1 a 200 caracteres (`PRODUCTO_DESCRIPCION_INVALIDA`). Es la única fuente de detalles del producto que usará la IA |
 | `temporadas` | **Opcional** desde la revisión del 2026-11-06 (ADR 0013): ausente, `null` o vacía, el producto queda en `["TODO_EL_ANIO"]`, también en un `PUT` (reemplaza la guardada). Si viene, ids del paquete del nicho (`TEMPORADA_INVALIDA`); se quitan los repetidos. `PRODUCTO_SIN_TEMPORADA` ya no se responde |
-| `fotos` | Mapa `ENTERO` / `DETALLE` / `PORCION` → clave. Por cada tipo: la misma clave guardada se conserva sin volver a verificarse; una clave de subida nueva (`subidas/…`, propósito `FOTO_PRODUCTO`) se verifica y se copia a su clave definitiva; un tipo ausente, `null` o vacío **se quita**. Cualquier otra clave: `ARCHIVO_INVALIDO`. Un tipo de foto desconocido: `SOLICITUD_INVALIDA` |
+| `fotos` | Mapa `FOTO_1` / `FOTO_2` / `FOTO_3` → clave (desde el 2026-11-25, ADR 0022; antes `ENTERO` / `DETALLE` / `PORCION`). `FOTO_1` es la principal; las otras dos son opcionales y de cualquier ángulo. Por cada tipo: la misma clave guardada se conserva sin volver a verificarse; una clave de subida nueva (`subidas/…`, propósito `FOTO_PRODUCTO`) se verifica y se copia a su clave definitiva; un tipo ausente, `null` o vacío **se quita**. Cualquier otra clave: `ARCHIVO_INVALIDO`. Un tipo de foto desconocido: `SOLICITUD_INVALIDA` |
 
-Un producto puede guardarse con menos de tres fotos: queda con `completo: false` y no podrá usarse en un video (RN-12, V11).
+Un producto puede guardarse con menos de tres fotos: queda con `completo: false` y no podrá usarse en un video (RN-12, V11). *Desde el 2026-11-25:* `completo: false` solo si le falta la `FOTO_1`.
 
 **`ProductoVista`** (`catalogo.api.ProductoVista`)
 
 ```json
 { "id": 7, "nombre": "Torta Tres Leches de Fresa", "descripcion": "...",
-  "temporadas": ["VERANO"], "estado": "ACTIVO", "completo": false,
+  "temporadas": ["VERANO"], "estado": "ACTIVO", "completo": true,
   "fotos": [
-    { "tipo": "ENTERO", "clave": "negocios/1/foto_producto/....jpg", "url": "...", "ancho": 1080, "alto": 1920, "horizontal": false },
-    { "tipo": "DETALLE", "clave": "negocios/1/foto_producto/....jpg", "url": "...", "ancho": 2560, "alto": 1440, "horizontal": true }
+    { "tipo": "FOTO_1", "clave": "negocios/1/foto_producto/....jpg", "url": "...", "ancho": 1080, "alto": 1920, "horizontal": false },
+    { "tipo": "FOTO_2", "clave": "negocios/1/foto_producto/....jpg", "url": "...", "ancho": 2560, "alto": 1440, "horizontal": true }
   ],
   "fechaCreacion": "2026-11-04T15:00:00Z",
   "avisos": ["FOTO_HORIZONTAL"] }
 ```
 
-- `fotos` va ordenada por tipo (`ENTERO`, `DETALLE`, `PORCION`) y solo trae las que existen. `ancho` y `alto` son los de la foto tal como se ve (con la orientación EXIF aplicada); `horizontal = ancho > alto` (se recortará al formato vertical).
-- `estado`: `ACTIVO` o `ARCHIVADO`. `completo`: tiene las tres fotos (RN-12).
+- `fotos` va ordenada por tipo (`FOTO_1`, `FOTO_2`, `FOTO_3`; antes del 2026-11-25, `ENTERO`, `DETALLE`, `PORCION`) y solo trae las que existen. `ancho` y `alto` son los de la foto tal como se ve (con la orientación EXIF aplicada); `horizontal = ancho > alto` (se recortará al formato vertical).
+- `estado`: `ACTIVO` o `ARCHIVADO`. `completo`: tiene las tres fotos (RN-12); desde el 2026-11-25, tiene su `FOTO_1`.
 - `avisos` solo en la respuesta del `POST` o `PUT` que lo causó: `FOTO_HORIZONTAL` (una sola vez aunque haya varias).
 
 ### 4.5 Chat (fase 3)
@@ -610,7 +611,7 @@ Un producto puede guardarse con menos de tres fotos: queda con `completo: false`
 |---|---|---|---|
 | `texto` | `{"paso": "especial", "texto": "Bizcocho de chocolate"}` | `TEXTO` y, desde la revisión del 2026-11-06, `BOTONES` con `admiteTexto` | En un paso `TEXTO`: se guarda al instante como mensaje pendiente y se agrupa con los que lleguen en los 4 s siguientes (RN-17). Se recortan los espacios; vacío: `SOLICITUD_INVALIDA`; más de 500 caracteres en un solo mensaje: `RESPUESTA_MUY_LARGA`. La respuesta agrupada se evalúa al cerrarse (ver abajo). En el paso de botones `tipoVideo`: ver "Texto en el primer paso" |
 | `opcion` | `{"paso": "tipoVideo", "opcion": "PROMOCION"}` | `BOTONES` | Se procesa al instante. El valor debe ser una de `paso.opciones` (`OPCION_INVALIDA`). El chat muestra la etiqueta ("Promoción") y `respuestas` guarda el valor |
-| `productoId` | `{"paso": "producto", "productoId": 12}` | `PRODUCTO` | Producto del catálogo: del negocio, `ACTIVO`, en el catálogo y con sus tres fotos (V11); si no, `PRODUCTO_NO_DISPONIBLE` |
+| `productoId` | `{"paso": "producto", "productoId": 12}` | `PRODUCTO` | Producto del catálogo: del negocio, `ACTIVO`, en el catálogo y con sus tres fotos (V11; desde el 2026-11-25, con su `FOTO_1`); si no, `PRODUCTO_NO_DISPONIBLE` |
 | `productoNuevo` | ver abajo | `PRODUCTO` | Crea el producto ("Subir uno nuevo hoy") y lo usa en el video (RN-14, V14) |
 | `omitir` | `{"paso": "extra", "omitir": true}` | `TEXTO` con `omitible` | "No, gracias": descarta lo escrito y no agrupado, y guarda `null`. En un paso que no es omitible: `PASO_NO_ADMITE_RESPUESTA`. Si el paso es obligatorio en ese momento (precio en una Promoción), no se acepta: el chat muestra el mensaje fijo y repite la pregunta |
 
@@ -619,13 +620,12 @@ Un producto puede guardarse con menos de tres fotos: queda con `completo: false`
   "productoNuevo": {
     "nombre": "Torta de Lúcuma",
     "descripcion": "Bizcocho de vainilla con crema de lúcuma y pecanas.",
-    "fotos": { "ENTERO": "subidas/negocios/1/foto_producto/....jpg",
-               "DETALLE": "subidas/negocios/1/foto_producto/....jpg",
-               "PORCION": "subidas/negocios/1/foto_producto/....jpg" },
+    "fotos": { "FOTO_1": "subidas/negocios/1/foto_producto/....jpg",
+               "FOTO_2": "subidas/negocios/1/foto_producto/....jpg" },
     "guardarEnCatalogo": false } }
 ```
 
-- `fotos`: las **tres** claves de subidas nuevas (sección 3.3, propósito `FOTO_PRODUCTO`); si falta alguna, `PRODUCTO_INCOMPLETO`. Se verifican y copian igual que en `POST /api/productos` (errores de la sección 5.2).
+- `fotos`: las **tres** claves de subidas nuevas (sección 3.3, propósito `FOTO_PRODUCTO`); si falta alguna, `PRODUCTO_INCOMPLETO`. *Desde el 2026-11-25 (ADR 0022):* solo la `FOTO_1` es obligatoria (si falta, `PRODUCTO_INCOMPLETO`: "Para usar el producto en tu video necesitamos al menos su foto principal."); `FOTO_2` y `FOTO_3` son opcionales. Se verifican y copian igual que en `POST /api/productos` (errores de la sección 5.2).
 - `nombre` (1 a 50) y `descripcion` (1 a 200): las mismas reglas del catálogo (`PRODUCTO_NOMBRE_INVALIDO`, `PRODUCTO_DESCRIPCION_INVALIDA`).
 - La temporada queda en `TODO_EL_ANIO` (el catálogo ya no pide temporadas).
 - `guardarEnCatalogo: false` → el producto queda con `en_catalogo = false`: sirve para este video, pero no aparece en el catálogo, en el carrusel ni en el panel del administrador.
@@ -687,8 +687,8 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 | `respuestas` | Respuestas reunidas, por id de paso: `{"tipoVideo": "PROMOCION", "producto": 12, "especial": "...", "precio": "S/ 65" \| null, "extra": "..." \| null}`. `producto` es el id del producto. Una respuesta negativa u omitida es `null`, nunca "no". Si el negocio escribió en el primer paso, además `"tipoVideoLibre": "..."` (y `tipoVideo` es `PRODUCTO_ESTRELLA`). Es la entrada del guion de la fase 4 (contrato en `docs/modelo-de-datos.md`, sección 3.9) |
 | `aviso` | Aviso fijo del paquete de nicho (sección 7.3). Desde la revisión del 2026-11-06, el frontend lo abre con un botón "?" junto a la respuesta |
 | `maximoCaracteres` | Límite de la respuesta agrupada (500), para el contador de la caja de texto |
-| `productos` | Solo en el paso `PRODUCTO`: el carrusel, `{id, nombre, descripcion, foto}`, con la URL firmada de la foto `ENTERO`. Productos `ACTIVO`, en el catálogo y con sus tres fotos, del más reciente al más antiguo (sin orden por temporada). En otros pasos, `[]` |
-| `productosIncompletos` | Solo en el paso `PRODUCTO`: cuántos productos activos del catálogo no aparecen por faltarles fotos |
+| `productos` | Solo en el paso `PRODUCTO`: el carrusel, `{id, nombre, descripcion, foto}`, con la URL firmada de la foto `ENTERO` (desde el 2026-11-25, la `FOTO_1`). Productos `ACTIVO`, en el catálogo y con sus tres fotos (desde el 2026-11-25, con su `FOTO_1`), del más reciente al más antiguo (sin orden por temporada). En otros pasos, `[]` |
+| `productosIncompletos` | Solo en el paso `PRODUCTO`: cuántos productos activos del catálogo no aparecen por faltarles fotos (desde el 2026-11-25, la `FOTO_1`) |
 | `resumen` | Solo con `estado: COMPLETA`: `{pregunta, respuesta}` por cada paso, con la etiqueta del botón (o el texto de `tipoVideoLibre`, si lo hay), el nombre del producto (aunque después se haya archivado) o el texto; "—" si quedó vacía |
 | `videoId` | **Fase 4.** Solo con `estado: COMPLETA`: el id del video que nació al terminar la conversación, para abrir `/videos/{id}`. `null` mientras la conversación está en curso o si fue abandonada |
 
@@ -698,7 +698,7 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 
 ```json
 { "id": 15, "estado": "STORYBOARD", "tipoVideo": "Promoción", "producto": "Torta Tres Leches de Fresa",
-  "foto": "<URL GET firmada de la foto ENTERO>", "fechaCreacion": "2026-11-04T15:01:10Z" }
+  "foto": "<URL GET firmada de la FOTO_1 (antes, la ENTERO)>", "fechaCreacion": "2026-11-04T15:01:10Z" }
 ```
 
 - `tipoVideo` es la **etiqueta** del botón del chat ("Promoción"), no el valor (`PROMOCION`).
@@ -715,27 +715,29 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
   "tipoVideo": "Promoción",
   "producto": { "id": 7, "nombre": "Torta Tres Leches de Fresa" },
   "plan": { "nombre": "Lite", "videosPorDia": 1, "regeneracionesPorVideo": 3 },
+  "concepto": { "estructura": "Clásica", "creatividad": "Ambiente",
+                "idea": "Las fresas de la torta brillan de cerca y la cámara termina en la vitrina: muestra la fruta fresca y que ya está lista en el local." },
   "planos": [
-    { "orden": 1, "nombre": "Gancho", "segundos": 3,
-      "foto": { "tipo": "DETALLE", "url": "..." },
-      "movimiento": { "id": "MACRO_DETALLE", "descripcion": "La cámara entra hasta un primer plano de la textura y la decoración" },
+    { "orden": 1, "nombre": "Gancho", "segundos": 4,
+      "foto": { "tipo": "FOTO_2", "url": "..." },
+      "movimiento": { "id": null, "descripcion": "La cámara se acerca a las fresas brillantes" },
       "texto": "Fresas recién llegadas hoy", "maxPalabras": 6, "estado": null, "usoRespaldo": false },
-    { "orden": 2, "nombre": "Producto", "segundos": 4, "foto": { "tipo": "ENTERO", "url": "..." },
-      "movimiento": { "id": "ORBITA_FRONTAL", "descripcion": "La cámara gira alrededor del producto en un arco suave" },
-      "texto": "Torta Tres Leches de Fresa", "maxPalabras": 5, "estado": null, "usoRespaldo": false },
-    { "orden": 3, "nombre": "Relleno", "segundos": 4, "foto": { "tipo": "PORCION", "url": "..." },
-      "movimiento": { "id": "PARALAJE_LATERAL", "descripcion": "La cámara se desplaza de lado mientras rodea el producto, con profundidad" },
-      "texto": "Capas húmedas con crema batida", "maxPalabras": 7, "estado": null, "usoRespaldo": false }
+    { "orden": 2, "nombre": "Toma 2", "segundos": 4, "foto": { "tipo": "FOTO_1", "url": "..." },
+      "movimiento": { "id": null, "descripcion": "La cámara retrocede y revela la torta en la vitrina" },
+      "texto": null, "maxPalabras": 6, "estado": null, "usoRespaldo": false },
+    { "orden": 3, "nombre": "Toma 3", "segundos": 4, "foto": { "tipo": "FOTO_3", "url": "..." },
+      "movimiento": { "id": null, "descripcion": "La cámara pasa de lado frente a la porción" },
+      "texto": "Cremosa en cada cucharada", "maxPalabras": 6, "estado": null, "usoRespaldo": false }
   ],
-  "cierre": { "orden": 4, "nombre": "Cierre", "segundos": 4, "precio": "S/ 65 la torta entera",
+  "cierre": { "orden": 4, "nombre": "Cierre", "segundos": 3, "precio": "S/ 65 la torta entera",
               "maximoCaracteresPrecio": 40, "frase": "Tu antojo te espera", "maxPalabrasFrase": 6,
               "llamado": "Pide por WhatsApp", "ubicacion": "Miraflores", "whatsapp": "+51987654321",
               "logo": "...", "colorPrimario": "#be123c", "colorSecundario": "#fde68a", "fotoLocal": null },
   "descripcion": "Hoy te presentamos nuestra Torta Tres Leches de Fresa...",
   "hashtags": ["#pasteleria", "#postres", "#tresleches", "#miraflores", "#dulceencanto"],
   "maximoPublicacion": 600,
-  "fotosDelProducto": [ { "tipo": "ENTERO", "url": "..." }, { "tipo": "DETALLE", "url": "..." },
-                        { "tipo": "PORCION", "url": "..." } ],
+  "fotosDelProducto": [ { "tipo": "FOTO_1", "url": "..." }, { "tipo": "FOTO_2", "url": "..." },
+                        { "tipo": "FOTO_3", "url": "..." } ],
   "fechaCreacion": "2026-11-04T15:01:10Z",
   "inicioDelGuion": "2026-11-04T15:01:10Z",
   "generacion": {
@@ -751,15 +753,16 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 }
 ```
 
-(Ejemplo ilustrativo, en `STORYBOARD`.) En `LISTO`, los planos traen `"estado": "LISTO"` (o `"RESPALDO"`, solo en videos anteriores a la revisión del 2026-11-06) y `generacion.urlVideo` trae el enlace del MP4 final.
+(Ejemplo ilustrativo, en `STORYBOARD`, con la forma desde el 2026-11-25: estructura Clásica de tres tomas de 4 s y cierre de 3 s.) En `LISTO`, los planos traen `"estado": "LISTO"` (o `"RESPALDO"`, solo en videos anteriores a la revisión del 2026-11-06) y `generacion.urlVideo` trae el enlace del MP4 final.
 
 | Campo | Contenido |
 |---|---|
 | `tipoVideo` | Etiqueta del tipo de video elegido en el chat |
 | `plan` | Plan aplicado al video (RN-54): `nombre`, `videosPorDia` y, desde la fase 5, `regeneracionesPorVideo` (3 en Lite), con el que la pantalla calcula las regeneraciones restantes |
+| `concepto` | Desde el 2026-11-25 (ADR 0022, `ConceptoVista`): lo que eligió la IA. `estructura` y `creatividad` son los **nombres** del paquete de nicho ("Rápida", "Clásica", "Historia" o "Plano único"; "Producto", "Ambiente" u "Origen"), e `idea` el concepto del video en una o dos frases. `null` mientras el guion está pendiente. En los videos anteriores, `estructura` es "Clásica" y `creatividad` e `idea` vienen en `null` |
 | `avisoDeRespaldo` | **Se quitó el 2026-11-12** (ADR 0021): ya no hay guion de respaldo. Hasta entonces traía "Preparamos una propuesta básica con tus respuestas…" si se había usado |
-| `planos` | Planos 1 a 3 (Gancho, Producto, Relleno), con `segundos` y `maxPalabras` de la plantilla (6, 5 y 7 palabras). `foto.tipo` es `ENTERO`, `DETALLE` o `PORCION`, o `null` si el negocio subió una foto solo para este video. `movimiento.descripcion` es el movimiento en palabras simples (`movimientos.json`). Vacío mientras el guion está pendiente. **Fase 5:** `estado` del clip (`null` en el storyboard; después `PENDIENTE`, `GENERANDO` o `LISTO`, también durante `GENERANDO` para mostrar el avance) y `usoRespaldo`. Desde la revisión del 2026-11-06 no hay respaldo sin IA para los clips (ADR 0020): `usoRespaldo: true` y el estado `RESPALDO` (el plano animado con el acercamiento de FFmpeg) solo aparecen en videos anteriores; un plano nuevo sin clip deja el video en `ERROR` (sección 3.5) |
-| `cierre` | Plano 4, sin clip (sección 7.4). Desde el 2026-11-12 sus textos los propone la IA: `precio` (solo si el negocio escribió un precio real, resumido con sus mismos números y moneda, hasta `maximoCaracteresPrecio` = 40; `null` si no hay, también si el negocio escribió una instrucción; antes era lo escrito en el chat, recortado), `frase` (gancho que va en grande cuando no hay precio; `null` en videos anteriores) y `maxPalabrasFrase` (6), `llamado` (el primero de `llamados` de la plantilla que coincide con sus canales, en el orden WhatsApp, delivery, tienda: "Pide por WhatsApp", "Pídelo por delivery" o "Te esperamos en {distrito}"), `ubicacion` (el distrito o, desde el 2026-11-12, un lugar más preciso que dijo el negocio), `whatsapp` (solo si vende por WhatsApp), `logo` y `fotoLocal` (URLs firmadas o `null`) y los dos colores. `null` mientras el guion está pendiente |
+| `planos` | Planos 1 a 3 (Gancho, Producto, Relleno), con `segundos` y `maxPalabras` de la plantilla (6, 5 y 7 palabras). `foto.tipo` es `ENTERO`, `DETALLE` o `PORCION`, o `null` si el negocio subió una foto solo para este video. `movimiento.descripcion` es el movimiento en palabras simples (`movimientos.json`). **Desde el 2026-11-25 (ADR 0022):** las tomas de la estructura, de 1 a 4, en orden. `nombre` es "Gancho" en la 1 y "Toma N" en las demás; `segundos` son los del plano (`plano.segundos`) y `maxPalabras`, el de la estructura (5, 6, 7 u 8). `foto.tipo` es `FOTO_1`, `FOTO_2` o `FOTO_3` (la que eligió la IA) o `null`. `movimiento` trae `id: null` y en `descripcion` la toma en español que escribió la IA; solo los videos anteriores traen el id y la descripción de su movimiento. `texto` puede ser `null` en las tomas que no son el gancho. Vacío mientras el guion está pendiente. **Fase 5:** `estado` del clip (`null` en el storyboard; después `PENDIENTE`, `GENERANDO` o `LISTO`, también durante `GENERANDO` para mostrar el avance) y `usoRespaldo`. Desde la revisión del 2026-11-06 no hay respaldo sin IA para los clips (ADR 0020): `usoRespaldo: true` y el estado `RESPALDO` (el plano animado con el acercamiento de FFmpeg) solo aparecen en videos anteriores; un plano nuevo sin clip deja el video en `ERROR` (sección 3.5) |
+| `cierre` | Plano 4, sin clip (sección 7.4). Desde el 2026-11-25, el plano que sigue a la última toma: `orden` de 2 a 5 y `segundos` de la estructura (3, o 7 en el plano único). Desde el 2026-11-12 sus textos los propone la IA: `precio` (solo si el negocio escribió un precio real, resumido con sus mismos números y moneda, hasta `maximoCaracteresPrecio` = 40; `null` si no hay, también si el negocio escribió una instrucción; antes era lo escrito en el chat, recortado), `frase` (gancho que va en grande cuando no hay precio; `null` en videos anteriores) y `maxPalabrasFrase` (6), `llamado` (el primero de `llamados` de la plantilla que coincide con sus canales, en el orden WhatsApp, delivery, tienda: "Pide por WhatsApp", "Pídelo por delivery" o "Te esperamos en {distrito}"), `ubicacion` (el distrito o, desde el 2026-11-12, un lugar más preciso que dijo el negocio), `whatsapp` (solo si vende por WhatsApp), `logo` y `fotoLocal` (URLs firmadas o `null`) y los dos colores. `null` mientras el guion está pendiente |
 | `descripcion`, `hashtags` | Texto de la publicación y sus hashtags (entre 5 y 8, al menos uno del distrito, RN-24). En esta fase no se editan; la edición antes de publicar llega en la fase 6 |
 | `maximoPublicacion` | 600: límite de la descripción **más** sus hashtags (RN-24) |
 | `fotosDelProducto` | Las fotos que hoy tiene el producto, para la hoja "Cambiar foto" |
@@ -770,8 +773,8 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 
 | Forma | Ejemplo | Plano | Regla |
 |---|---|---|---|
-| `texto` | `{"texto": "Fresas recién llegadas hoy"}` | 1 a 3 | Se recortan los espacios. Vacío: `TEXTO_VACIO`. Más de 200 caracteres o más palabras que `maxPalabras`: `TEXTO_MUY_LARGO` (V21). Emojis, saltos de línea u otros caracteres de control: `CARACTER_NO_PERMITIDO`. Una frase prohibida del paquete o de las `palabrasProhibidas` del negocio: `PALABRA_PROHIBIDA`, con la frase en el mensaje |
-| `foto.tipo` | `{"foto": {"tipo": "DETALLE"}}` | 1 a 3 | Usa la foto de ese tipo que hoy tiene el producto. Si ya no la tiene: `FOTO_NO_DISPONIBLE` |
+| `texto` | `{"texto": "Fresas recién llegadas hoy"}` | 1 a 3 | Se recortan los espacios. Vacío: `TEXTO_VACIO`. *Desde el 2026-11-25:* solo en el gancho (orden 1); en las demás tomas, un texto vacío quita el texto (`texto: null`). Más de 200 caracteres o más palabras que `maxPalabras`: `TEXTO_MUY_LARGO` (V21). Emojis, saltos de línea u otros caracteres de control: `CARACTER_NO_PERMITIDO`. Una frase prohibida del paquete o de las `palabrasProhibidas` del negocio: `PALABRA_PROHIBIDA`, con la frase en el mensaje |
+| `foto.tipo` | `{"foto": {"tipo": "FOTO_2"}}` | 1 a 3 | Usa la foto de ese tipo que hoy tiene el producto (`FOTO_1`, `FOTO_2` o `FOTO_3` desde el 2026-11-25; antes `ENTERO`, `DETALLE` o `PORCION`). Si ya no la tiene: `FOTO_NO_DISPONIBLE`. La toma escrita por la IA se conserva |
 | `foto.clave` | `{"foto": {"clave": "subidas/negocios/1/foto_producto/....jpg"}}` | 1 a 3 | Una subida nueva con propósito `FOTO_PRODUCTO` (sección 3.3). Se verifica y copia como en el catálogo (errores de la sección 5.2). Queda **solo en este plano**, con `foto.tipo: null`: no cambia el producto ni el catálogo |
 | `precio` | `{"precio": "S/ 65"}` | 4 | Se recortan los espacios; hasta 40 caracteres (`PRECIO_MUY_LARGO`). `""` quita el precio (entonces el cierre muestra la frase). También pasa por `CARACTER_NO_PERMITIDO` y `PALABRA_PROHIBIDA` |
 | `frase` | `{"frase": "Recién salida del horno"}` | 4 | Desde el 2026-11-12. Se recortan los espacios; hasta `maxPalabrasFrase` (6) palabras y 40 caracteres (`FRASE_MUY_LARGA`). `""` la quita. También pasa por `CARACTER_NO_PERMITIDO` y `PALABRA_PROHIBIDA`. Puede ir junto con `precio` |
@@ -779,6 +782,7 @@ Una respuesta rechazada **no es un error HTTP**: la petición responde `200` y l
 - `texto` y `foto` pueden ir juntos. `foto` lleva **exactamente uno** de `tipo` o `clave`; con los dos o ninguno, `SOLICITUD_INVALIDA`.
 - En los planos 1 a 3, un `precio` o un cuerpo sin `texto` ni `foto` responde `SOLICITUD_INVALIDA` ("Envía el texto o la foto nueva del plano."). En el plano 4, un cuerpo sin `precio` ni `frase`, o con `texto` o `foto`, responde `SOLICITUD_INVALIDA` ("En el cierre solo se pueden cambiar el precio y la frase."). En los planos 1 a 3, una `frase` también responde `SOLICITUD_INVALIDA`.
 - Un `orden` que no existe en el video responde `404 NO_ENCONTRADO` ("Ese plano no existe.").
+- *Desde el 2026-11-25 (ADR 0022)*, donde dice "planos 1 a 3" se lee "las tomas" (de 1 a 4, según la estructura) y donde dice "4", el cierre (`cierre.orden`). El cierre se reconoce porque no tiene foto.
 - Las palabras se cuentan como en el frontend (`Texto.contarPalabras` y `contarPalabras` de `api/videos.ts`): lo separado por espacios que tenga al menos una letra o un número ("S/ 65" son 2; "—" no cuenta).
 - Los textos que escribe el negocio **no** pasan por la RN-22 (precios o promociones no mencionados): son suyos.
 - **En `LISTO` (fase 5)** las reglas son las mismas; además, `texto`, `precio` o `frase` recomponen y `foto` regenera ese clip (sección 3.5), solo con la IA disponible.
@@ -1050,8 +1054,8 @@ Origen: `chat/aplicacion/ServicioChat` y, para el producto nuevo, `catalogo/apli
 | `SOLICITUD_INVALIDA` | 400 | Ninguna o más de una forma de respuesta ("Envía una sola respuesta a la vez."), un `texto` vacío o solo con espacios, un cuerpo ilegible o un tipo de foto desconocido en `productoNuevo.fotos` | `POST .../mensajes` |
 | `RESPUESTA_MUY_LARGA` | 400 | Un solo mensaje de texto de más de 500 caracteres. (Si el texto **agrupado** pasa de 500, no es un error: el chat pide resumirlo) | `POST .../mensajes` |
 | `OPCION_INVALIDA` | 400 | La `opcion` no está entre las del paso | `POST .../mensajes` |
-| `PRODUCTO_NO_DISPONIBLE` | 400 | `productoId` inexistente, de otro negocio, archivado, sin sus tres fotos o fuera del catálogo (V11) | `POST .../mensajes` |
-| `PRODUCTO_INCOMPLETO` | 400 | `productoNuevo` sin alguna de sus tres fotos (entero, detalle y porción) | `POST .../mensajes` |
+| `PRODUCTO_NO_DISPONIBLE` | 400 | `productoId` inexistente, de otro negocio, archivado, sin sus tres fotos (desde el 2026-11-25, sin su `FOTO_1`) o fuera del catálogo (V11) | `POST .../mensajes` |
+| `PRODUCTO_INCOMPLETO` | 400 | `productoNuevo` sin alguna de sus tres fotos (entero, detalle y porción); desde el 2026-11-25, sin su `FOTO_1` | `POST .../mensajes` |
 | `PRODUCTO_NOMBRE_INVALIDO`, `PRODUCTO_DESCRIPCION_INVALIDA` | 400 | Igual que en el catálogo (sección 5.4) | `POST .../mensajes` (`productoNuevo`) |
 | Errores de archivos (sección 5.2) | 400 / 409 | Al verificar y copiar las fotos de `productoNuevo` | `POST .../mensajes` (`productoNuevo`) |
 | `NO_ENCONTRADO` | 404 | La conversación no existe o es de otro negocio | `POST .../mensajes`, `POST .../procesar` |

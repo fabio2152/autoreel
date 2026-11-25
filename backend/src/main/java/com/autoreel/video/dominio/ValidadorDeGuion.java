@@ -10,10 +10,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.autoreel.nicho.dominio.Movimientos.Movimiento;
+import com.autoreel.nicho.dominio.Movimientos;
 import com.autoreel.nicho.dominio.PaqueteNicho;
 import com.autoreel.nicho.dominio.PlantillaVideo;
-import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
+import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
 import com.autoreel.nicho.dominio.Texto;
 import com.autoreel.nicho.dominio.Vocabulario;
 
@@ -43,29 +43,52 @@ public final class ValidadorDeGuion {
     private ValidadorDeGuion() {
     }
 
-    public static List<String> validar(GuionPropuesto guion, DatosDelGuion datos, PaqueteNicho paquete) {
+    /** Largo máximo de la toma en inglés que escribe la IA (la columna {@code plano.toma} admite 1500, con margen). */
+    public static final int MAXIMO_CARACTERES_TOMA = 1200;
+    /** Igual a la columna {@code plano.descripcion_toma}. */
+    public static final int MAXIMO_CARACTERES_DESCRIPCION_TOMA = 160;
+    /** Igual a la columna {@code video.idea}. */
+    public static final int MAXIMO_CARACTERES_IDEA = 400;
+
+    /** @param fotosDisponibles números de las fotos del producto (1 a 3) que la IA puede usar. */
+    public static List<String> validar(GuionPropuesto guion, DatosDelGuion datos, PaqueteNicho paquete,
+            Set<Integer> fotosDisponibles) {
         List<String> errores = new ArrayList<>();
-        List<PlanoPlantilla> esperados = paquete.plantillaVideo().planosConIa();
-        Set<Integer> ordenesEsperados = new HashSet<>();
-        esperados.forEach(plano -> ordenesEsperados.add(plano.orden()));
-        for (GuionPropuesto.PlanoPropuesto plano : guion.planos()) {
-            if (plano.orden() == null || !ordenesEsperados.contains(plano.orden())) {
-                errores.add("Sobra el plano " + plano.orden() + ": solo se escriben los planos " + ordenesEsperados
-                        + ".");
-            }
+        PlantillaVideo plantilla = paquete.plantillaVideo();
+        Optional<Estructura> estructura = plantilla.estructura(guion.estructura());
+        if (estructura.isEmpty()) {
+            errores.add("La estructura \"" + guion.estructura() + "\" no existe; elige una de: "
+                    + plantilla.estructuras().stream().map(Estructura::id).toList() + ".");
         }
-        for (PlanoPlantilla esperado : esperados) {
-            List<GuionPropuesto.PlanoPropuesto> iguales = guion.planos().stream()
-                    .filter(plano -> plano.orden() != null && plano.orden() == esperado.orden()).toList();
-            if (iguales.isEmpty()) {
-                errores.add("Falta el plano " + esperado.orden() + ".");
-            } else if (iguales.size() > 1) {
-                errores.add("El plano " + esperado.orden() + " viene repetido.");
-            } else {
-                GuionPropuesto.PlanoPropuesto plano = iguales.getFirst();
-                errores.addAll(erroresDelMovimiento(esperado.orden(), plano.movimiento(), datos, paquete));
-                errores.addAll(erroresDelTextoEnPantalla(esperado.orden(), plano.texto(), esperado.maxPalabras(),
-                        datos, paquete));
+        if (paquete.movimientos().creatividad(guion.creatividad()).isEmpty()) {
+            errores.add("La creatividad \"" + guion.creatividad() + "\" no existe; elige una de: "
+                    + paquete.movimientos().creatividades().stream().map(Movimientos.Creatividad::id).toList() + ".");
+        }
+        if (guion.idea() == null) {
+            errores.add("Falta la idea del video.");
+        } else if (guion.idea().length() > MAXIMO_CARACTERES_IDEA) {
+            errores.add("La idea del video pasa de " + MAXIMO_CARACTERES_IDEA + " caracteres; resúmela.");
+        }
+        if (estructura.isPresent()) {
+            int tomas = estructura.get().tomas().size();
+            for (GuionPropuesto.PlanoPropuesto plano : guion.planos()) {
+                if (plano.orden() == null || plano.orden() < 1 || plano.orden() > tomas) {
+                    errores.add("Sobra el plano " + plano.orden() + ": la estructura " + estructura.get().id()
+                            + " tiene " + tomas + " tomas, numeradas de 1 a " + tomas + ".");
+                }
+            }
+            for (int orden = 1; orden <= tomas; orden++) {
+                int buscado = orden;
+                List<GuionPropuesto.PlanoPropuesto> iguales = guion.planos().stream()
+                        .filter(plano -> plano.orden() != null && plano.orden() == buscado).toList();
+                if (iguales.isEmpty()) {
+                    errores.add("Falta el plano " + orden + ".");
+                } else if (iguales.size() > 1) {
+                    errores.add("El plano " + orden + " viene repetido.");
+                } else {
+                    errores.addAll(erroresDelPlano(iguales.getFirst(), estructura.get().maxPalabras(),
+                            fotosDisponibles, datos, paquete));
+                }
             }
         }
         if (guion.descripcion() == null || guion.descripcion().isBlank()) {
@@ -76,7 +99,6 @@ public final class ValidadorDeGuion {
             }
             errores.addAll(problemasDeContenido("La descripción", guion.descripcion(), datos, paquete));
         }
-        errores.addAll(erroresDeVariedad(guion.planos(), paquete));
         errores.addAll(erroresDelCierre(guion.cierre(), datos, paquete));
         errores.addAll(erroresDeHashtags(guion.hashtags(), datos, paquete));
         if (guion.descripcion() != null
@@ -122,13 +144,30 @@ public final class ValidadorDeGuion {
                 .findFirst();
     }
 
-    private static List<String> erroresDelMovimiento(int orden, String movimiento, DatosDelGuion datos,
-            PaqueteNicho paquete) {
-        boolean permitido = paquete.movimientos().para(datos.tipoVideo()).stream()
-                .map(Movimiento::id)
-                .anyMatch(id -> id.equals(movimiento));
-        return permitido ? List.of()
-                : List.of("El movimiento \"" + movimiento + "\" del plano " + orden + " no está en la lista.");
+    /** La foto, la toma y el texto de un plano. El texto solo es obligatorio en el gancho (plano 1). */
+    private static List<String> erroresDelPlano(GuionPropuesto.PlanoPropuesto plano, int maxPalabras,
+            Set<Integer> fotosDisponibles, DatosDelGuion datos, PaqueteNicho paquete) {
+        List<String> errores = new ArrayList<>();
+        int orden = plano.orden();
+        if (plano.foto() == null || !fotosDisponibles.contains(plano.foto())) {
+            errores.add("El plano " + orden + " usa la foto " + plano.foto() + ", que no existe; las fotos son "
+                    + fotosDisponibles + ".");
+        }
+        if (plano.toma() == null) {
+            errores.add("Falta la toma de cámara del plano " + orden + ".");
+        } else if (plano.toma().length() > MAXIMO_CARACTERES_TOMA) {
+            errores.add("La toma del plano " + orden + " pasa de " + MAXIMO_CARACTERES_TOMA + " caracteres; acórtala.");
+        }
+        if (plano.descripcionToma() == null) {
+            errores.add("Falta la descripción en español de la toma del plano " + orden + ".");
+        } else if (plano.descripcionToma().length() > MAXIMO_CARACTERES_DESCRIPCION_TOMA) {
+            errores.add("La descripción de la toma del plano " + orden + " pasa de "
+                    + MAXIMO_CARACTERES_DESCRIPCION_TOMA + " caracteres.");
+        }
+        if (orden == 1 || plano.texto() != null) {
+            errores.addAll(erroresDelTextoEnPantalla(orden, plano.texto(), maxPalabras, datos, paquete));
+        }
+        return errores;
     }
 
     /** RN-22 (nada inventado) y RN-23 (nada prohibido) en un texto del guion. */
@@ -170,28 +209,6 @@ public final class ValidadorDeGuion {
     }
 
     /**
-     * Que el video no repita el mismo movimiento en todos sus planos y que tenga los planos con cámara 3D que pide el
-     * nicho (no solo acercamientos y alejamientos).
-     */
-    private static List<String> erroresDeVariedad(List<GuionPropuesto.PlanoPropuesto> planos, PaqueteNicho paquete) {
-        List<String> errores = new ArrayList<>();
-        Set<String> movimientos = new HashSet<>();
-        planos.forEach(plano -> movimientos.add(plano.movimiento()));
-        if (planos.size() > 1 && movimientos.size() == 1 && !movimientos.contains(null)) {
-            errores.add("Los planos repiten el movimiento \"" + planos.getFirst().movimiento()
-                    + "\"; elige movimientos distintos para que el video tenga variedad.");
-        }
-        int minimo = paquete.movimientos().minimoPlanosCamara3d();
-        long conCamara3d = planos.stream().filter(plano -> paquete.movimientos().esCamara3d(plano.movimiento()))
-                .count();
-        if (conCamara3d < minimo) {
-            errores.add("Al menos " + minimo + " planos deben usar un movimiento marcado como cámara 3D (que rodee, "
-                    + "suba o cruce el producto); hay " + conCamara3d + ".");
-        }
-        return errores;
-    }
-
-    /**
      * El cierre que propone la IA: el precio solo si el negocio escribió uno con números (con sus números exactos), la
      * frase gancho siempre (se muestra si no hay precio) y la ubicación solo con lugares que el negocio mencionó.
      */
@@ -228,7 +245,7 @@ public final class ValidadorDeGuion {
             errores.add("Falta la frase del cierre.");
         } else {
             int palabras = Texto.contarPalabras(cierre.frase());
-            int maxPalabras = plantilla.cierre().maxPalabras();
+            int maxPalabras = plantilla.maxPalabrasCierre();
             if (palabras > maxPalabras) {
                 errores.add("La frase del cierre tiene " + palabras + " palabras; el máximo es " + maxPalabras + ".");
             }

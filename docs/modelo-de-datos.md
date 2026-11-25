@@ -1,6 +1,6 @@
 # AutoReel — Modelo de datos
 
-> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google y la revisión del flujo del negocio (2026-11-06). Este documento describe las tablas que **existen hoy** en la base de datos, creadas por las migraciones Flyway `V1` a `V9`. *Actualización del 2026-11-12:* `V9` (mejora de la calidad del video, ADR 0021) agrega `plano.frase`, `video.guion_iniciado_en` y `video.error_definitivo`. Lo que todavía no existe (Instagram, fase 6, en pausa) aparece marcado como **(futuro, fase N)**.
+> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google y la revisión del flujo del negocio (2026-11-06). Este documento describe las tablas que **existen hoy** en la base de datos, creadas por las migraciones Flyway `V1` a `V11`. *Actualización del 2026-11-12:* `V9` (mejora de la calidad del video, ADR 0021) agrega `plano.frase`, `video.guion_iniciado_en` y `video.error_definitivo`. *Actualización del 2026-11-25 (guion flexible, ADR 0022):* `V10` renombra los tipos de foto a `FOTO_1`, `FOTO_2` y `FOTO_3`, agrega `plano.segundos`, `plano.toma`, `plano.descripcion_toma`, `video.estructura`, `video.creatividad` y `video.idea`, y permite de 1 a 4 tomas más el cierre; `V11` agrega Veo 3.1 Fast y Veo 3.1 y pone Veo 3.1 Lite en el plan Lite. Lo que todavía no existe (Instagram, fase 6, en pausa) aparece marcado como **(futuro, fase N)**.
 >
 > Fuentes: `backend/src/main/resources/db/migration/`, las entidades JPA del paquete `com.autoreel` y la sección 9 de `docs/especificacion.md`. Se actualiza con cada migración nueva (sección 23 de la especificación).
 
@@ -10,19 +10,19 @@
 |---|---|---|---|---|
 | `negocio` | `com.autoreel.negocio.dominio.Negocio` | `negocio` | V1 | Cada pastelería cliente de la plataforma. |
 | `usuario` | `com.autoreel.auth.dominio.Usuario` | `auth` | V1 | Cuentas de acceso: el administrador y el usuario único de cada negocio. |
-| `modelo_ia` | `com.autoreel.ia.dominio.ModeloIA` | `ia` | V2 (V6 cambia el secreto y los parámetros de Veo; V7 agrega dos modelos y deja Veo inactivo; V8 agrega el resultado de la última prueba) | Modelos de IA administrables (texto y video), sin credenciales. |
-| `plan` | `com.autoreel.facturacion.dominio.Plan` | `facturacion` | V2 (V7 cambia el modelo de video del plan Lite) | Planes de suscripción: límites, modelos y opciones de producción. Desde la fase 7 se crean y editan desde el panel. |
+| `modelo_ia` | `com.autoreel.ia.dominio.ModeloIA` | `ia` | V2 (V6 cambia el secreto y los parámetros de Veo; V7 agrega dos modelos y deja Veo inactivo; V8 agrega el resultado de la última prueba; V10 agrega `duracionesClip` a Veo; V11 agrega Veo 3.1 Fast y Veo 3.1 y activa Veo 3.1 Lite) | Modelos de IA administrables (texto y video), sin credenciales. |
+| `plan` | `com.autoreel.facturacion.dominio.Plan` | `facturacion` | V2 (V7 y V11 cambian el modelo de video del plan Lite) | Planes de suscripción: límites, modelos y opciones de producción. Desde la fase 7 se crean y editan desde el panel. |
 | `suscripcion` | `com.autoreel.facturacion.dominio.Suscripcion` | `facturacion` | V2 (V8 agrega `dia_pago`) | La suscripción única de cada negocio: plan, monto y fechas de pago. |
 | `pago` | `com.autoreel.facturacion.dominio.Pago` | `facturacion` | V8 | Pagos registrados por el administrador; cada uno salda una fecha de pago (RF-08, RN-42). |
 | `beneficio_temporal` | `com.autoreel.facturacion.dominio.BeneficioTemporal` | `facturacion` | V8 | Otro plan para un negocio durante un período de hasta 30 días (RF-12, RN-50 a RN-53). |
 | `notificacion_admin` | `com.autoreel.facturacion.dominio.NotificacionAdmin` | `facturacion` | V8 | Avisos del panel del administrador: estados de pago y fallas de integración (RF-09, RN-44, RN-45, RN-57). |
 | `perfil_negocio` | `com.autoreel.negocio.dominio.PerfilNegocio` | `negocio` | V3 | Marca del negocio (logo, colores, estilo, foto del local) y respuestas del onboarding. |
 | `producto` | `com.autoreel.catalogo.dominio.Producto` | `catalogo` | V3 (V4 agrega `en_catalogo`) | Productos de cada negocio, con sus temporadas: los del catálogo y los subidos desde el chat solo para un video. |
-| `foto_producto` | `com.autoreel.catalogo.dominio.FotoProducto` | `catalogo` | V3 | Las tres fotos de cada producto (entero, detalle y porción). |
+| `foto_producto` | `com.autoreel.catalogo.dominio.FotoProducto` | `catalogo` | V3 (V10 renombra los tipos) | Las fotos de cada producto: la Foto 1 (principal, obligatoria para usarlo en un video) y la Foto 2 y la Foto 3, opcionales. Hasta V9 eran entero, detalle y porción. |
 | `conversacion` | `com.autoreel.chat.dominio.Conversacion` | `chat` | V4 | Chat guiado del video del día: estado, paso actual y respuestas reunidas (la entrada del guion de la fase 4). |
 | `mensaje_chat` | `com.autoreel.chat.dominio.MensajeChat` | `chat` | V4 | Cada burbuja del chat, del sistema o del usuario, con la marca de agrupación pendiente. |
-| `video` | `com.autoreel.video.dominio.Video` | `video` | V5 (V6 agrega la generación; V9, el plazo del guion y el error definitivo) | El video que nace de cada conversación completa: estado, plan y modelos con que se creó (RN-54), guion, publicación y datos del guion de respaldo (solo en videos anteriores al 2026-11-12); desde la fase 5, consumo del día, regeneraciones, composición, MP4 final y pista. |
-| `plano` | `com.autoreel.video.dominio.Plano` | `video` | V5 (V6 agrega el clip; V9, la frase del cierre) | Los 4 planos del storyboard: 1 a 3 con foto, movimiento y texto; el 4 (cierre) con precio, frase, llamado y ubicación. Desde la fase 5, los planos 1 a 3 guardan el estado de su clip. |
+| `video` | `com.autoreel.video.dominio.Video` | `video` | V5 (V6 agrega la generación; V9, el plazo del guion y el error definitivo; V10, la estructura, la creatividad y la idea) | El video que nace de cada conversación completa: estado, plan y modelos con que se creó (RN-54), guion, publicación y datos del guion de respaldo (solo en videos anteriores al 2026-11-12); desde la fase 5, consumo del día, regeneraciones, composición, MP4 final y pista; desde V10, lo que eligió la IA (estructura, creatividad e idea). |
+| `plano` | `com.autoreel.video.dominio.Plano` | `video` | V5 (V6 agrega el clip; V9, la frase del cierre; V10, los segundos y la toma) | Los planos del storyboard. Desde V10 (guion flexible): de 1 a 4 tomas, según la estructura, con foto, segundos, toma y texto, y el cierre (el plano sin foto que sigue a la última toma) con precio, frase, llamado y ubicación. Las tomas guardan el estado de su clip. Hasta V9 eran 4 planos fijos: 1 a 3 con foto y el 4, el cierre. |
 | `registro_costo` | `com.autoreel.costos.dominio.RegistroCosto` | `costos` | V5 | El costo de cada llamada a un proveedor de IA (RN-32): guiones desde la fase 4 y clips desde la fase 5. Desde la fase 7 alimenta la página Costos (RF-07). |
 | `consumo_diario` | `com.autoreel.video.dominio.ConsumoDiario` | `video` | V6 | Videos aprobados por cada negocio en cada día de Lima (RN-26). |
 | `pista_musical` | `com.autoreel.video.dominio.PistaMusical` | `video` | V6 | Biblioteca de música para la composición, por nicho y estilo. |
@@ -31,7 +31,7 @@ Base de datos: **PostgreSQL 17** (`postgres:17-alpine` en `docker-compose.yml`, 
 
 Los archivos (logos, fotos y, desde la fase 5, clips, videos finales y música) **no** están en la base de datos: viven en el almacén S3 (SeaweedFS en local, Amazon S3 en producción) y las tablas solo guardan su **clave**. Ver la sección 5.1.
 
-## 2. Diagrama entidad-relación (V1 a V9)
+## 2. Diagrama entidad-relación (V1 a V11)
 
 Los tipos son los de PostgreSQL tal como están en las migraciones. La precisión de los `numeric` va en el comentario de cada columna.
 
@@ -165,7 +165,7 @@ erDiagram
     foto_producto {
         bigint id PK "identity"
         bigint producto_id FK, UK "not null, on delete cascade, único con tipo"
-        varchar(20) tipo UK "not null, check ENTERO|DETALLE|PORCION"
+        varchar(20) tipo UK "not null, check FOTO_1|FOTO_2|FOTO_3 (V10)"
         varchar(300) clave_s3 "not null, clave del almacén"
         integer ancho "not null, px ya orientados"
         integer alto "not null, px ya orientados"
@@ -224,16 +224,22 @@ erDiagram
         bigint pista_musical_id FK "null, V6"
         timestamptz guion_iniciado_en "null, V9, inicio del plazo de reintentos"
         boolean error_definitivo "not null, default false, V9"
+        varchar(20) estructura "null, V10, id del paquete de nicho"
+        varchar(20) creatividad "null, V10, id del paquete de nicho"
+        varchar(400) idea "null, V10"
     }
 
     plano {
         bigint id PK "identity"
         bigint video_id FK, UK "not null, on delete cascade, único con orden"
-        integer orden UK "not null, entre 1 y 4"
-        varchar(10) tipo_foto "null, check ENTERO|DETALLE|PORCION"
-        varchar(300) clave_foto "null solo en el orden 4"
-        varchar(40) movimiento "null, id del paquete de nicho"
-        varchar(200) texto "null, planos 1 a 3"
+        integer orden UK "not null, entre 1 y 5 (V10)"
+        varchar(10) tipo_foto "null, check FOTO_1|FOTO_2|FOTO_3 (V10)"
+        varchar(300) clave_foto "null en el cierre"
+        integer segundos "not null, entre 1 y 15, V10"
+        varchar(40) movimiento "null, id del paquete de nicho, solo videos anteriores a V10"
+        varchar(1500) toma "null, V10, en inglés"
+        varchar(160) descripcion_toma "null, V10, en español"
+        varchar(200) texto "null en el cierre y en tomas sin texto"
         varchar(40) precio "null, cierre"
         varchar(60) frase "null, V9, cierre"
         varchar(120) llamado "null, cierre"
@@ -284,7 +290,7 @@ erDiagram
     modelo_ia ||--o{ plan : "modelo de video"
     negocio ||--o| perfil_negocio : "tiene un perfil"
     negocio ||--o{ producto : "tiene en su catálogo"
-    producto ||--o{ foto_producto : "tiene hasta tres fotos"
+    producto ||--o{ foto_producto : "tiene hasta tres fotos (FOTO_1 obligatoria para videos)"
     negocio ||--o{ conversacion : "conversa (una EN_CURSO como máximo)"
     conversacion ||--o{ mensaje_chat : "tiene sus mensajes"
     negocio ||--o{ video : "crea videos"
@@ -314,11 +320,11 @@ Notas sobre la cardinalidad:
 - **`negocio` – `usuario`:** la base de datos permite cero o un usuario por negocio (índice único `usuario_negocio_uk`). En la práctica todo negocio tiene exactamente uno, porque `ServicioGestionNegocios.crear` crea `Negocio`, `PerfilNegocio`, `Suscripcion` y `Usuario` en una sola transacción. El administrador es un `usuario` sin negocio.
 - **`negocio` – `suscripcion`:** la base de datos garantiza como máximo una (`suscripcion_negocio_uk`); la regla de "exactamente una" (RN-41) se cumple al crear el negocio en esa misma transacción. El plan que **rige hoy** puede ser otro: el de un beneficio vigente (RN-50, ver 3.17).
 - **`negocio` – `perfil_negocio`:** como máximo uno (`perfil_negocio_negocio_uk`). En la práctica exactamente uno: `ServicioGestionNegocios.crear` llama a `ServicioPerfil.crearVacio(negocio)`, y la migración V3 creó un perfil vacío para cada negocio que ya existía.
-- **`producto` – `foto_producto`:** de cero a tres fotos, una por tipo (`foto_producto_producto_tipo_uk`). Un producto con menos de tres está **incompleto** (RN-12, V11): existe y se lista, pero no se puede usar en un video (`Producto.estaCompleto()`).
+- **`producto` – `foto_producto`:** de cero a tres fotos, una por tipo (`foto_producto_producto_tipo_uk`). Un producto con menos de tres está **incompleto** (RN-12, V11): existe y se lista, pero no se puede usar en un video (`Producto.estaCompleto()`). *Desde V10 (ADR 0022)*, está incompleto solo si le falta la `FOTO_1`; la `FOTO_2` y la `FOTO_3` son opcionales.
 - **`negocio` – `conversacion`:** de cero a muchas, pero **como máximo una `EN_CURSO`** por negocio (RN-19), garantizado por el índice único parcial `conversacion_en_curso_uk`. Las `COMPLETA` y `ABANDONADA` se conservan.
 - **`conversacion` – `mensaje_chat`:** de uno a muchos. Toda conversación nace con al menos un mensaje del sistema (la primera pregunta del guion).
 - **`conversacion` – `video`:** de cero a uno. La sección 9.1 de la especificación pone la referencia en la conversación (`Conversacion.video`); **el modelo real la guarda en el video**: `video.conversacion_id` con la restricción única `video_conversacion_uk`. Una conversación `EN_CURSO` o `ABANDONADA` no tiene video; toda conversación que pasó a `COMPLETA` desde la fase 4 tiene exactamente uno, porque `CreadorDeVideos` lo crea en la misma transacción en la que el chat se completa. Las conversaciones completadas antes de aplicar V5 no tienen video.
-- **`video` – `plano`:** de cero a cuatro, uno por `orden` (`plano_video_orden_uk`). Mientras el video está en `GUION_PENDIENTE` no tiene planos; al pasar a `STORYBOARD` tiene los cuatro (1 a 3 con foto y el cierre). Un video que pasa a `ERROR` mientras espera su guion queda sin planos. La generación de la fase 5 no crea ni borra planos: actualiza las columnas del clip de los planos 1 a 3.
+- **`video` – `plano`:** de cero a cuatro, uno por `orden` (`plano_video_orden_uk`). Mientras el video está en `GUION_PENDIENTE` no tiene planos; al pasar a `STORYBOARD` tiene los cuatro (1 a 3 con foto y el cierre). Un video que pasa a `ERROR` mientras espera su guion queda sin planos. La generación de la fase 5 no crea ni borra planos: actualiza las columnas del clip de los planos 1 a 3. *Desde V10 (ADR 0022)*, de dos a cinco: al pasar a `STORYBOARD` tiene las tomas de su estructura (de 1 a 4, con foto) y el cierre; la generación actualiza el clip de cada toma.
 - **`video` – `registro_costo`:** de cero a muchos: un registro por cada respuesta del modelo de texto (hasta 3 por guion) y, desde la fase 5, uno por cada clip que el proveedor cobra (los tres de la primera generación y los de cada regeneración, también los que se enviaron y se abandonaron a los 10 minutos, o al pasar el video a `ERROR`). `registro_costo.video_id` admite `null` para llamadas que no son de un video; hoy no hay ninguna, porque la prueba de conexión de la fase 7 no registra costo (ver 3.13).
 - **`plan` – `modelo_ia`:** son dos relaciones independientes (`modelo_texto_id` y `modelo_video_id`). Desde la fase 7, que el modelo de texto sea de tipo `TEXTO`, el de video de tipo `VIDEO` y ambos estén `ACTIVO` (RN-47) lo controla `ServicioPlanes` al crear o editar un plan (`MODELO_INVALIDO`, `MODELO_INACTIVO`), no una restricción de la base de datos; y `ServicioIntegraciones` no deja desactivar un modelo que use un plan activo o un plan con negocios (RN-48, `MODELO_EN_USO`). Desde la fase 4, al escribir el guion, `FabricaDeProveedores` solo usa el modelo de texto del video si es `TEXTO`, `ACTIVO` y `POR_SOLICITUD`; si no, hasta el 2026-11-12 el video usaba el guion de respaldo (`motivo_respaldo = MODELO_INACTIVO`) y, desde entonces (ADR 0021), el guion se reintenta durante 5 minutos y el video pasa a `ERROR`. Desde la fase 5, igual con el modelo de video: solo se usa si es `VIDEO`, `ACTIVO`, `POR_SEGUNDO`, su adaptador existe y tiene credencial. Desde la revisión del 2026-11-06 ya no hay acercamiento de FFmpeg como respaldo (ADR 0020): sin ese modelo, "Crear mi video" y el cambio de foto en la revisión responden 409 `IA_NO_DISPONIBLE`, y un video que ya se estaba generando pasa a `ERROR` y devuelve el video del día (ver 3.12).
 - **`suscripcion` – `pago`** (V8): de cero a muchos, **como máximo uno por fecha de pago** (`pago_periodo_uk` sobre `suscripcion_id` y `periodo_cubierto`). `registrado_por` es el `usuario` administrador que lo registró.
@@ -388,7 +394,7 @@ Modelos de IA administrables (secciones 11.5 y 10.10). Entidad `ModeloIA` (`com.
 | `tipo` | `varchar(10)` | no | | `TipoModelo` | `TEXTO` o `VIDEO`. Se elige al crear el modelo y no cambia después (puede estar asignado a planes). |
 | `adaptador` | `varchar(30)` | no | | `String` | Identificador de la implementación en el código. Solo puede ser uno que exista en el código para su tipo (RN-56): `GEMINI` y `GEMINI_CLOUD` (texto), `VEO` y `GEMINI_OMNI` (video). El panel lo exige al crear, editar y activar (`ADAPTADOR_INEXISTENTE`). Si el modelo de texto de un video tiene un adaptador que no existe, su guion no se puede escribir: se reintenta durante 5 minutos y el video pasa a `ERROR` (antes del 2026-11-12 usaba el guion de respaldo); si es el de video, no hay IA disponible para sus clips. |
 | `identificador_modelo` | `varchar(120)` | no | | `String` | Nombre exacto que exige la API del proveedor. Es un dato editable: cambiarlo no requiere programar. |
-| `parametros` | `jsonb` | no | `'{}'` | `Map<String, Object>` | Parámetros propios del modelo. `GeminiGuionista` y `GeminiCloudGuionista` leen `temperatura` (0,7 si falta); `GeminiCloudGuionista`, además, `ubicacion` (`global`). `VeoGeneradorDeClips` lee `region` (`us-central1`), `relacionAspecto` (`9:16`), `resolucion` (`720p`), `generarAudio` (`false`) y `ajuste` (`crop`, el `resizeMode` de Veo). `OmniGeneradorDeClips` lee `relacionAspecto` (`9:16`), `resolucion` (`720p`), `segundoPlano` (`false`: generación síncrona) y `tokensPorSegundo` (5792 en 720p), con el que convierte los tokens de video que informa el proveedor en segundos cobrados. `ServicioGeneracion` lee `duracionClipSegundos` (4): los segundos que se piden y, si el proveedor no informa otros, los que se cobran por clip. Los valores entre paréntesis son los que se usan si falta el parámetro. |
+| `parametros` | `jsonb` | no | `'{}'` | `Map<String, Object>` | Parámetros propios del modelo. `GeminiGuionista` y `GeminiCloudGuionista` leen `temperatura` (0,7 si falta); `GeminiCloudGuionista`, además, `ubicacion` (`global`). `VeoGeneradorDeClips` lee `region` (`us-central1`), `relacionAspecto` (`9:16`), `resolucion` (`720p`), `generarAudio` (`false`) y `ajuste` (`crop`, el `resizeMode` de Veo). `OmniGeneradorDeClips` lee `relacionAspecto` (`9:16`), `resolucion` (`720p`), `segundoPlano` (`false`: generación síncrona) y `tokensPorSegundo` (5792 en 720p), con el que convierte los tokens de video que informa el proveedor en segundos cobrados. `ServicioGeneracion` lee `duracionClipSegundos` (4): los segundos que se piden y, si el proveedor no informa otros, los que se cobran por clip. *Desde V10 (ADR 0022)* lee primero `duracionesClip`, la lista de duraciones que admite el modelo (`[4, 6, 8]` en Veo): para cada plano pide la más corta que cubre `plano.segundos` o, si ninguna alcanza, la más larga (`ServicioGeneracion.segundosDelClip`); sin la lista usa `duracionClipSegundos`. Los valores entre paréntesis son los que se usan si falta el parámetro. |
 | `costo_referencial` | `numeric(12,6)` | no | | `BigDecimal` | Costo de referencia en dólares, por la unidad indicada. Desde la fase 4 es la base de `registro_costo.costo_usd` (`ServicioCostos`). |
 | `unidad_costo` | `varchar(20)` | no | | `UnidadCosto` | `POR_SEGUNDO` o `POR_SOLICITUD`. El modelo de texto debe ser `POR_SOLICITUD` y, desde la fase 5, el de video `POR_SEGUNDO`: si no, `FabricaDeProveedores` no lo usa. Un modelo creado desde el panel la toma de su tipo (`TEXTO` → `POR_SOLICITUD`, `VIDEO` → `POR_SEGUNDO`). |
 | `nombre_secreto` | `varchar(120)` | no | | `String` | Nombre del secreto que guarda la credencial (solo minúsculas, números, `/`, `_`, `.` y `-`, validado en el panel). `ProveedorDeSecretos` lo resuelve en desarrollo con `SecretosDeConfiguracion`, en este orden: primero el valor pegado en **Ajustes → Integraciones** (fase 7, ADR 0018), guardado en `credenciales/secretos-del-panel.json` (`autoreel.archivo-secretos-panel`, ignorado por git); si no, `autoreel.secretos` (`autoreel/gemini` = `GEMINI_API_KEY`) y `autoreel.secretos-en-archivo` (`autoreel/google-cloud` = el archivo de `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`, o el de `VEO_CREDENCIAL_ARCHIVO` como respaldo: el JSON de la cuenta de servicio de Google Cloud). En producción, Secrets Manager **(futuro, fase 8)**. **La credencial nunca se guarda en la base de datos ni se vuelve a mostrar** (RN-55). |
@@ -419,7 +425,7 @@ Planes de suscripción (secciones 10.8 y 15). Entidad `Plan` (`com.autoreel.fact
 | `videos_por_dia` | `integer` | no | | `int` | Videos que el negocio puede aprobar por día de Lima (RN-26). Desde la fase 5 se controla con `consumo_diario` al aprobar el storyboard, con el plan aplicado al video (ver 3.14). |
 | `regeneraciones_por_video` | `integer` | no | | `int` | Regeneraciones de plano permitidas por video (RN-28). Desde la fase 5 se comparan con `video.regeneraciones_usadas`. |
 | `modelo_texto_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | Modelo de lenguaje que escribe el guion. Desde la fase 7, al guardar el plan debe ser `TEXTO` y `ACTIVO` (RN-47). |
-| `modelo_video_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | Modelo que genera los clips. Desde la fase 7, al guardar el plan debe ser `VIDEO` y `ACTIVO` (RN-47). En el plan Lite, Gemini Omni Flash desde V7. |
+| `modelo_video_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | Modelo que genera los clips. Desde la fase 7, al guardar el plan debe ser `VIDEO` y `ACTIVO` (RN-47). En el plan Lite, Gemini Omni Flash desde V7 y, desde V11 (ADR 0022), de nuevo Veo 3.1 Lite. |
 | `opciones_produccion_permitidas` | `jsonb` | no | | `Map<String, Object>` | Opciones de producción de la sección 8.6 (música, texto en pantalla, voz en off, escenas, personas). No se editan desde el panel: un plan creado en la fase 7 toma las fijas del MVP (`Plan.OPCIONES_DEL_MVP`). |
 | `permite_personas` | `boolean` | no | `false` | `boolean` | Si el plan admite personas en los videos. Un plan creado desde el panel queda en `false`. |
 | `precio_referencial` | `numeric(10,2)` | sí | | `BigDecimal` | Precio sugerido. En el plan Lite sembrado queda en `null` hasta que se defina el pendiente P-04; desde la fase 7 se edita en el panel. El monto real de cada cliente vive en `suscripcion.monto_mensual`. |
@@ -529,11 +535,11 @@ Productos de cada negocio (secciones 7.2 y 9.1, RF-18, RF-20). Entidad `Producto
 | `en_catalogo` | `boolean` | no | `true` | `boolean` (`enCatalogo`) | **V4, RN-14.** `true` para todo producto creado desde el catálogo (y para los que ya existían al aplicar V4, por el `default`). `false` para un producto subido desde el chat cuando el usuario elige "No, usarlo solo para este video" (`guardarEnCatalogo = false`, `Producto.dejarFueraDelCatalogo`): existe y se usa en su video, pero no aparece en el catálogo, ni en el carrusel, ni en el panel del administrador (V14). Hoy ninguna operación lo vuelve a poner en `true`. |
 | `fecha_creacion` | `timestamptz` | no | `now()` | `Instant` | Momento de creación, con el `Clock` inyectado. No se actualiza. Ordena el catálogo y el carrusel del chat (más recientes primero). |
 
-**Producto subido desde el chat** (`ServicioCatalogo.crearDesdeChat`, RF-20): reutiliza las validaciones de nombre, descripción y fotos del catálogo, exige las tres fotos (si no, 400 `PRODUCTO_INCOMPLETO`) y guarda la temporada `["TODO_EL_ANIO"]` (`TEMPORADA_POR_DEFECTO`), igual que un producto del catálogo. Los productos con `en_catalogo = false` de conversaciones abandonadas **se conservan** en el MVP: no hay limpieza.
+**Producto subido desde el chat** (`ServicioCatalogo.crearDesdeChat`, RF-20): reutiliza las validaciones de nombre, descripción y fotos del catálogo, exige la foto `FOTO_1` (desde V10; antes, las tres fotos; si no, 400 `PRODUCTO_INCOMPLETO`) y guarda la temporada `["TODO_EL_ANIO"]` (`TEMPORADA_POR_DEFECTO`), igual que un producto del catálogo. Los productos con `en_catalogo = false` de conversaciones abandonadas **se conservan** en el MVP: no hay limpieza.
 
 Los ids de temporada de Pastelería (`resources/nichos/pasteleria/temporadas.json`) son `TODO_EL_ANIO`, `VERANO`, `INVIERNO`, `SAN_VALENTIN`, `DIA_DE_LA_MADRE`, `DIA_DEL_PADRE`, `FIESTAS_PATRIAS`, `HALLOWEEN_CANCION_CRIOLLA` y `NAVIDAD`. Las reglas de fechas de cada una viven en ese archivo, no en la base de datos. Como los productos guardan el id, **un id de temporada publicado no debe renombrarse** sin migrar los datos. Por decisión del usuario, **el chat de la fase 3 no usa las temporadas** (el carrusel no se ordena por temporada y no hay saludo de temporada, V13 queda fuera del MVP), y desde la revisión del 2026-11-06 el catálogo tampoco las pide ni las muestra: hoy solo se guardan (por defecto `TODO_EL_ANIO`), y la API todavía acepta una lista explícita.
 
-**Producto completo (RN-12).** No es una columna: lo calcula `Producto.estaCompleto()` (tiene las tres fotos `ENTERO`, `DETALLE` y `PORCION`) y la API lo devuelve como `completo` en `ProductoVista`. Un producto incompleto se guarda y se lista con el aviso "Incompleto: faltan fotos" (V11), pero no aparece en el carrusel del chat ni puede elegirse para un video (400 `PRODUCTO_NO_DISPONIBLE`). `Producto.disponibleParaVideo()` = `ACTIVO` y completo (RN-12, RN-13).
+**Producto completo (RN-12).** No es una columna: lo calcula `Producto.estaCompleto()` (desde V10, tiene su foto `FOTO_1`; hasta V9 exigía las tres fotos `ENTERO`, `DETALLE` y `PORCION`) y la API lo devuelve como `completo` en `ProductoVista`. Un producto incompleto se guarda y se lista con el aviso "Incompleto: faltan fotos" (V11), pero no aparece en el carrusel del chat ni puede elegirse para un video (400 `PRODUCTO_NO_DISPONIBLE`). `Producto.disponibleParaVideo()` = `ACTIVO` y completo (RN-12, RN-13).
 
 Restricciones e índices:
 
@@ -547,10 +553,10 @@ Consultas de `ProductoRepositorio`. Todas llevan el negocio (aislamiento entre n
 |---|---|---|
 | `listarDeNegocio(negocioId, estado)` | `en_catalogo = true`; con `estado = null` lista activos y archivados | Catálogo (`GET /api/productos`) y panel del administrador. |
 | `buscarDeNegocio(id, negocioId)` | `en_catalogo = true` | Ver, editar, archivar y reactivar desde el catálogo. Un producto fuera del catálogo responde 404 (V14). |
-| `listarParaCarrusel(negocioId)` | `en_catalogo = true` y `estado = ACTIVO`, más recientes primero | `ServicioCatalogo.carrusel`, que además deja solo los completos y cuenta los que no tienen sus tres fotos (`Carrusel.incompletos`, mostrado como `productosIncompletos`). |
+| `listarParaCarrusel(negocioId)` | `en_catalogo = true` y `estado = ACTIVO`, más recientes primero | `ServicioCatalogo.carrusel`, que además deja solo los completos y cuenta los que no tienen su foto principal (`Carrusel.incompletos`, mostrado como `productosIncompletos`). |
 | `buscarParaVideo(id, negocioId)` | **sin** filtro de catálogo | `ServicioCatalogo.paraVideo` (luego exige `disponibleParaVideo()`): elegir un producto y revalidarlo al cerrar el chat; al elegir un producto del carrusel por id, `ServicioChat` exige además `en_catalogo = true`. `ServicioCatalogo.elegidoParaVideo` (sin más filtros): la sugerencia y el resumen, que muestran el producto ya elegido aunque después se haya archivado. |
 
-### 3.8 `foto_producto` (V3)
+### 3.8 `foto_producto` (V3, tipos renombrados en V10)
 
 Las fotos de cada producto (secciones 7.2 y 9.1). Entidad `FotoProducto` (`com.autoreel.catalogo.dominio`). No tiene repositorio propio: se guarda en cascada desde `Producto.fotos` (`@OneToMany(mappedBy = "producto", cascade = ALL, orphanRemoval = true)`).
 
@@ -558,7 +564,7 @@ Las fotos de cada producto (secciones 7.2 y 9.1). Entidad `FotoProducto` (`com.a
 |---|---|---|---|---|---|
 | `id` | `bigint` identity | no | generado | `Long` | Clave primaria. |
 | `producto_id` | `bigint` | no | | `Producto` (`@ManyToOne`, lazy, `optional = false`) | Producto dueño. No se actualiza. |
-| `tipo` | `varchar(20)` | no | | `TipoFoto` | `ENTERO` (el producto completo, de frente), `DETALLE` (muy cerca: crema, glaseado, fruta) o `PORCION` (una porción cortada, con el relleno). Cada una alimentará un plano del video. No se actualiza. |
+| `tipo` | `varchar(20)` | no | | `TipoFoto` | **Desde V10 (2026-11-25, ADR 0022):** `FOTO_1` (la principal, obligatoria para usar el producto en un video), `FOTO_2` o `FOTO_3` (opcionales), de cualquier ángulo. `TipoFoto.numero()` da su número (1 a 3), con el que la IA las ve y las elige en el guion; la IA decide qué foto usa cada toma. Hasta V9 eran `ENTERO` (el producto completo, de frente), `DETALLE` (muy cerca: crema, glaseado, fruta) y `PORCION` (una porción cortada, con el relleno), cada una para un plano fijo; V10 las renombró en ese orden a `FOTO_1`, `FOTO_2` y `FOTO_3`. No se actualiza. |
 | `clave_s3` | `varchar(300)` | no | | `String` (`claveS3`) | Clave **definitiva** de la foto: `negocios/{negocioId}/foto_producto/{uuid}.{jpg,png,webp}`. |
 | `ancho` | `integer` | no | | `int` | Ancho en píxeles **tal como se ve la foto**, con la orientación de la cámara ya aplicada. |
 | `alto` | `integer` | no | | `int` | Alto en píxeles, igual. |
@@ -569,11 +575,11 @@ Reglas de las fotos (RN-11, las verifica `VerificadorDeImagenes` sobre el conten
 - Lado menor ≥ **720 px** (si no, `FOTO_RESOLUCION_INSUFICIENTE`, V12; era 1080 px hasta la revisión del 2026-11-06, y se bajó a lo que pide el clip de IA en 720p) y como máximo 8000 px por lado y 40 megapíxeles (`IMAGEN_DEMASIADO_GRANDE`). Las fotos ya guardadas no cambian.
 - Una foto horizontal (`ancho > alto`, `FotoProducto.esHorizontal()`) se acepta con el aviso `FOTO_HORIZONTAL`: se recortará al formato vertical. `horizontal` no es columna: se calcula al leer.
 
-Sobre la orientación: el frontend normaliza las fotos antes de subirlas (aplica la rotación EXIF, reduce el lado mayor a 2560 px, JPEG con calidad 0,88 y sin metadatos). Si igual llega un JPEG con orientación EXIF de 90° o 270° (valores 5 a 8), `VerificadorDeImagenes` intercambia ancho y alto antes de validar el lado menor y de guardarlos. No hay columna `orientacion`: las medidas guardadas ya están orientadas. Desde la fase 5, antes de enviar una foto al modelo de video, `PreparadorDeFotos` aplica la orientación EXIF al leer el archivo, la recorta al centro en 9:16 y la guarda en memoria como JPEG de 1080×1920 sin metadatos; el archivo del almacén no cambia.
+Sobre la orientación: el frontend normaliza las fotos antes de subirlas (aplica la rotación EXIF, reduce el lado mayor a 2560 px, JPEG con calidad 0,88 y sin metadatos). Si igual llega un JPEG con orientación EXIF de 90° o 270° (valores 5 a 8), `VerificadorDeImagenes` intercambia ancho y alto antes de validar el lado menor y de guardarlos. No hay columna `orientacion`: las medidas guardadas ya están orientadas. Desde la fase 5, antes de enviar una foto al modelo de video, `PreparadorDeFotos` aplica la orientación EXIF al leer el archivo, la recorta al centro en 9:16 y la guarda en memoria como JPEG de 1080×1920 sin metadatos; el archivo del almacén no cambia. Desde V10, antes de pedir el guion, `PreparadorDeFotos.paraLaIa` reduce cada foto del producto a un JPEG de hasta 1024 px por lado (con la orientación EXIF aplicada, sin recortar) para enviarla al modelo de texto; tampoco cambia el archivo del almacén.
 
 Restricciones:
 
-- `foto_producto_tipo_ck`: `tipo in ('ENTERO', 'DETALLE', 'PORCION')`.
+- `foto_producto_tipo_ck`: `tipo in ('FOTO_1', 'FOTO_2', 'FOTO_3')` (V10; hasta V9, `ENTERO`, `DETALLE` y `PORCION`).
 - `foto_producto_producto_tipo_uk`: `unique (producto_id, tipo)`. Una foto por tipo y producto.
 - Clave foránea `producto_id` → `producto(id)` **con `on delete cascade`**: es la única clave foránea con borrado en cascada, porque una foto no tiene sentido sin su producto. Hoy ningún flujo borra productos (RN-13 archiva), así que en la práctica no se dispara.
 
@@ -689,7 +695,7 @@ Restricciones e índices:
 - `mensaje_chat_conversacion_idx`: índice sobre (`conversacion_id`, `fecha_hora`, `id`), el mismo orden de `@OrderBy("fechaHora, id")`.
 - Clave foránea `conversacion_id` → `conversacion(id)` **con `on delete cascade`**: un mensaje no tiene sentido sin su conversación. Hoy ningún flujo borra conversaciones, así que no se dispara.
 
-### 3.11 `video` (V5, ampliada en V6 y V9)
+### 3.11 `video` (V5, ampliada en V6, V9 y V10)
 
 El video del día (secciones 8 y 9.1, RF-21 a RF-26). Entidad `Video` (`com.autoreel.video.dominio`), repositorio `VideoRepositorio`. Lo crea `CreadorDeVideos` al completarse una conversación, en la misma transacción del chat; le escribe el guion `ServicioGuion` (llamado por `ProcesadorDeGuiones`), y lo muestra y edita `ServicioVideos` (`/api/videos`). Desde la fase 5, `ServicioVideos` también aprueba el storyboard, regenera, aprueba y descarga, y `ServicioGeneracion` y `ServicioComposicion` (llamados por `ProcesadorDeVideos`) generan los clips y componen el MP4. `negocio_id`, `conversacion_id`, `producto_id` y `pista_musical_id` se mapean como identificadores (`Long`), no como relaciones JPA.
 
@@ -703,7 +709,7 @@ El video del día (secciones 8 y 9.1, RF-21 a RF-26). Entidad `Video` (`com.auto
 | `estado` | `varchar(20)` | no | `'GUION_PENDIENTE'` | `EstadoVideo` | Los 10 estados de la sección 9.2. En la fase 4 se usan `GUION_PENDIENTE` (al nacer), `STORYBOARD` (guion listo), `ERROR` (el producto ya no tiene fotos, o no se pudo armar ni el guion de respaldo; desde el 2026-11-12, también si el modelo de texto no responde en 5 minutos o si sus 3 respuestas no pasan el validador) y `DESCARTADO` (`POST /api/videos/{id}/descartar`). Desde la fase 5: `GENERANDO` (al aprobar el storyboard o al regenerar un plano), `COMPONIENDO` (clips terminados, o un cambio de texto o precio en la revisión), `LISTO` (MP4 compuesto, en revisión), `APROBADO` (`POST /api/videos/{id}/aprobar`), `ERROR` también cuando la primera composición falla dos veces y, desde la revisión del 2026-11-06, cuando un plano de la primera generación no consigue su clip, y `DESCARTADO` también desde `LISTO`. `PROGRAMADO` y `PUBLICADO` se usan desde la **(futuro, fase 6)**. El diagrama de estados está en `docs/arquitectura.md`, sección 5.5. |
 | `plan_aplicado_id` | `bigint` | no | | `Plan` (`@ManyToOne`, lazy, `optional = false`) | Plan efectivo del negocio al crear el video (`ResolutorDePlanEfectivo`; RN-54): desde la fase 7, el de un beneficio vigente (RN-50) o, si no hay, el de la suscripción. No se actualiza: un cambio de plan, la edición del plan o el fin del beneficio no afectan a un video en proceso (RN-49). |
 | `modelo_texto_usado_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | `plan.modelo_texto_id` al crear el video. Es el modelo con el que se escribe el guion. No se actualiza. |
-| `modelo_video_usado_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | `plan.modelo_video_id` al crear el video. Desde la fase 5 es el modelo con el que se generan sus clips (también los de una regeneración) y el que decide si hay IA disponible (`FabricaDeProveedores.videoDisponible`) para "Crear mi video", regenerar y cambiar una foto en la revisión. Desde V7, en el plan Lite, Gemini Omni Flash; los videos creados antes conservan Veo 3.1 Lite. El panel lo muestra en el detalle del negocio (fase 7). No se actualiza. |
+| `modelo_video_usado_id` | `bigint` | no | | `ModeloIA` (`@ManyToOne`, lazy) | `plan.modelo_video_id` al crear el video. Desde la fase 5 es el modelo con el que se generan sus clips (también los de una regeneración) y el que decide si hay IA disponible (`FabricaDeProveedores.videoDisponible`) para "Crear mi video", regenerar y cambiar una foto en la revisión. Desde V7, en el plan Lite, Gemini Omni Flash; los videos creados antes conservan Veo 3.1 Lite. Desde V11 (ADR 0022), en el plan Lite, de nuevo Veo 3.1 Lite. El panel lo muestra en el detalle del negocio (fase 7). No se actualiza. |
 | `opciones_produccion` | `jsonb` | no | `'{}'` | `Map<String, Object>` | Copia de `plan.opciones_produccion_permitidas` al crear el video (sección 8.6). No se actualiza. |
 | `guion` | `jsonb` | sí | | `Map<String, Object>` | Última respuesta del modelo que se pudo leer como JSON, **solo para auditoría**. `null` si no hubo ninguna (por ejemplo, sin credencial). **La fuente de verdad del guion son las filas de `plano`** (y `descripcion_publicacion` y `hashtags`), que es lo que leen la generación y la composición de la fase 5. |
 | `descripcion_publicacion` | `text` | sí | | `String` | Texto de la publicación de Instagram. Con los hashtags, hasta 600 caracteres (RN-24). Se llena al pasar a `STORYBOARD`. |
@@ -728,14 +734,17 @@ El video del día (secciones 8 y 9.1, RF-21 a RF-26). Entidad `Video` (`com.auto
 | `pista_musical_id` | `bigint` | sí | | `Long` (`pistaMusicalId`) | **V6.** Pista de `pista_musical` elegida al aprobar el storyboard (`BibliotecaMusical.elegir`, por nicho y estilo del negocio). Se guarda para que cada recomposición use la misma. `null` si no había pistas del estilo: el video sale con audio en silencio. |
 | `guion_iniciado_en` | `timestamptz` | sí | | `Instant` | **V9.** Inicio de la escritura del guion en curso: al crear el video y en cada "Reintentar" de la etapa del guion (`Video.reintentarGuion`). Desde aquí se cuentan los **5 minutos** de reintentos automáticos cuando el proveedor de texto falla (`ServicioGuion.PLAZO_DE_REINTENTOS`). La vista lo expone como `inicioDelGuion`, para el aviso "Está tardando más de lo normal". `null` en los videos creados antes de V9: `Video.inicioDelGuion()` usa entonces `fecha_creacion`. |
 | `error_definitivo` | `boolean` | no | `false` | `boolean` | **V9.** `true` si el video está en `ERROR` por algo que no se arregla reintentando (hoy, que el producto ya no existe o no tiene fotos: `Video.marcarErrorDefinitivo`). Entonces la vista trae `puedeReintentar: false` y `POST /reintentar` responde 409 `VIDEO_NO_REINTENTABLE`, para no volver a pagar el guion sin resultado. `marcarError` lo vuelve a `false`. |
+| `estructura` | `varchar(20)` | sí | | `String` | **V10 (ADR 0022).** Id de la estructura que eligió la IA en `plantilla.json` del paquete de nicho (`RAPIDA`, `CLASICA`, `HISTORIA` o `PLANO_UNICO` en Pastelería): cuántas tomas tiene el video, sus segundos, los del cierre y el máximo de palabras por toma. Sin `check`: los valores son del paquete de nicho. Se escribe con el guion (`Video.elegirConcepto`). `null` mientras no hay guion. V10 puso `CLASICA` a los videos anteriores que ya tenían planos. |
+| `creatividad` | `varchar(20)` | sí | | `String` | **V10.** Id del nivel de creatividad que eligió la IA en `movimientos.json` (`PRODUCTO`, `AMBIENTE` u `ORIGEN`). Suma sus prohibiciones y negativos al prompt de cada clip. Sin `check`. `null` sin guion y en los videos anteriores a V10. |
+| `idea` | `varchar(400)` | sí | | `String` | **V10.** El concepto del video en una o dos frases, en español (hasta 400 caracteres, `ValidadorDeGuion.MAXIMO_CARACTERES_IDEA`). La vista lo muestra arriba del storyboard (`concepto`). `null` sin guion y en los videos anteriores a V10. |
 
-Los planos se cargan con `Video.planos` (`@OneToMany(mappedBy = "video", cascade = ALL, orphanRemoval = true)`, `@OrderBy("orden")`) y se agregan con `agregarPlano` (1 a 3) y `agregarCierre` (4).
+Los planos se cargan con `Video.planos` (`@OneToMany(mappedBy = "video", cascade = ALL, orphanRemoval = true)`, `@OrderBy("orden")`) y se agregan con `agregarPlano` (1 a 3) y `agregarCierre` (4). *Desde V10*, `agregarPlano` agrega las tomas (de 1 a 4, según la estructura) con sus segundos, y `agregarCierre` el cierre en el orden que sigue a la última toma (`Estructura.ordenDelCierre`). `Video.planosConFoto()` devuelve las tomas en orden y `Video.cierre()` el plano sin foto.
 
-Las columnas de V6 son compatibles con los videos que ya existían: los contadores nacen en 0 y las banderas en `false` por su `default`, y las demás quedan en `null`. Las de V9 también: `guion_iniciado_en` queda en `null` (se usa `fecha_creacion`) y `error_definitivo` en `false`.
+Las columnas de V6 son compatibles con los videos que ya existían: los contadores nacen en 0 y las banderas en `false` por su `default`, y las demás quedan en `null`. Las de V9 también: `guion_iniciado_en` queda en `null` (se usa `fecha_creacion`) y `error_definitivo` en `false`. Las de V10 también: los videos con planos quedan con `estructura = 'CLASICA'` y `creatividad` e `idea` en `null`.
 
 **"Reintentar" (`POST /api/videos/{id}/reintentar`).** Desde el PR #12, un video en `ERROR` que falló **al generarse** (`consumo_fecha` con valor, con planos y sin `error_definitivo`) vuelve a `GENERANDO`: pone `consumo_fecha` de nuevo, `consumo_devuelto = false` y pide solo los clips que faltan. Desde V9 también sirve un video que falló **al escribir su guion** (`Video.falloEnElGuion`: sin `consumo_fecha`, sin planos y sin `error_definitivo`): vuelve a `GUION_PENDIENTE` con `motivo_error`, `intentos_guion` y `guion_reclamado_hasta` limpios y `guion_iniciado_en` = ahora, **sin consumir** el video del día.
 
-Diferencias con la sección 9.1 de la especificación: `claveS3Final` se llama `clave_final` (como las demás claves del almacén) y `regeneracionesUsadas` es `regeneraciones_usadas`. `consumo_fecha`, `consumo_devuelto`, `intentos_composicion`, `trabajo_reclamado_hasta`, `generacion_iniciada_en`, `aviso_revision` y `pista_musical_id` no están en la especificación: se agregaron para cumplir RN-27, el plan de respaldo de la composición, el procesador sin tareas atascadas y la recomposición con la misma música. `guion_iniciado_en` y `error_definitivo` (V9) tampoco: son el plazo de los reintentos automáticos del guion y la marca de un error que no se ofrece reintentar (ADR 0021).
+Diferencias con la sección 9.1 de la especificación: `claveS3Final` se llama `clave_final` (como las demás claves del almacén) y `regeneracionesUsadas` es `regeneraciones_usadas`. `consumo_fecha`, `consumo_devuelto`, `intentos_composicion`, `trabajo_reclamado_hasta`, `generacion_iniciada_en`, `aviso_revision` y `pista_musical_id` no están en la especificación: se agregaron para cumplir RN-27, el plan de respaldo de la composición, el procesador sin tareas atascadas y la recomposición con la misma música. `guion_iniciado_en` y `error_definitivo` (V9) tampoco: son el plazo de los reintentos automáticos del guion y la marca de un error que no se ofrece reintentar (ADR 0021). `estructura`, `creatividad` e `idea` (V10) sí están en la sección 9.1 desde el 2026-11-25 (ADR 0022).
 
 Restricciones e índices:
 
@@ -756,21 +765,24 @@ Concurrencia:
 - **Reclamo del procesador de videos (V6):** `VideoRepositorio.reclamarTrabajo(id, estado, ahora, hasta)` hace lo mismo sobre `trabajo_reclamado_hasta`, exigiendo además el estado esperado (`GENERANDO` para los clips, `COMPONIENDO` para la composición).
 - **Bloqueo de la fila:** `bloquear(id)` (procesadores) y `bloquearDeNegocio(id, negocioId)` (edición, descarte y, desde la fase 5, aprobar el storyboard, regenerar y aprobar) usan `PESSIMISTIC_WRITE` (`SELECT ... FOR UPDATE`). El paso a `STORYBOARD` solo ocurre si el video sigue en `GUION_PENDIENTE`; cada cambio de un plano en la generación, solo si el video sigue en `GENERANDO`; y el paso a `LISTO`, solo si sigue en `COMPONIENDO`.
 
-### 3.12 `plano` (V5, ampliada en V6 y V9)
+### 3.12 `plano` (V5, ampliada en V6, V9 y V10)
 
-Los planos del storyboard y, desde la fase 5, el clip de cada uno (secciones 7.4, 8.2, 8.5 y 9.1). Entidad `Plano` (`com.autoreel.video.dominio`). No tiene repositorio propio: se guarda en cascada desde `Video.planos`. La plantilla (`resources/nichos/pasteleria/plantilla.json`) define el nombre, la foto, el máximo de palabras y los segundos de cada orden; esos datos no se copian a la tabla.
+Los planos del storyboard y, desde la fase 5, el clip de cada uno (secciones 7.4, 8.2, 8.5 y 9.1). Entidad `Plano` (`com.autoreel.video.dominio`). No tiene repositorio propio: se guarda en cascada desde `Video.planos`. La plantilla (`resources/nichos/pasteleria/plantilla.json`) define el nombre, la foto, el máximo de palabras y los segundos de cada orden; esos datos no se copian a la tabla. *Desde V10 (guion flexible, ADR 0022)* la plantilla define **estructuras** (cuántas tomas, sus segundos, los del cierre y el máximo de palabras), y la IA elige una (`video.estructura`). Cada plano guarda sus `segundos`; el nombre se calcula ("Gancho" en el orden 1, "Toma N" en los demás y "Cierre" en el cierre, `PlantillaVideo.nombreDelPlano`) y el máximo de palabras sale de la estructura del video.
 
 | Columna | Tipo | Nulo | Por defecto | Java | Descripción |
 |---|---|---|---|---|---|
 | `id` | `bigint` identity | no | generado | `Long` | Clave primaria. |
 | `video_id` | `bigint` | no | | `Video` (`@ManyToOne`, lazy, `optional = false`) | Video dueño. No se actualiza. |
-| `orden` | `integer` | no | | `int` | 1 (Gancho, foto `DETALLE`), 2 (Producto, `ENTERO`), 3 (Relleno, `PORCION`) o 4 (Cierre, sin IA). No se actualiza. |
-| `tipo_foto` | `varchar(10)` | sí | | `TipoFoto` | Foto del producto que usa el plano. `null` en el cierre y cuando el usuario subió en el storyboard una foto que no es del producto. |
-| `clave_foto` | `varchar(300)` | sí | | `String` | Clave **definitiva** de la foto en el almacén: la `foto_producto.clave_s3` que tenía el producto al crear el plano (o al elegirla en el storyboard), o la de una foto nueva subida en el storyboard (`negocios/{negocioId}/foto_producto/{uuid}.{ext}`, confirmada con `ServicioDeArchivos.confirmar`; no se agrega al producto). Obligatoria en los planos 1 a 3. |
-| `movimiento` | `varchar(40)` | sí | | `String` | Id de un movimiento de `movimientos.json` (por ejemplo `ACERCAMIENTO_LENTO`). Sin `check`: los valores son del paquete de nicho. Desde la fase 5, su `instruccion` en inglés es el `prompt` que recibe el modelo de video (con Gemini Omni, junto con lo prohibido, porque Omni no admite un prompt negativo). `null` en el cierre. |
-| `texto` | `varchar(200)` | sí | | `String` | Texto en pantalla de los planos 1 a 3, dentro del máximo de palabras de la plantilla (6, 5 y 7 en Pastelería), sin emojis ni saltos de línea. Editable en el storyboard (V21) y, desde la fase 5, en la revisión (solo recompone, V25). `null` en el cierre. |
+| `orden` | `integer` | no | | `int` | Hasta V9: 1 (Gancho, foto `DETALLE`), 2 (Producto, `ENTERO`), 3 (Relleno, `PORCION`) o 4 (Cierre, sin IA). **Desde V10:** de 1 a 4 las tomas de la estructura (la 1 es siempre el gancho) y el cierre en el orden siguiente (2 a 5). No se actualiza. |
+| `tipo_foto` | `varchar(10)` | sí | | `TipoFoto` | Foto del producto que usa el plano (desde V10, `FOTO_1`, `FOTO_2` o `FOTO_3`: la que eligió la IA para esa toma; si esa foto se quitó mientras se escribía el guion, la primera que tenga el producto). `null` en el cierre y cuando el usuario subió en el storyboard una foto que no es del producto. |
+| `clave_foto` | `varchar(300)` | sí | | `String` | Clave **definitiva** de la foto en el almacén: la `foto_producto.clave_s3` que tenía el producto al crear el plano (o al elegirla en el storyboard), o la de una foto nueva subida en el storyboard (`negocios/{negocioId}/foto_producto/{uuid}.{ext}`, confirmada con `ServicioDeArchivos.confirmar`; no se agrega al producto). Obligatoria en las tomas; `null` solo en el cierre (`Plano.esCierre()`). |
+| `segundos` | `integer` | no | | `int` | **V10.** Duración del plano en el video, tomada de la estructura (las tomas y el cierre). La composición la usa para recortar cada clip y para el cierre, y la generación para elegir la duración del clip que pide (ver 3.3, `duracionesClip`). V10 llenó los planos anteriores con 3 en el orden 1 y 4 en los demás (3, 4, 4 y 4 s). |
+| `movimiento` | `varchar(40)` | sí | | `String` | Id de un movimiento de `movimientos.json` (por ejemplo `ACERCAMIENTO_LENTO`). Sin `check`: los valores son del paquete de nicho. Desde la fase 5, su `instruccion` en inglés es el `prompt` que recibe el modelo de video (con Gemini Omni, junto con lo prohibido, porque Omni no admite un prompt negativo). `null` en el cierre. **Desde V10** solo lo tienen los videos anteriores: en los nuevos queda en `null` y la generación usa `toma`; si `toma` está vacía, usa la `instruccion` de este movimiento. |
+| `toma` | `varchar(1500)` | sí | | `String` | **V10.** La toma de cámara que escribió la IA, en inglés, para el modelo de video (hasta 1200 caracteres, `ValidadorDeGuion.MAXIMO_CARACTERES_TOMA`). El prompt del clip es la `plantillaDeToma` del paquete con esta toma, más las prohibiciones generales y las del nivel de creatividad del video (`Movimientos.promptDeToma`). Se conserva al cambiar la foto o regenerar. `null` en el cierre y en los videos anteriores a V10. |
+| `descripcion_toma` | `varchar(160)` | sí | | `String` | **V10.** La toma en pocas palabras, en español, que el storyboard muestra como "Toma: …" (la vista la expone en `movimiento.descripcion`, con `movimiento.id` en `null`). `null` en el cierre y en los videos anteriores a V10, que muestran la descripción de su movimiento. |
+| `texto` | `varchar(200)` | sí | | `String` | Texto en pantalla de los planos 1 a 3, dentro del máximo de palabras de la plantilla (6, 5 y 7 en Pastelería), sin emojis ni saltos de línea. Editable en el storyboard (V21) y, desde la fase 5, en la revisión (solo recompone, V25). `null` en el cierre. **Desde V10:** el máximo es el de la estructura (5, 6, 7 u 8 palabras); es obligatorio solo en el gancho (orden 1) y puede ser `null` en las demás tomas. Guardar un texto vacío en una toma que no es el gancho lo deja en `null`. |
 | `precio` | `varchar(40)` | sí | | `String` | Solo en el cierre. Hasta el 2026-11-12, el precio tal como lo escribió el usuario en el chat, recortado en el límite de una palabra si pasaba de 40 caracteres. Desde entonces (ADR 0021, V19), el **precio que propone la IA**: solo si el negocio escribió un precio o una promoción real, resumido con sus mismos números y moneda ("S/ 65 la torta entera"), hasta 40 caracteres (`maximoCaracteresPrecio`). `null` si no hay precio, también cuando el negocio escribió una instrucción ("no menciones precio"). Editable en el storyboard y en la revisión. |
-| `frase` | `varchar(60)` | sí | | `String` | **V9.** Solo en el cierre. Frase gancho que escribe la IA ("Recién salidas del horno"), hasta `maxPalabras` del cierre en la plantilla (6) y 40 caracteres (el código limita a 40; la columna admite 60). Se muestra en grande **cuando no hay precio** (`Plano.textoPrincipalDelCierre()`). Editable en el storyboard y en la revisión (`FRASE_MUY_LARGA`). `null` en los cierres anteriores a V9. |
+| `frase` | `varchar(60)` | sí | | `String` | **V9.** Solo en el cierre. Frase gancho que escribe la IA ("Recién salidas del horno"), hasta `maxPalabras` del cierre en la plantilla (6; desde V10, `maxPalabrasCierre`) y 40 caracteres (el código limita a 40; la columna admite 60). Se muestra en grande **cuando no hay precio** (`Plano.textoPrincipalDelCierre()`). Editable en el storyboard y en la revisión (`FRASE_MUY_LARGA`). `null` en los cierres anteriores a V9. |
 | `llamado` | `varchar(120)` | sí | | `String` | Solo en el cierre. Llamado a la acción del canal de mayor prioridad que tiene el negocio (`plantilla.json`: WhatsApp, delivery, tienda), con el distrito ya puesto. |
 | `ubicacion` | `varchar(120)` | sí | | `String` | Solo en el cierre. El distrito del negocio. Desde el 2026-11-12, un lugar más preciso si la IA lo tomó de lo que dijo el negocio ("Plaza Lima Sur, Chorrillos", hasta `maximoCaracteresUbicacion` = 40, con palabras del negocio); si no, el distrito. |
 | `estado` | `varchar(12)` | sí | | `EstadoPlano` | **V6.** Estado del clip: `PENDIENTE` (por enviar al proveedor), `GENERANDO` (enviado; se consulta), `LISTO` (el clip está guardado) o `RESPALDO` (usa el acercamiento de FFmpeg sobre la foto). `null` en el storyboard y **siempre en el cierre**, que no pasa por la IA. Pasa a `PENDIENTE` al aprobar el storyboard o al regenerar. Desde la revisión del 2026-11-06 ningún plano nuevo pasa a `RESPALDO` (sección 8.5 de la especificación, ADR 0020): el valor queda solo en los datos anteriores, y la composición todavía sabe animarlos. El diagrama de estados está en `docs/arquitectura.md`, sección 5.5. |
@@ -782,18 +794,19 @@ Los planos del storyboard y, desde la fase 5, el clip de cada uno (secciones 7.4
 | `clave_clip` | `varchar(300)` | sí | | `String` | **V6.** Clave del clip de IA en el almacén: `negocios/{negocioId}/videos/{videoId}/clip-{orden}-{uuid}.mp4`. Al llegar un clip nuevo (regeneración), el anterior se borra del almacén después del commit. Si la foto del plano cambia en la revisión, se borra la referencia: el clip ya no corresponde. |
 | `regeneracion_en_curso` | `boolean` | no | `false` | `boolean` | **V6.** `true` mientras una regeneración pedida no termina. Si no consigue el clip nuevo y había un clip anterior (`Plano.conservarClipAnterior`), el plano vuelve a `LISTO` con ese clip, la regeneración se devuelve (`video.regeneraciones_usadas - 1`) y el video recibe el `aviso_revision`. |
 
-El cierre (orden 4) **no tiene clip de IA**. Hasta el 2026-11-12 lo armaba `ServicioGuion` solo con los datos del usuario; desde entonces (ADR 0021) toma de la respuesta del modelo el precio, la frase y la ubicación (`GuionPropuesto.CierrePropuesto`), y el sistema pone el llamado. El logo, los colores, la foto del local y el WhatsApp del cierre no se copian: la vista y, desde la fase 5, la composición los leen del perfil.
+El cierre (orden 4; desde V10, el plano sin foto que sigue a la última toma, de 3 s, o 7 s en el plano único) **no tiene clip de IA**. Hasta el 2026-11-12 lo armaba `ServicioGuion` solo con los datos del usuario; desde entonces (ADR 0021) toma de la respuesta del modelo el precio, la frase y la ubicación (`GuionPropuesto.CierrePropuesto`), y el sistema pone el llamado. El logo, los colores, la foto del local y el WhatsApp del cierre no se copian: la vista y, desde la fase 5, la composición los leen del perfil.
 
-Las columnas de V6 son compatibles con los planos que ya existían: `estado` queda en `null`, los contadores en 0 y las banderas en `false`.
+Las columnas de V6 son compatibles con los planos que ya existían: `estado` queda en `null`, los contadores en 0 y las banderas en `false`. Las de V10 también: `segundos` se llena (3, 4, 4 y 4 s) antes de volverla `not null`, y `toma` y `descripcion_toma` quedan en `null`.
 
 Diferencias con la sección 9.1 de la especificación: `claveS3Clip` se llama `clave_clip`. `motivo_respaldo`, `enviado_en` y `regeneracion_en_curso` no están en la especificación: se agregaron para el soporte del administrador, la espera de 10 minutos por clip y la regla de que una regeneración que falla no se cobra. La especificación todavía lista `usoRespaldo` en `Plano`; la columna se conserva para los datos anteriores al cambio del 2026-11-06.
 
 Restricciones:
 
 - `plano_video_orden_uk`: `unique (video_id, orden)`. Un plano por orden en cada video.
-- `plano_orden_ck`: `orden between 1 and 4`.
-- `plano_foto_ck`: `orden = 4 or clave_foto is not null`. Los planos 1 a 3 siempre tienen foto.
-- `plano_tipo_foto_ck`: `tipo_foto` es `null` o `ENTERO`, `DETALLE` o `PORCION`.
+- `plano_orden_ck`: `orden between 1 and 5` (desde V10; antes, `between 1 and 4`).
+- `plano_foto_ck`: `orden = 4 or clave_foto is not null`. Los planos 1 a 3 siempre tienen foto. **V10 la borró:** el cierre ya no es siempre el orden 4. Que cada toma tenga foto lo garantiza el código (`Video.agregarPlano`).
+- `plano_tipo_foto_ck`: `tipo_foto` es `null` o `FOTO_1`, `FOTO_2` o `FOTO_3` (V10; antes, `ENTERO`, `DETALLE` o `PORCION`).
+- `plano_segundos_ck` (V10): `segundos between 1 and 15`.
 - `plano_estado_ck` (V6): `estado` es `null` o `PENDIENTE`, `GENERANDO`, `LISTO` o `RESPALDO`.
 - `plano_intentos_ck` (V6): `intentos >= 0`.
 - `plano_motivo_respaldo_ck` (V6): `motivo_respaldo` es `null` o uno de los 7 motivos de arriba.
@@ -810,8 +823,8 @@ Costo de cada llamada a un proveedor de IA (RN-32, V32). Entidad `RegistroCosto`
 | `video_id` | `bigint` | sí | | `Long` (`videoId`) | Video de la llamada. Admite `null` para llamadas que no son de un video, pero hoy todas lo son: la prueba de conexión de la fase 7 no registra costo. |
 | `proveedor` | `varchar(30)` | no | | `String` | Copia de `modelo_ia.proveedor` (hoy `GOOGLE`). |
 | `concepto` | `varchar(20)` | no | | `ConceptoCosto` | `GUION` (fase 4) o `CLIP` (fase 5). `PRUEBA` existe en el `check` y en el `enum`, pero ningún código lo registra (ver la sección 7). |
-| `cantidad` | `numeric(12,3)` | no | | `BigDecimal` | Solicitudes o segundos, según `modelo_ia.unidad_costo`. En el guion, siempre 1. En un clip, los segundos que informa el proveedor si vienen (Gemini Omni Flash los da en tokens de video, convertidos con `parametros.tokensPorSegundo`; desde V7) o, si no, los segundos pedidos (`modelo_ia.parametros.duracionClipSegundos`, 4). |
-| `costo_usd` | `numeric(12,6)` | no | | `BigDecimal` | `modelo_ia.costo_referencial × cantidad`. Un clip de 4 s de Veo 3.1 Lite: 4 × 0,05 = 0,20 USD (V39); de Gemini Omni Flash: 4 × 0,07 = 0,28 USD. |
+| `cantidad` | `numeric(12,3)` | no | | `BigDecimal` | Solicitudes o segundos, según `modelo_ia.unidad_costo`. En el guion, siempre 1. En un clip, los segundos que informa el proveedor si vienen (Gemini Omni Flash los da en tokens de video, convertidos con `parametros.tokensPorSegundo`; desde V7) o, si no, los segundos pedidos (`modelo_ia.parametros.duracionClipSegundos`, 4). Desde V10, los segundos pedidos dependen del plano: la duración más corta de `duracionesClip` que cubre `plano.segundos` (en Veo, 4 s para una toma de 3 o 4 s, 6 s para una de 6 s y 8 s para una de 8 s). |
+| `costo_usd` | `numeric(12,6)` | no | | `BigDecimal` | `modelo_ia.costo_referencial × cantidad`. Un clip de 4 s de Veo 3.1 Lite: 4 × 0,05 = 0,20 USD (V39); de Gemini Omni Flash: 4 × 0,07 = 0,28 USD. Desde V11, uno de 4 s de Veo 3.1 Fast: 0,40 USD; de Veo 3.1: 1,60 USD. |
 | `fecha_hora` | `timestamptz` | no | | `Instant` | Momento del registro, con el `Clock` inyectado. |
 
 **Cuándo se registra el guion (fase 4):** una fila por cada respuesta del modelo de texto, aunque el guion no sirva (el proveedor la cobra), en la misma transacción corta que suma el costo a `video.costo_estimado` y a `video.intentos_guion`. No se registra cuando falta la credencial ni cuando el proveedor responde con error (401, 403, 400, 404, 429, 5xx) o no responde a tiempo.
@@ -994,7 +1007,7 @@ La prueba de integración `GestionNegociosIntegracionTest.lasSemillasDePlanesYMo
 
 - Un `perfil_negocio` vacío por cada `negocio` existente (ver 3.6). No siembra productos.
 
-### 4.3 Migraciones V4 a V9
+### 4.3 Migraciones V4 a V11
 
 - V4 no siembra datos. Los productos que ya existían quedan con `en_catalogo = true` por el `default` de la columna nueva.
 - V5 no siembra datos ni crea videos para las conversaciones que ya estaban `COMPLETA`: solo las que se completan desde la fase 4 tienen video. El negocio de ejemplo tampoco crea videos.
@@ -1021,16 +1034,34 @@ El identificador, el costo (0,05 USD `POR_SEGUNDO`) y el estado no cambian. Una 
 
 - **V9** (mejora de la calidad del video, ADR 0021) no siembra datos. Agrega `plano.frase` (en `null`), `video.guion_iniciado_en` (en `null`: los videos anteriores usan su `fecha_creacion`) y `video.error_definitivo` (en `false`). No toca `video.guion_de_respaldo` ni `video.motivo_respaldo`, que quedan para los videos anteriores.
 
-Así quedan los modelos después de V8 (V9 no los cambia), en una base de datos que no los editó desde el panel:
+- **V10** (guion flexible, ADR 0022, 2026-11-25) no siembra filas. Cambia los datos que ya existen:
+  - `foto_producto.tipo` y `plano.tipo_foto`: `ENTERO` → `FOTO_1`, `DETALLE` → `FOTO_2` y `PORCION` → `FOTO_3`, con los `check` nuevos.
+  - `plano.segundos`: 3 en el orden 1 y 4 en los demás (la plantilla anterior: 3, 4, 4 y el cierre de 4 s).
+  - `video.estructura = 'CLASICA'` en los videos que ya tenían planos. `creatividad` e `idea` quedan en `null`, y `plano.toma` y `descripcion_toma` también: esos videos siguen usando el movimiento de cada plano.
+  - Los modelos con `adaptador = 'VEO'` suman a sus `parametros` `"duracionesClip": [4, 6, 8]`.
+- **V11** (modelos de Veo, ADR 0022, 2026-11-25). Por decisión del usuario, los videos se hacen con Veo en Google Cloud, empezando por Veo 3.1 Lite (con la clave de AI Studio solo está Gemini Omni Flash: Veo salió de la API de Gemini el 2026-10-22):
+  - Inserta dos modelos que copian de Veo 3.1 Lite (`where adaptador = 'VEO' and identificador_modelo = 'veo-3.1-lite-generate-001'`) el proveedor, el tipo, el adaptador, los `parametros` (con el `proyecto`, si ya se había agregado desde el panel), la unidad de costo y el secreto. No los inserta si ya existe un modelo `VEO` con ese identificador:
+
+| `nombre` | `identificador_modelo` | `costo_referencial` | `estado` |
+|---|---|---|---|
+| Veo 3.1 Fast | `veo-3.1-fast-generate-001` | 0.100000 | `ACTIVO` |
+| Veo 3.1 | `veo-3.1-generate-001` | 0.400000 | `ACTIVO` |
+
+  - Los costos son referenciales y conservadores (con audio, a 720p); sin audio Google cobra menos. Se ajustan desde el panel con la factura real.
+  - Activa Veo 3.1 Lite y lo pone como `modelo_video_id` del plan **Lite** (`where nombre = 'Lite'`). El modelo de texto no cambia. Gemini Omni Flash queda registrado y activo, pero sin plan. Los videos ya creados conservan su modelo (RN-54).
+
+Así quedan los modelos después de V11, en una base de datos que no los editó desde el panel:
 
 | `nombre` | `tipo` | `adaptador` | Camino | `nombre_secreto` | `estado` | Plan Lite |
 |---|---|---|---|---|---|---|
 | Gemini | `TEXTO` | `GEMINI` | Google AI Studio | `autoreel/gemini` | `ACTIVO` | Modelo de texto |
-| Gemini Omni Flash | `VIDEO` | `GEMINI_OMNI` | Google AI Studio | `autoreel/gemini` | `ACTIVO` | Modelo de video |
+| Gemini Omni Flash | `VIDEO` | `GEMINI_OMNI` | Google AI Studio | `autoreel/gemini` | `ACTIVO` | — (lo fue de V7 a V10) |
 | Gemini (Google Cloud) | `TEXTO` | `GEMINI_CLOUD` | Google Cloud | `autoreel/google-cloud` | `INACTIVO` | — |
-| Veo 3.1 Lite | `VIDEO` | `VEO` | Google Cloud | `autoreel/google-cloud` | `INACTIVO` | — (lo fue hasta V7) |
+| Veo 3.1 Lite | `VIDEO` | `VEO` | Google Cloud | `autoreel/google-cloud` | `ACTIVO` | Modelo de video (desde V11) |
+| Veo 3.1 Fast | `VIDEO` | `VEO` | Google Cloud | `autoreel/google-cloud` | `ACTIVO` | — |
+| Veo 3.1 | `VIDEO` | `VEO` | Google Cloud | `autoreel/google-cloud` | `ACTIVO` | — |
 
-Pasar el plan Lite a Google Cloud no requiere programar: activar los dos modelos en Ajustes → Integraciones (con la credencial `autoreel/google-cloud` configurada) y asignarlos al plan en Ajustes → Planes.
+Hasta V10, Gemini Omni Flash era el modelo de video del plan Lite y Veo 3.1 Lite estaba `INACTIVO`. Pasar también el texto a Google Cloud no requiere programar: activar Gemini (Google Cloud) en Ajustes → Integraciones (con la credencial `autoreel/google-cloud` configurada) y asignarlo al plan en Ajustes → Planes.
 
 ### 4.4 Sembrados por la aplicación al arrancar
 
@@ -1058,7 +1089,7 @@ El negocio de ejemplo no crea conversaciones: el chat se prueba a mano con sus t
 | Instantes (fechas con hora) | `timestamptz` | `java.time.Instant`. Hibernate usa `hibernate.jdbc.time_zone: UTC`, y el contenedor de Postgres corre con `TZ: UTC`. |
 | Fechas de negocio (días) | `date` | `java.time.LocalDate`, obtenida con `LocalDate.now(reloj)`. El `Clock` de `ConfiguracionReloj` está en `America/Lima`: el "día" de las reglas es el de Lima (RN-26, RN-43). |
 | JSON | `jsonb` | `Map<String, Object>` o `List<String>` con `@JdbcTypeCode(SqlTypes.JSON)` (serializado con Jackson 3). |
-| Enumeraciones | `varchar` con una restricción `check` que lista los valores | `@Enumerated(EnumType.STRING)` sobre un `enum` Java (`EstadoNegocio`, `Rol`, `TipoModelo`, `UnidadCosto`, `EstadoModelo`, `EstadoProducto`, `TipoFoto`, `EstadoConversacion`, `AutorMensaje`, desde la fase 4 `EstadoVideo`, `MotivoRespaldo` y `ConceptoCosto`, desde la fase 5 `EstadoPlano` y `MotivoRespaldoPlano`, y desde la fase 7 `MedioPago` y `TipoNotificacion`). `proveedor` (también en `registro_costo`), `adaptador`, `nicho` (también en `pista_musical`), `perfil_negocio.estilo`, `pista_musical.estilo`, `conversacion.paso_actual`, `video.tipo_video` y `plano.movimiento` son texto libre a propósito: crecen sin migración. Los valores del nicho (estilos, ids de pregunta, ids de temporada, ids de paso del chat y valores de sus opciones, tipos de video, ids de movimiento) los valida el paquete de nicho, no la base de datos. |
+| Enumeraciones | `varchar` con una restricción `check` que lista los valores | `@Enumerated(EnumType.STRING)` sobre un `enum` Java (`EstadoNegocio`, `Rol`, `TipoModelo`, `UnidadCosto`, `EstadoModelo`, `EstadoProducto`, `TipoFoto`, `EstadoConversacion`, `AutorMensaje`, desde la fase 4 `EstadoVideo`, `MotivoRespaldo` y `ConceptoCosto`, desde la fase 5 `EstadoPlano` y `MotivoRespaldoPlano`, y desde la fase 7 `MedioPago` y `TipoNotificacion`). `proveedor` (también en `registro_costo`), `adaptador`, `nicho` (también en `pista_musical`), `perfil_negocio.estilo`, `pista_musical.estilo`, `conversacion.paso_actual`, `video.tipo_video`, `plano.movimiento` y, desde V10, `video.estructura` y `video.creatividad` son texto libre a propósito: crecen sin migración. Los valores del nicho (estilos, ids de pregunta, ids de temporada, ids de paso del chat y valores de sus opciones, tipos de video, ids de movimiento, estructuras y niveles de creatividad) los valida el paquete de nicho, no la base de datos. |
 | Dinero | `numeric(10,2)`; costos de IA `numeric(12,6)` (`modelo_ia.costo_referencial`, `video.costo_estimado`, `registro_costo.costo_usd`) | `BigDecimal` |
 | Archivos | `varchar(300)` con la **clave** del almacén (`*_clave`, `clave_s3`, `plano.clave_foto` y, desde la fase 5, `plano.clave_clip`, `video.clave_final` y `pista_musical.clave`) | `String`. Ver 5.1. |
 | Nombres | tablas y columnas en español, en singular y `snake_case` | atributos en `camelCase` (`fechaCreacion` ↔ `fecha_creacion`, por la estrategia de nombres de Spring Boot) |
@@ -1108,7 +1139,9 @@ Ubicación: `backend/src/main/resources/db/migration/`. Cada fase agrega migraci
 | V7 | `V7__proveedores_google.sql` | Proveedores de Google (entre las fases 5 y 7) | Dos caminos de Google (ADR 0017): Veo pasa a `INACTIVO` con el secreto `autoreel/google-cloud`; inserta Gemini (Google Cloud), inactivo, y Gemini Omni Flash, activo; el plan Lite usa Gemini Omni Flash para el video (ver 4.3). Sin tablas nuevas. |
 | V8 | `V8__facturacion.sql` | 7 (Facturación) | Tablas `pago` (con `pago_periodo_uk`), `beneficio_temporal` (con `beneficio_rango_ck`, `beneficio_maximo_ck` y `beneficio_negocio_idx`) y `notificacion_admin` (con `notificacion_uk`, `unique nulls not distinct`, y `notificacion_fecha_idx`). Columnas `suscripcion.dia_pago` (llenada desde `proxima_fecha_pago`, con `suscripcion_dia_pago_ck`), `modelo_ia.ultima_prueba_exitosa` y `modelo_ia.ultima_prueba_mensaje`. Sin datos. |
 | V9 | `V9__frase_del_cierre.sql` | Calidad del video (2026-11-12, ADR 0021) | Columnas `plano.frase` (`varchar(60)`), `video.guion_iniciado_en` (`timestamptz`) y `video.error_definitivo` (`boolean not null default false`). Sin datos. |
-| V10 en adelante | — | 6, 8 y 9 | **(futuro)** Una o más migraciones por fase, según la sección 7 de este documento. La fase 6 (Instagram) quedó en pausa y la fase 7 se adelantó, así que V8 es de la fase 7 y V9, de la mejora de la calidad del video. |
+| V10 | `V10__guion_flexible.sql` | Guion flexible (2026-11-25, ADR 0022) | Tipos de foto `FOTO_1`, `FOTO_2` y `FOTO_3` en `foto_producto` y `plano` (renombra `ENTERO`, `DETALLE` y `PORCION`); `plano_orden_ck` de 1 a 5 y sin `plano_foto_ck`; columnas `plano.segundos` (`integer not null`, con `plano_segundos_ck`), `plano.toma` (`varchar(1500)`), `plano.descripcion_toma` (`varchar(160)`), `video.estructura` y `video.creatividad` (`varchar(20)`) y `video.idea` (`varchar(400)`); `duracionesClip` en los parámetros de Veo; `CLASICA` en los videos anteriores (ver 4.3). |
+| V11 | `V11__modelos_veo.sql` | Guion flexible (2026-11-25, ADR 0022) | Inserta Veo 3.1 Fast y Veo 3.1 copiando Veo 3.1 Lite; activa Veo 3.1 Lite y lo pone en el plan Lite (ver 4.3). Sin tablas ni columnas nuevas. |
+| V12 en adelante | — | 6, 8 y 9 | **(futuro)** Una o más migraciones por fase, según la sección 7 de este documento. La fase 6 (Instagram) quedó en pausa y la fase 7 se adelantó, así que V8 es de la fase 7, V9 de la mejora de la calidad del video y V10 y V11 del guion flexible. |
 
 ## 7. Entidades futuras
 

@@ -11,13 +11,15 @@ import com.autoreel.video.dominio.EstadoVideo;
  * El video en todas sus etapas (RF-21 a RF-25): storyboard, generación, revisión y aprobado. Mientras el guion está
  * pendiente, {@code planos} viene vacío.
  *
+ * @param concepto            lo que eligió la IA (estructura, creatividad e idea); vacío sin guion o en videos
+ *                            anteriores al guion flexible.
  * @param fotosDelProducto    las fotos del producto, para cambiar la de un plano.
  * @param inicioDelGuion      desde cuándo se está escribiendo el guion (la creación o el último "Reintentar").
  * @param maximoPublicacion   caracteres de la descripción con sus hashtags (RN-24).
  * @param generacion          consumo, regeneraciones y video final.
  */
 public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, ProductoDelVideo producto,
-        PlanDelVideo plan, List<PlanoVista> planos, CierreVista cierre, String descripcion,
+        PlanDelVideo plan, ConceptoVista concepto, List<PlanoVista> planos, CierreVista cierre, String descripcion,
         List<String> hashtags, int maximoPublicacion, List<FotoVista> fotosDelProducto, Instant fechaCreacion,
         Instant inicioDelGuion, GeneracionVista generacion) {
 
@@ -27,8 +29,12 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
     public record PlanDelVideo(String nombre, int videosPorDia, int regeneracionesPorVideo) {
     }
 
+    /** @param idea el video en una o dos frases. */
+    public record ConceptoVista(String estructura, String creatividad, String idea) {
+    }
+
     /**
-     * Planos con foto (1 a 3).
+     * Las tomas (1 a 4, según la estructura).
      *
      * @param estado       el clip: vacío en el storyboard; PENDIENTE, GENERANDO, LISTO o RESPALDO después.
      * @param usoRespaldo  solo en videos creados antes del 2026-11-06: el plano usó el acercamiento de FFmpeg (ADR 0020).
@@ -41,7 +47,10 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
     public record FotoVista(TipoFoto tipo, String url) {
     }
 
-    /** @param descripcion el movimiento en palabras simples. */
+    /**
+     * @param id          el movimiento del catálogo en los videos anteriores; vacío si la toma la escribió la IA.
+     * @param descripcion la toma en palabras simples.
+     */
     public record MovimientoVista(String id, String descripcion) {
     }
 

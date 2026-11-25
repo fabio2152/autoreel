@@ -38,9 +38,6 @@ import tools.jackson.databind.JsonNode;
 /** Fase 7: pagos, notificaciones, planes, integraciones, beneficios, costos y entrar como el negocio. */
 class FacturacionIntegracionTest extends PruebaDeIntegracion {
 
-    private static final String CUENTA_DE_SERVICIO = "{\"type\":\"service_account\","
-            + "\"client_email\":\"autoreel@proyecto-prueba.iam.gserviceaccount.com\"}";
-
     @Autowired
     ServicioNotificaciones notificaciones;
 
@@ -134,7 +131,7 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
                 .andReturn().getResponse().getContentAsString());
         List<String> nombres = new java.util.ArrayList<>();
         integraciones.get("modelos").forEach(modelo -> nombres.add(modelo.get("nombre").asString()));
-        assertThat(nombres).contains("Gemini", "Gemini Omni Flash", "Veo 3.1 Lite");
+        assertThat(nombres).contains("Gemini", "Gemini Omni Flash", "Veo 3.1 Lite", "Veo 3.1 Fast", "Veo 3.1");
 
         mvc.perform(post("/api/admin/modelos-ia/" + modelo("GEMINI_OMNI") + "/probar").with(csrf()).cookie(admin))
                 .andExpect(status().isOk())
@@ -144,7 +141,8 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
 
     @Test
     void v38NoSePuedeDesactivarUnModeloQueUsaUnPlanActivo() throws Exception {
-        mvc.perform(post("/api/admin/modelos-ia/" + modelo("GEMINI_OMNI") + "/desactivar").with(csrf())
+        // Desde V11 el plan Lite hace sus clips con Veo 3.1 Lite.
+        mvc.perform(post("/api/admin/modelos-ia/" + veo("veo-3.1-lite-generate-001") + "/desactivar").with(csrf())
                         .cookie(sesionAdmin()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("MODELO_EN_USO"));
@@ -173,22 +171,19 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isNotFound());
     }
 
-    /** V40 y V41: un plan Pro de prueba con otro modelo de video, dado como beneficio por un día. */
+    /** V40 y V41: un plan Pro de prueba con otro modelo de video (Veo 3.1 Fast), dado como beneficio por un día. */
     @Test
     void v40ElBeneficioCambiaElModeloDeVideoYAlTerminarVuelveAlPlanLite() throws Exception {
         Cookie admin = sesionAdmin();
-        Long veo = modelo("VEO");
+        Long veo = veo("veo-3.1-fast-generate-001");
         String nombrePlan = "Pro " + System.nanoTime() % 100000;
         Long planPro = null;
         try {
-            guardarCredencial(admin, "autoreel/google-cloud", CUENTA_DE_SERVICIO);
-            mvc.perform(post("/api/admin/modelos-ia/" + veo + "/activar").with(csrf()).cookie(admin))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVO"));
             planPro = json.readTree(mvc.perform(post("/api/admin/planes").with(csrf()).cookie(admin)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json.writeValueAsString(plan(nombrePlan, veo, true))))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.modeloVideo").value("Veo 3.1 Lite"))
+                    .andExpect(jsonPath("$.modeloVideo").value("Veo 3.1 Fast"))
                     .andReturn().getResponse().getContentAsString()).get("id").asLong();
 
             Long negocio = crearNegocioConPrimerPago(LocalDate.now(reloj).plusDays(20));
@@ -206,14 +201,14 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
             otorgar(admin, ruta, planPro, ahora.plus(Duration.ofHours(2)), ahora.plus(Duration.ofDays(2)), "Otro")
                     .andExpect(status().isConflict());
 
-            assertThat(planesEfectivos.de(negocio).getModeloVideo().getNombre()).isEqualTo("Veo 3.1 Lite");
+            assertThat(planesEfectivos.de(negocio).getModeloVideo().getNombre()).isEqualTo("Veo 3.1 Fast");
             mvc.perform(get("/api/admin/negocios/" + negocio).cookie(admin))
                     .andExpect(jsonPath("$.planEfectivo.plan").value(nombrePlan))
-                    .andExpect(jsonPath("$.planEfectivo.modeloVideo").value("Veo 3.1 Lite"))
+                    .andExpect(jsonPath("$.planEfectivo.modeloVideo").value("Veo 3.1 Fast"))
                     .andExpect(jsonPath("$.suscripcion.plan").value("Lite"));
 
             reloj.avanzar(Duration.ofDays(1).plusMinutes(1));
-            assertThat(planesEfectivos.de(negocio).getModeloVideo().getNombre()).isEqualTo("Gemini Omni Flash");
+            assertThat(planesEfectivos.de(negocio).getModeloVideo().getNombre()).isEqualTo("Veo 3.1 Lite");
         } finally {
             reloj.reiniciar();
             if (planPro != null) {
@@ -221,8 +216,6 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(plan(nombrePlan, veo, false))));
             }
-            mvc.perform(post("/api/admin/modelos-ia/" + veo + "/desactivar").with(csrf()).cookie(admin))
-                    .andExpect(status().isOk());
         }
     }
 
@@ -236,7 +229,7 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/admin/negocios/" + negocio).cookie(admin))
                 .andExpect(jsonPath("$.suscripcion.montoMensual").value(59.0))
-                .andExpect(jsonPath("$.planEfectivo.modeloVideo").value("Gemini Omni Flash"));
+                .andExpect(jsonPath("$.planEfectivo.modeloVideo").value("Veo 3.1 Lite"));
     }
 
     @Test
@@ -317,12 +310,6 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
                         "hasta", hasta.toString(), "motivo", motivo))));
     }
 
-    private void guardarCredencial(Cookie admin, String nombre, String valor) throws Exception {
-        mvc.perform(put("/api/admin/credenciales").with(csrf()).cookie(admin).contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(Map.of("nombre", nombre, "valor", valor))))
-                .andExpect(status().isOk());
-    }
-
     private Map<String, Object> plan(String nombre, Long modeloVideo, boolean activo) {
         Long gemini = modelos.findAll().stream().filter(m -> m.getAdaptador().equals("GEMINI")).findFirst()
                 .orElseThrow().getId();
@@ -336,6 +323,11 @@ class FacturacionIntegracionTest extends PruebaDeIntegracion {
         plan.put("precioReferencial", new BigDecimal("99.00"));
         plan.put("activo", activo);
         return plan;
+    }
+
+    private Long veo(String identificador) {
+        return modelos.findAll().stream().filter(m -> m.getIdentificadorModelo().equals(identificador)).findFirst()
+                .orElseThrow().getId();
     }
 
     private Long modelo(String adaptador) {

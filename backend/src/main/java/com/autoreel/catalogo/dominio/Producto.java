@@ -2,7 +2,6 @@ package com.autoreel.catalogo.dominio;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,18 +92,21 @@ public class Producto {
         return fotos.stream().filter(foto -> foto.getTipo() == tipo).findFirst();
     }
 
-    /** RN-12: solo un producto con sus tres fotos puede usarse en un video. */
+    /** RN-12 (2026-11-25): un producto con su foto principal ya puede usarse en un video; las otras dos son opcionales. */
     public boolean estaCompleto() {
-        EnumSet<TipoFoto> presentes = EnumSet.noneOf(TipoFoto.class);
-        fotos.forEach(foto -> presentes.add(foto.getTipo()));
-        return presentes.containsAll(EnumSet.allOf(TipoFoto.class));
+        return foto(TipoFoto.FOTO_1).isPresent();
+    }
+
+    /** Las fotos en orden (1 a 3), como las ve la IA. */
+    public List<FotoProducto> fotosEnOrden() {
+        return fotos.stream().sorted(java.util.Comparator.comparing(FotoProducto::getTipo)).toList();
     }
 
     public void dejarFueraDelCatalogo() {
         this.enCatalogo = false;
     }
 
-    /** Puede usarse en un video: activo y con sus tres fotos (RN-12, RN-13). */
+    /** Puede usarse en un video: activo y con su foto principal (RN-12, RN-13). */
     public boolean disponibleParaVideo() {
         return estado == EstadoProducto.ACTIVO && estaCompleto();
     }

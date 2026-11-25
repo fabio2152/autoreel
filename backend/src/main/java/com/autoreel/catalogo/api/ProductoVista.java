@@ -9,7 +9,7 @@ import com.autoreel.catalogo.dominio.TipoFoto;
 /**
  * Producto tal como lo ve el frontend.
  *
- * @param completo tiene sus tres fotos y puede usarse en un video (RN-12).
+ * @param completo tiene su foto principal y puede usarse en un video (RN-12).
  * @param avisos   avisos de la última modificación (por ejemplo, FOTO_HORIZONTAL).
  */
 public record ProductoVista(Long id, String nombre, String descripcion, List<String> temporadas, EstadoProducto estado,

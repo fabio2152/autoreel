@@ -1,6 +1,7 @@
 package com.autoreel.video.dominio;
 
 import java.util.List;
+import java.util.Set;
 
 import com.autoreel.nicho.pasteleria.PaquetePasteleria;
 import tools.jackson.databind.json.JsonMapper;
@@ -9,6 +10,11 @@ import tools.jackson.databind.json.JsonMapper;
 final class Guiones {
 
     static final PaquetePasteleria PAQUETE = new PaquetePasteleria(JsonMapper.builder().build());
+
+    /** Las tres fotos del producto. */
+    static final Set<Integer> FOTOS = Set.of(1, 2, 3);
+
+    static final String IDEA = "La torta gira despacio mientras la cámara descubre las fresas frescas.";
 
     private Guiones() {
     }
@@ -36,17 +42,27 @@ final class Guiones {
     static final GuionPropuesto.CierrePropuesto CIERRE = new GuionPropuesto.CierrePropuesto(null,
             "Hecha con cariño para ti", null);
 
+    /** Un plano con la foto 1 y una toma de cámara escrita por la IA. */
+    static GuionPropuesto.PlanoPropuesto plano(int orden, String texto) {
+        return new GuionPropuesto.PlanoPropuesto(orden, 1, "Slow orbit around the cake, soft window light.",
+                "Órbita lenta alrededor de la torta", texto);
+    }
+
+    /** Guion de estructura CLÁSICA (tres tomas de 4 segundos y el cierre). */
     static GuionPropuesto guion(String gancho, String producto, String relleno, String descripcion,
             List<String> hashtags) {
-        return new GuionPropuesto(List.of(
-                new GuionPropuesto.PlanoPropuesto(1, "ACERCAMIENTO_LENTO", gancho),
-                new GuionPropuesto.PlanoPropuesto(2, "ORBITA_FRONTAL", producto),
-                new GuionPropuesto.PlanoPropuesto(3, "LUZ_CALIDA", relleno)), CIERRE, descripcion, hashtags);
+        return conPlanos("CLASICA", List.of(plano(1, gancho), plano(2, producto), plano(3, relleno)), CIERRE,
+                descripcion, hashtags);
+    }
+
+    static GuionPropuesto conPlanos(String estructura, List<GuionPropuesto.PlanoPropuesto> planos,
+            GuionPropuesto.CierrePropuesto cierre, String descripcion, List<String> hashtags) {
+        return new GuionPropuesto(estructura, "PRODUCTO", IDEA, planos, cierre, descripcion, hashtags);
     }
 
     /** El guion válido con otro cierre. */
     static GuionPropuesto conCierre(GuionPropuesto.CierrePropuesto cierre) {
         GuionPropuesto valido = valido();
-        return new GuionPropuesto(valido.planos(), cierre, valido.descripcion(), valido.hashtags());
+        return conPlanos("CLASICA", valido.planos(), cierre, valido.descripcion(), valido.hashtags());
     }
 }

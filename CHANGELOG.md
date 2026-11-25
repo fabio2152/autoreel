@@ -2,6 +2,30 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Guion flexible] - 2026-11-25
+
+Videos menos de plantilla y más creativos, pedidos por el usuario para la demo. Decisiones en el ADR 0022.
+
+### Agregado
+
+- **Gemini ve las fotos del producto** (adjuntas al pedir el guion, reducidas a 1024 px) y elige qué foto usa cada toma: puede usar todas, solo algunas o una sola.
+- **Cuatro estructuras** que elige la IA (`plantilla.json`), siempre de 15 s y con el gancho primero: Rápida (4 tomas de 3 s), Clásica (3 de 4 s), Historia (2 de 6 s) y Plano único (1 de 8 s con cierre de 7 s).
+- **Tres niveles de creatividad** (`movimientos.json`): Producto, Ambiente (el producto aparece en la vitrina, una mesa…) y Origen (los ingredientes de la foto cayendo o flotando), con sus prohibiciones propias.
+- **La IA escribe la toma de cada plano** (en inglés para Veo y en español para el storyboard) y la idea del video. El storyboard muestra la idea, la estructura y la creatividad, y "Toma: …" en cada plano.
+- Las tomas que no son el gancho pueden ir **sin texto** ("Agregar texto" en el storyboard).
+- **Cada clip pide su duración** (Veo: 4, 6 u 8 s, parámetro `duracionesClip`) y el costo se registra con ella.
+- **Migración `V10`:** fotos `FOTO_1` a `FOTO_3`, `plano.segundos`, `plano.toma`, `plano.descripcion_toma`, `video.estructura`, `video.creatividad` y `video.idea`.
+- **Migración `V11`:** Veo 3.1 Fast y Veo 3.1 (estándar) en Google Cloud, con la configuración de Veo 3.1 Lite; el plan Lite pasa a Veo 3.1 Lite.
+
+### Cambiado
+
+- **Fotos del producto:** la Foto 1 es obligatoria y la 2 y la 3 son opcionales, de cualquier ángulo (antes, entero, detalle y porción obligatorias). Un producto con su foto principal ya se puede usar en un video (RN-12), también al subirlo desde el chat.
+- `guion.md` reescrito: director creativo que mira las fotos, elige estructura y creatividad, y hace que el texto del gancho tenga sentido con lo que se anima.
+
+### Quitado
+
+- La lista cerrada de movimientos en la respuesta del guion, el mínimo de planos con cámara 3D y la regla de no repetir el movimiento. Los 13 movimientos quedan como inspiración y para los videos anteriores.
+
 ## [Texto de los planos más legible] - 2026-11-14
 
 ### Cambiado

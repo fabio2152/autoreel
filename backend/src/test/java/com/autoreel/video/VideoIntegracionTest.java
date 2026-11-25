@@ -52,11 +52,29 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
     private static final ServidorGeminiSimulado GEMINI = new ServidorGeminiSimulado();
     private static final String CLAVE = "clave-de-prueba";
 
+    /** Estructura CLÁSICA: tres tomas de 4 segundos; la tercera va sin texto. */
     private static final String GUION_VALIDO = """
-            {"planos":[
-              {"orden":1,"movimiento":"ACERCAMIENTO_LENTO","texto":"Un antojo de fresas frescas"},
-              {"orden":2,"movimiento":"ORBITA_FRONTAL","texto":"Torta Tres Leches de casa"},
-              {"orden":3,"movimiento":"LUZ_CALIDA","texto":"Cada porción con fresas de Huaral"}],
+            {"estructura":"CLASICA","creatividad":"PRODUCTO",
+             "idea":"La cámara descubre las fresas y termina en la porción servida.",
+             "planos":[
+              {"orden":1,"foto":2,"toma":"Slow push-in on the strawberries.",
+               "descripcionToma":"Acercamiento a las fresas","texto":"Un antojo de fresas frescas"},
+              {"orden":2,"foto":1,"toma":"Slow orbit around the whole cake.",
+               "descripcionToma":"Órbita alrededor de la torta","texto":"Torta Tres Leches de casa"},
+              {"orden":3,"foto":3,"toma":"Gentle crane up over the slice.",
+               "descripcionToma":"Grúa sobre la porción","texto":null}],
+             "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
+             "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
+             "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
+    /** Estructura HISTORIA: dos tomas de 6 segundos con la misma foto principal. */
+    private static final String GUION_HISTORIA = """
+            {"estructura":"HISTORIA","creatividad":"AMBIENTE",
+             "idea":"La torta llega a la mesa de una celebración familiar.",
+             "planos":[
+              {"orden":1,"foto":1,"toma":"The cake on a festive table, slow dolly in.",
+               "descripcionToma":"La torta en una mesa de fiesta","texto":"Tu celebración merece esta torta"},
+              {"orden":2,"foto":1,"toma":"Slow orbit as warm light fills the room.",
+               "descripcionToma":"Órbita con luz cálida","texto":"Torta Tres Leches de casa"}],
              "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
              "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
              "hashtags":["#pasteleria","#tortas","#tresleches","#postres","#miraflores"]}""";
@@ -137,15 +155,25 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.tipoVideo").value("Producto estrella"))
                 .andExpect(jsonPath("$.producto.nombre").value("Torta Tres Leches"))
                 .andExpect(jsonPath("$.plan.videosPorDia").value(1))
+                .andExpect(jsonPath("$.concepto.estructura").value("Clásica"))
+                .andExpect(jsonPath("$.concepto.creatividad").isString())
+                .andExpect(jsonPath("$.concepto.idea").value(
+                        "La cámara descubre las fresas y termina en la porción servida."))
                 .andExpect(jsonPath("$.planos", hasSize(3)))
                 .andExpect(jsonPath("$.planos[0].nombre").value("Gancho"))
-                .andExpect(jsonPath("$.planos[0].foto.tipo").value("DETALLE"))
+                .andExpect(jsonPath("$.planos[0].segundos").value(4))
+                .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_2"))
                 .andExpect(jsonPath("$.planos[0].foto.url").isString())
-                .andExpect(jsonPath("$.planos[0].movimiento.id").value("ACERCAMIENTO_LENTO"))
+                .andExpect(jsonPath("$.planos[0].movimiento.id").doesNotExist())
+                .andExpect(jsonPath("$.planos[0].movimiento.descripcion").value("Acercamiento a las fresas"))
                 .andExpect(jsonPath("$.planos[0].texto").value("Un antojo de fresas frescas"))
                 .andExpect(jsonPath("$.planos[0].maxPalabras").value(6))
-                .andExpect(jsonPath("$.planos[1].foto.tipo").value("ENTERO"))
-                .andExpect(jsonPath("$.planos[2].foto.tipo").value("PORCION"))
+                .andExpect(jsonPath("$.planos[1].nombre").value("Toma 2"))
+                .andExpect(jsonPath("$.planos[1].foto.tipo").value("FOTO_1"))
+                .andExpect(jsonPath("$.planos[2].foto.tipo").value("FOTO_3"))
+                .andExpect(jsonPath("$.planos[2].texto").doesNotExist())
+                .andExpect(jsonPath("$.cierre.orden").value(4))
+                .andExpect(jsonPath("$.cierre.segundos").value(3))
                 .andExpect(jsonPath("$.cierre.precio").doesNotExist())
                 .andExpect(jsonPath("$.cierre.frase").value("Hecha con cariño para ti"))
                 .andExpect(jsonPath("$.cierre.maxPalabrasFrase").value(6))
@@ -160,6 +188,8 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         assertThat(GEMINI.peticiones().getFirst().clave()).isEqualTo(CLAVE);
         assertThat(GEMINI.peticiones().getFirst().cuerpo()).contains("Torta Tres Leches", "Fresas frescas de Huaral",
                 "#miraflores");
+        // La IA ve las tres fotos del producto, después del texto.
+        assertThat(GEMINI.peticiones().getFirst().cuerpo().split("\"inlineData\"", -1)).hasSize(4);
         // RN-32: cada llamada registra su costo.
         Video listo = videos.findById(videoId).orElseThrow();
         assertThat(listo.getIntentosGuion()).isEqualTo(1);
@@ -168,6 +198,34 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         assertThat(costos.findByVideoIdOrderById(videoId)).singleElement()
                 .satisfies(costo -> assertThat(costo.getCostoUsd()).isEqualByComparingTo(new BigDecimal("0.01")));
         assertThat(guiones.pendientes(500)).doesNotContain(videoId);
+    }
+
+    /** La estructura que elige la IA define cuántas tomas hay, cuánto dura cada una y dónde va el cierre. */
+    @Test
+    void laEstructuraElegidaDefineLasTomasYElCierre() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long videoId = completarChat(negocio, "PRODUCTO_ESTRELLA", null);
+
+        GEMINI.responderTexto(GUION_HISTORIA);
+        guiones.procesar(videoId);
+
+        mvc.perform(get("/api/videos/" + videoId).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.concepto.estructura").value("Historia"))
+                .andExpect(jsonPath("$.planos", hasSize(2)))
+                .andExpect(jsonPath("$.planos[0].segundos").value(6))
+                .andExpect(jsonPath("$.planos[1].segundos").value(6))
+                .andExpect(jsonPath("$.planos[1].maxPalabras").value(7))
+                .andExpect(jsonPath("$.planos[1].foto.tipo").value("FOTO_1"))
+                .andExpect(jsonPath("$.cierre.orden").value(3))
+                .andExpect(jsonPath("$.cierre.segundos").value(3));
+        Video video = videos.findById(videoId).orElseThrow();
+        assertThat(video.getEstructura()).isEqualTo("HISTORIA");
+        assertThat(video.getCreatividad()).isEqualTo("AMBIENTE");
+        // El cierre se edita en su propio orden, después de la última toma.
+        editar(negocio, videoId, 3, Map.of("frase", "Tu antojo te espera"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cierre.frase").value("Tu antojo te espera"));
     }
 
     @Test
@@ -358,16 +416,20 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
         editar(negocio, videoId, 1, Map.of("texto", "  Tu antojo de hoy  "))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planos[0].texto").value("Tu antojo de hoy"));
+        // Las tomas que no son el gancho pueden quedar sin texto.
+        editar(negocio, videoId, 2, Map.of("texto", "  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.planos[1].texto").doesNotExist());
 
         // Cambiar la foto: otra del producto o una nueva.
-        editar(negocio, videoId, 1, Map.of("foto", Map.of("tipo", "ENTERO")))
-                .andExpect(jsonPath("$.planos[0].foto.tipo").value("ENTERO"));
+        editar(negocio, videoId, 1, Map.of("foto", Map.of("tipo", "FOTO_1")))
+                .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_1"));
         String subida = subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
         editar(negocio, videoId, 2, Map.of("foto", Map.of("clave", subida)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planos[1].foto.tipo").doesNotExist())
                 .andExpect(jsonPath("$.planos[1].foto.url").isString());
-        editar(negocio, videoId, 2, Map.of("foto", Map.of("tipo", "ENTERO", "clave", subida)))
+        editar(negocio, videoId, 2, Map.of("foto", Map.of("tipo", "FOTO_1", "clave", subida)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
 

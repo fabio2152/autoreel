@@ -30,8 +30,10 @@ export interface PlanoVista {
   nombre: string
   segundos: number
   foto: FotoVista
-  movimiento: { id: string; descripcion: string }
-  texto: string
+  /** La toma en palabras simples; id solo en videos anteriores al guion flexible. */
+  movimiento: { id: string | null; descripcion: string }
+  /** null si la toma va sin texto (nunca el gancho). */
+  texto: string | null
   maxPalabras: number
   estado: EstadoPlano | null
   /** El plano usa el acercamiento hecho por el sistema en lugar del clip de IA. */
@@ -64,6 +66,8 @@ export interface Video {
   tipoVideo: string
   producto: { id: number; nombre: string }
   plan: { nombre: string; videosPorDia: number; regeneracionesPorVideo: number }
+  /** Lo que eligió la IA; null sin guion o en videos anteriores al guion flexible. */
+  concepto: { estructura: string; creatividad: string | null; idea: string | null } | null
   /** Vacío mientras el guion está pendiente. */
   planos: PlanoVista[]
   cierre: CierreVista | null

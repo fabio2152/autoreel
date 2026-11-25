@@ -5,10 +5,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-import com.autoreel.nicho.dominio.Movimientos.Movimiento;
+import com.autoreel.nicho.dominio.Movimientos.Creatividad;
 import com.autoreel.nicho.dominio.PaqueteNicho;
-import com.autoreel.nicho.dominio.PlantillaVideo.PlanoPlantilla;
+import com.autoreel.nicho.dominio.PlantillaVideo.Estructura;
 import com.autoreel.video.dominio.DatosDelGuion;
 import com.autoreel.video.dominio.GuionPropuesto;
 import tools.jackson.core.JacksonException;
@@ -26,18 +27,23 @@ final class InstruccionesDelGuion {
     private InstruccionesDelGuion() {
     }
 
-    /** @param erroresAnteriores problemas del intento anterior; vacío en el primero. */
-    static String armar(DatosDelGuion datos, PaqueteNicho paquete, List<String> erroresAnteriores) {
+    /**
+     * @param fotos             números de las fotos del producto que van adjuntas, en ese orden.
+     * @param erroresAnteriores problemas del intento anterior; vacío en el primero.
+     */
+    static String armar(DatosDelGuion datos, PaqueteNicho paquete, List<Integer> fotos,
+            List<String> erroresAnteriores) {
         Map<String, String> valores = new LinkedHashMap<>();
         valores.put("palabrasProhibidas",
                 datos.palabrasProhibidas().isEmpty() ? "ninguna" : String.join(", ", datos.palabrasProhibidas()));
         valores.put("tono", paquete.vocabulario().tono(datos.estilo()));
-        valores.put("plantilla", plantilla(datos, paquete));
+        valores.put("fotos", fotos.stream().map(numero -> "Foto " + numero).collect(Collectors.joining(", ")));
+        valores.put("estructuras", estructuras(paquete));
+        valores.put("creatividades", creatividades(paquete));
         valores.put("movimientos", movimientos(datos, paquete));
-        valores.put("minimoPlanosCamara3d", String.valueOf(paquete.movimientos().minimoPlanosCamara3d()));
         valores.put("distritoHashtag", datos.distritoHashtag());
         valores.put("hashtagsBase", String.join(" ", paquete.plantillaVideo().hashtagsBase()));
-        valores.put("maxPalabrasFrase", String.valueOf(paquete.plantillaVideo().cierre().maxPalabras()));
+        valores.put("maxPalabrasFrase", String.valueOf(paquete.plantillaVideo().maxPalabrasCierre()));
         valores.put("maximoCaracteresCierre", String.valueOf(paquete.plantillaVideo().maximoCaracteresPrecio()));
         valores.put("maximoCaracteresUbicacion",
                 String.valueOf(paquete.plantillaVideo().maximoCaracteresUbicacion()));
@@ -69,21 +75,24 @@ final class InstruccionesDelGuion {
     }
 
     /**
-     * Esquema de la respuesta: los planos con IA, los textos del cierre, la descripción y los hashtags. Los
-     * movimientos van como lista cerrada; los largos y el contenido los revisa el validador.
+     * Esquema de la respuesta: la estructura y la creatividad (listas cerradas), la idea, las tomas, los textos del
+     * cierre, la descripción y los hashtags. Cuántas tomas, los largos y el contenido los revisa el validador.
      */
-    static String esquema(DatosDelGuion datos, PaqueteNicho paquete, ObjectMapper json) {
-        List<PlanoPlantilla> planos = paquete.plantillaVideo().planosConIa();
-        List<Integer> ordenes = planos.stream().map(PlanoPlantilla::orden).toList();
-        List<String> movimientos = paquete.movimientos().para(datos.tipoVideo()).stream().map(Movimiento::id).toList();
+    static String esquema(PaqueteNicho paquete, List<Integer> fotos, ObjectMapper json) {
+        List<String> estructuras = paquete.plantillaVideo().estructuras().stream().map(Estructura::id).toList();
+        List<String> creatividades = paquete.movimientos().creatividades().stream().map(Creatividad::id).toList();
+        int maximoTomas = paquete.plantillaVideo().estructuras().stream().mapToInt(e -> e.tomas().size()).max()
+                .orElse(1);
+        Map<String, Object> textoOpcional = Map.of("type", List.of("string", "null"));
         Map<String, Object> plano = Map.of(
                 "type", "object",
                 "properties", Map.of(
-                        "orden", Map.of("type", "integer", "enum", ordenes),
-                        "movimiento", Map.of("type", "string", "enum", movimientos),
-                        "texto", Map.of("type", "string")),
-                "required", List.of("orden", "movimiento", "texto"));
-        Map<String, Object> textoOpcional = Map.of("type", List.of("string", "null"));
+                        "orden", Map.of("type", "integer", "minimum", 1, "maximum", maximoTomas),
+                        "foto", Map.of("type", "integer", "enum", fotos),
+                        "toma", Map.of("type", "string"),
+                        "descripcionToma", Map.of("type", "string"),
+                        "texto", textoOpcional),
+                "required", List.of("orden", "foto", "toma", "descripcionToma", "texto"));
         Map<String, Object> cierre = Map.of(
                 "type", "object",
                 "properties", Map.of(
@@ -91,15 +100,18 @@ final class InstruccionesDelGuion {
                         "frase", Map.of("type", "string"),
                         "ubicacion", textoOpcional),
                 "required", List.of("precio", "frase", "ubicacion"));
+        Map<String, Object> propiedades = new LinkedHashMap<>();
+        propiedades.put("estructura", Map.of("type", "string", "enum", estructuras));
+        propiedades.put("creatividad", Map.of("type", "string", "enum", creatividades));
+        propiedades.put("idea", Map.of("type", "string"));
+        propiedades.put("planos", Map.of("type", "array", "items", plano, "minItems", 1, "maxItems", maximoTomas));
+        propiedades.put("cierre", cierre);
+        propiedades.put("descripcion", Map.of("type", "string"));
+        propiedades.put("hashtags", Map.of("type", "array", "items", Map.of("type", "string")));
         Map<String, Object> esquema = Map.of(
                 "type", "object",
-                "properties", Map.of(
-                        "planos", Map.of("type", "array", "items", plano,
-                                "minItems", planos.size(), "maxItems", planos.size()),
-                        "cierre", cierre,
-                        "descripcion", Map.of("type", "string"),
-                        "hashtags", Map.of("type", "array", "items", Map.of("type", "string"))),
-                "required", List.of("planos", "cierre", "descripcion", "hashtags"));
+                "properties", propiedades,
+                "required", List.copyOf(propiedades.keySet()));
         return json.writeValueAsString(esquema);
     }
 
@@ -116,9 +128,8 @@ final class InstruccionesDelGuion {
         }
         List<GuionPropuesto.PlanoPropuesto> planos = new ArrayList<>();
         for (JsonNode plano : raiz.path("planos")) {
-            Integer orden = plano.path("orden").isIntegralNumber() ? plano.path("orden").asInt() : null;
-            planos.add(new GuionPropuesto.PlanoPropuesto(orden, texto(plano.path("movimiento")),
-                    texto(plano.path("texto"))));
+            planos.add(new GuionPropuesto.PlanoPropuesto(entero(plano.path("orden")), entero(plano.path("foto")),
+                    texto(plano.path("toma")), texto(plano.path("descripcionToma")), texto(plano.path("texto"))));
         }
         List<String> hashtags = new ArrayList<>();
         for (JsonNode hashtag : raiz.path("hashtags")) {
@@ -131,31 +142,37 @@ final class InstruccionesDelGuion {
                 ? new GuionPropuesto.CierrePropuesto(texto(cierre.path("precio")), texto(cierre.path("frase")),
                         texto(cierre.path("ubicacion")))
                 : null;
-        return Optional.of(new GuionPropuesto(planos, cierrePropuesto, texto(raiz.path("descripcion")), hashtags));
+        return Optional.of(new GuionPropuesto(texto(raiz.path("estructura")), texto(raiz.path("creatividad")),
+                texto(raiz.path("idea")), planos, cierrePropuesto, texto(raiz.path("descripcion")), hashtags));
     }
 
-    private static String plantilla(DatosDelGuion datos, PaqueteNicho paquete) {
-        List<Movimiento> movimientos = paquete.movimientos().para(datos.tipoVideo());
+    private static String estructuras(PaqueteNicho paquete) {
         List<String> lineas = new ArrayList<>();
-        for (PlanoPlantilla plano : paquete.plantillaVideo().planosConIa()) {
-            String sugerido = movimientos.stream().anyMatch(m -> m.id().equals(plano.movimientoDeRespaldo()))
-                    ? " Movimiento sugerido: " + plano.movimientoDeRespaldo() + "." : "";
-            lineas.add("- Plano " + plano.orden() + " (" + plano.nombre() + "): foto " + plano.foto()
-                    + ", " + plano.segundos() + " segundos, texto en pantalla de máximo " + plano.maxPalabras()
-                    + " palabras." + sugerido);
+        for (Estructura estructura : paquete.plantillaVideo().estructuras()) {
+            lineas.add("- " + estructura.id() + " (" + estructura.nombre() + "): " + estructura.descripcion() + " "
+                    + estructura.tomas().size() + (estructura.tomas().size() == 1 ? " toma de " : " tomas de ")
+                    + estructura.tomas().stream().map(String::valueOf).collect(Collectors.joining(", "))
+                    + " segundos y cierre de " + estructura.cierre() + " segundos; texto en pantalla de máximo "
+                    + estructura.maxPalabras() + " palabras por toma.");
         }
-        PlanoPlantilla cierre = paquete.plantillaVideo().cierre();
-        lineas.add("- Plano " + cierre.orden() + " (" + cierre.nombre() + "): " + cierre.segundos()
-                + " segundos con el logo; tú escribes el objeto \"cierre\" y el sistema le agrega el llamado a la "
-                + "acción.");
         return String.join("\n", lineas);
     }
 
-    private static String movimientos(DatosDelGuion datos, PaqueteNicho paquete) {
-        return String.join("; ", paquete.movimientos().para(datos.tipoVideo()).stream()
-                .map(movimiento -> movimiento.id() + " (" + movimiento.descripcion()
-                        + (movimiento.camara3d() ? "; cámara 3D" : "") + ")")
+    private static String creatividades(PaqueteNicho paquete) {
+        return String.join("\n", paquete.movimientos().creatividades().stream()
+                .map(creatividad -> "- " + creatividad.id() + " (" + creatividad.nombre() + "): "
+                        + creatividad.descripcion() + " Cómo escribir la toma: " + creatividad.guia())
                 .toList());
+    }
+
+    private static String movimientos(DatosDelGuion datos, PaqueteNicho paquete) {
+        return String.join("\n", paquete.movimientos().para(datos.tipoVideo()).stream()
+                .map(movimiento -> "- " + movimiento.descripcion() + ": " + movimiento.instruccion())
+                .toList());
+    }
+
+    private static Integer entero(JsonNode nodo) {
+        return nodo.isIntegralNumber() ? nodo.asInt() : null;
     }
 
     private static String texto(JsonNode nodo) {

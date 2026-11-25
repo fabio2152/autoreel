@@ -39,8 +39,8 @@ Las pastelerías viven de lo visual y de Instagram, pero la mayoría son negocio
 
 Una plataforma **especializada en un solo nicho**, que decide casi todo por el usuario:
 
-- **Parte de fotos reales** de los productos del negocio. La IA solo les da un movimiento suave; nunca inventa el producto.
-- **Usa una plantilla fija de 4 planos y 15 segundos,** pensada para evitar los errores típicos de la IA.
+- **Parte de fotos reales** de los productos del negocio. La IA solo les da un movimiento suave; nunca inventa el producto. *Cambio del 2026-11-25 (ADR 0022):* la IA ve las fotos y escribe cada toma; puede llevar el mismo producto a otro lugar creíble (la vitrina, una mesa de cumpleaños) o hacer caer a su alrededor los ingredientes que se ven, pero el producto nunca cambia.
+- **Usa una plantilla fija de 4 planos y 15 segundos,** pensada para evitar los errores típicos de la IA. *Cambio del 2026-11-25 (ADR 0022):* el video sigue durando 15 segundos, pero la IA elige entre cuatro estructuras de 1 a 4 tomas, más el cierre (sección 7.4).
 - **Pide la información con un chat de preguntas fijas,** sin que el usuario tenga que saber de marketing.
 - **Muestra un storyboard antes de generar,** para no gastar en videos que el usuario no quiere.
 - **Publica directamente en Instagram,** con el texto y los hashtags ya escritos.
@@ -91,13 +91,13 @@ Prioridad: **M** = imprescindible para el MVP, **S** = importante, **C** = desea
 
 - **RF-16 (M).** En el primer ingreso aparece el onboarding en pantalla completa, con las preguntas del paquete de nicho y el aviso de que podrá cambiarlas en Ajustes.
 - **RF-17 (M).** El usuario edita su perfil en Ajustes en cualquier momento.
-- **RF-18 (M).** El usuario gestiona su catálogo: crea productos con nombre, descripción y tres fotos; los edita y los archiva. *Cambio del 2026-11-06:* la temporada no se pide en el MVP (cada producto queda como "Todo el año"; ADR 0013).
+- **RF-18 (M).** El usuario gestiona su catálogo: crea productos con nombre, descripción y tres fotos; los edita y los archiva. *Cambio del 2026-11-06:* la temporada no se pide en el MVP (cada producto queda como "Todo el año"; ADR 0013). *Cambio del 2026-11-25 (ADR 0022):* solo la **Foto 1** (principal) es obligatoria; la Foto 2 y la Foto 3 son opcionales (sección 7.2).
 
 ### 5.4 Creación del video
 
 - **RF-19 (M).** La pantalla principal es un chat de preguntas fijas, sin IA, que reúne la información del video del día.
 - **RF-20 (M).** En el chat, el usuario elige un producto del catálogo (primero los de temporada) o sube uno nuevo ese día, con la opción de guardarlo en el catálogo.
-- **RF-21 (M).** Con las respuestas, el perfil y las fotos, el sistema genera un guion y muestra el storyboard de 4 planos.
+- **RF-21 (M).** Con las respuestas, el perfil y las fotos, el sistema genera un guion y muestra el storyboard de 4 planos. *Cambio del 2026-11-25 (ADR 0022):* el storyboard tiene de 1 a 4 tomas, según la estructura que eligió la IA, más el cierre, y muestra la idea del video.
 - **RF-22 (M).** El usuario ajusta los textos o cambia la foto de un plano, y aprueba el storyboard.
 - **RF-23 (M).** El sistema genera los clips con IA, compone el video con la plantilla y avisa cuando está listo.
 - **RF-24 (M).** El usuario ve el video, regenera un plano específico o edita un texto, y lo aprueba.
@@ -204,7 +204,7 @@ La interfaz `PaqueteNicho` expone: el identificador y el nombre del nicho, las p
 9. **Lo que te hace distinto**, en una frase de hasta 80 caracteres.
 10. **Palabras o temas que nunca quieres** en tus videos.
 
-**Foto del local (opcional):** una foto de la vitrina o la fachada, que se usa como fondo del plano de cierre. Si no existe, el cierre usa los colores de marca. *Cambio del 2026-11-12 (ADR 0021):* sin foto del local, el fondo del cierre es el último cuadro del plano 3, desenfocado y oscurecido; el color primario de la marca se usa en el llamado.
+**Foto del local (opcional):** una foto de la vitrina o la fachada, que se usa como fondo del plano de cierre. Si no existe, el cierre usa los colores de marca. *Cambio del 2026-11-12 (ADR 0021):* sin foto del local, el fondo del cierre es el último cuadro del plano 3, desenfocado y oscurecido; el color primario de la marca se usa en el llamado. *Desde el 2026-11-25 (ADR 0022)* es el último cuadro de la última toma, que puede ser la 1, 2, 3 o 4 según la estructura.
 
 ### 7.2 Catálogo de productos
 
@@ -213,13 +213,15 @@ Cada producto tiene:
 - **Nombre**, hasta 50 caracteres.
 - **Descripción**, hasta 200 caracteres: sabor, relleno, ingredientes destacados. Es la única fuente de detalles que la IA puede usar.
 - **Temporada**, una o varias etiquetas: todo el año, verano, invierno, San Valentín, Día de la Madre, Día del Padre, Fiestas Patrias, Halloween y Canción Criolla, Navidad.
-- **Tres fotos obligatorias:**
-  1. **Entero:** el producto completo, de frente.
-  2. **Detalle:** muy cerca, mostrando crema, glaseado o fruta.
-  3. **Porción:** una porción ya cortada, mostrando el relleno.
+- **Hasta tres fotos** (*cambio del 2026-11-25, ADR 0022*):
+  1. **Foto 1, la principal (obligatoria):** la que mejor muestra el producto, completo y bien iluminado.
+  2. **Foto 2 (opcional):** otro ángulo: muy cerca de la crema o la fruta, una porción o el producto en la vitrina.
+  3. **Foto 3 (opcional):** otra más, distinta de las anteriores.
+
+  La IA ve las fotos y elige cuál usa en cada toma del video: puede usar todas, solo algunas o repetir una sola. La versión anterior pedía **tres fotos obligatorias**, cada una para un plano fijo: **Entero** (el producto completo, de frente), **Detalle** (muy cerca, mostrando crema, glaseado o fruta) y **Porción** (una porción ya cortada, mostrando el relleno). La migración `V10` renombró las fotos ya guardadas en ese orden: Entero pasó a Foto 1, Detalle a Foto 2 y Porción a Foto 3.
 - **Estado:** activo o archivado.
 
-Cada foto se pide con una imagen de ejemplo y tres indicaciones: luz natural, sin personas ni manos, y en vertical.
+Cada foto se pide con una imagen de ejemplo y tres indicaciones: luz natural, sin personas ni manos, y en vertical. *Desde el 2026-11-25*, la guía de fotos sugiere variedad (la Foto 2 y la Foto 3 distintas de la principal) y avisa que la IA elige cuáles usar.
 
 ### 7.3 Guion del chat
 
@@ -233,7 +235,7 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
    - Recién salido del horno
 2. **"¿Qué producto mostramos?"**, con dos botones:
    - **Elegir del catálogo:** un carrusel que muestra primero los productos de la temporada actual, con un mensaje como "Es verano: estos suelen funcionar mejor".
-   - **Subir uno nuevo hoy:** pide nombre, descripción y las tres fotos, y al final pregunta "¿Lo guardo en tu catálogo?".
+   - **Subir uno nuevo hoy:** pide nombre, descripción y las tres fotos, y al final pregunta "¿Lo guardo en tu catálogo?". *Cambio del 2026-11-25 (ADR 0022):* solo la foto principal es obligatoria; la Foto 2 y la Foto 3 son opcionales.
 3. **"¿Qué lo hace especial hoy?"**, texto libre. Se ofrece la descripción del catálogo como sugerencia.
 4. **"¿Hay precio o promoción que quieras mencionar?"** Opcional; acepta "no". Si el tipo de video es Promoción, es obligatoria.
 5. **"¿Algo más que quieras que se diga?"** Opcional.
@@ -251,18 +253,34 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
 ### 7.4 La plantilla de video
 
 - **Formato:** vertical, 1080 × 1920, 30 cuadros por segundo, H.264 con audio AAC, 15 segundos exactos.
-- **Cuatro planos:**
+- **Planos.** *Cambio del 2026-11-25 (ADR 0022): ya no hay cuatro planos fijos.* El modelo de texto elige una **estructura** del paquete de nicho (`plantilla.json`). Todas duran 15 segundos, la **toma 1 es siempre el gancho** y el sistema agrega al final el **cierre** con el logo, sin clip de IA. El cierre es el plano que sigue a la última toma (su orden es la cantidad de tomas más 1).
+
+| Estructura | Tomas con IA | Cierre | Texto por toma | Para qué sirve |
+|---|---|---|---|---|
+| **Rápida** (`RAPIDA`) | 4 de 3 s | 3 s | hasta 5 palabras | Mostrar variedad: varias fotos, varios ángulos o un producto muy vistoso. |
+| **Clásica** (`CLASICA`) | 3 de 4 s | 3 s | hasta 6 palabras | El gancho, el producto y el antojo final. Funciona con casi todo. |
+| **Historia** (`HISTORIA`) | 2 de 6 s | 3 s | hasta 7 palabras | Dos tomas largas que cuentan algo: de dónde viene el producto o a dónde llega. |
+| **Plano único** (`PLANO_UNICO`) | 1 de 8 s | 7 s | hasta 8 palabras | Una sola toma muy cuidada, para un producto que luce con una sola gran foto. |
+
+- Cada toma parte de la foto del producto que elige la IA (Foto 1, 2 o 3); puede repetir una.
+- **El texto en pantalla es obligatorio solo en el gancho.** Las demás tomas pueden ir sin texto, y el usuario puede agregarlo o quitarlo en el storyboard.
+- El texto del gancho debe tener sentido con lo que muestra su toma.
+- Los videos creados antes del cambio quedan con la estructura Clásica y conservan sus planos de 3, 4 y 4 segundos y su cierre de 4 segundos.
+
+La versión anterior tenía **cuatro planos fijos:**
 
 1. **Gancho** (0 a 3 s), con IA, a partir de la foto **Detalle**. Texto: una frase de antojo de hasta 6 palabras.
 2. **Producto** (3 a 7 s), con IA, a partir de la foto **Entero**. Texto: el nombre del producto, hasta 5 palabras.
 3. **Relleno** (7 a 11 s), con IA, a partir de la foto **Porción**. Texto: lo que lo hace especial, hasta 7 palabras.
 4. **Cierre** (11 a 15 s), **sin clip de IA**. Fondo: la foto del local con un zoom suave hecho por el sistema, o los colores de marca. Contenido: el precio o la promoción (solo si el usuario los escribió), el llamado a la acción ("Pide por WhatsApp", "Te esperamos en [distrito]"), el WhatsApp y el logo.
 
+   *Desde el 2026-11-25 (ADR 0022)*, el cierre dura 3 segundos (7 en el plano único) y su contenido no cambia.
+
    *Cambio del 2026-11-12 (ADR 0021):* **los textos del cierre los propone el modelo de texto** (sección 8.1), y el sistema arma el plano:
    - **Texto principal, en grande:** el **precio**, si el negocio escribió un precio o una promoción real, resumido con sus mismos números y moneda ("S/ 65 la torta entera"). Si no, una **frase** gancho de hasta 6 palabras ("Recién salidas del horno"). Una instrucción del negocio ("no menciones precio") nunca se muestra.
    - **Ubicación:** un lugar más preciso que el distrito si el negocio lo mencionó ("Plaza Lima Sur, Chorrillos"); si no, el distrito.
    - **Llamado a la acción:** lo sigue poniendo el sistema según los canales del negocio.
-   - **Fondo:** la foto del local con un zoom suave o, si no existe, el último cuadro del plano 3 desenfocado y oscurecido.
+   - **Fondo:** la foto del local con un zoom suave o, si no existe, el último cuadro del plano 3 desenfocado y oscurecido (desde el 2026-11-25, el de la última toma).
    - **Logo:** en una insignia redonda.
    - **Llamado:** en una píldora del color primario de la marca.
    - **Ubicación y WhatsApp:** más chicos.
@@ -274,9 +292,19 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
 
 ### 7.5 Movimientos permitidos
 
+*Cambio del 2026-11-25 (ADR 0022): guion flexible.* **La lista de movimientos deja de ser cerrada.** El modelo de texto ve las fotos del producto, elige un **nivel de creatividad** y **escribe la toma** de cada plano: en inglés para el modelo de video (`toma`, hasta 1200 caracteres) y en pocas palabras en español para el storyboard (`descripcionToma`). Los 13 movimientos de abajo siguen en `movimientos.json`: van en las instrucciones del guion como inspiración y son los que usan los videos creados antes del cambio. Se quitaron las "Reglas de la elección" (al menos 2 planos de cámara 3D y no repetir el movimiento).
+
+**Niveles de creatividad** (`movimientos.json`, la IA elige uno por video):
+
+- **Producto** (`PRODUCTO`): el producto es el protagonista en su propia escena, con movimientos de cámara de comercial (órbita, macro de la textura, grúa, paralaje). El fondo sigue siendo el de la foto.
+- **Ambiente** (`AMBIENTE`): el mismo producto aparece en otro lugar creíble para el negocio: la vitrina de la tienda, una mesa de cumpleaños, una ventana con luz de mañana. El lugar se arma alrededor del producto, sin personas ni letreros con texto.
+- **Origen** (`ORIGEN`): los ingredientes que se ven en la foto o que dice la descripción del producto caen o flotan en cámara lenta alrededor del producto, y la toma termina en el producto tal como se ve en la foto.
+
+En los tres niveles el producto nunca se deforma, no se corta, no se come ni cambia su decoración, y no aparecen personas, manos ni letreros con texto. Cada nivel trae una guía (en inglés) para escribir la toma y sus prohibiciones y negativos extra.
+
 *Cambio del 2026-11-12 (ADR 0021):* la lista sigue siendo **cerrada**, pero ahora es un catálogo de **movimientos de cámara 3D**. La cámara se mueve por el espacio alrededor del producto, con paralaje y profundidad de campo, en lugar de solo acercarse o alejarse. Se quitaron el límite de 15 grados y la prohibición de los "cortes de cámara", que ya cubre "una sola toma continua". La versión anterior era: ACERCAMIENTO_LENTO, ALEJAMIENTO_LENTO, DESPLAZAMIENTO_LATERAL (unos centímetros), BRILLO_GLASEADO, AZUCAR_CAYENDO, VAPOR_SUAVE y LUZ_CALIDA, con "giros del producto de más de 15 grados" y "cortes de cámara" entre lo prohibido.
 
-Cada plano usa un movimiento de esta lista. El modelo de lenguaje solo puede elegir entre ellos.
+Cada plano usa un movimiento de esta lista. El modelo de lenguaje solo puede elegir entre ellos. *Desde el 2026-11-25 (ADR 0022)* ya no los elige: los usa como inspiración para escribir su propia toma.
 
 **Movimientos de cámara 3D** (la cámara rodea, sube o cruza el producto):
 
@@ -303,13 +331,17 @@ Cada plano usa un movimiento de esta lista. El modelo de lenguaje solo puede ele
 - Los tres planos no pueden usar el mismo movimiento.
 - Ningún arco pasa de unos 60 grados: con una sola foto, una vuelta completa obliga al modelo de video a inventar el lado oculto y deforma el producto.
 
+*Cambio del 2026-11-25 (ADR 0022):* estas reglas ya no se validan. El validador revisa que el nivel de creatividad exista y que cada plano traiga su foto, su toma y su descripción (sección 8.1).
+
 **El prompt del modelo de video** se arma con el paquete de nicho, en inglés:
 
 - Una **plantilla de toma**: comercial de postres, una sola toma continua, la foto como primer cuadro y el producto idéntico mientras la cámara se mueve.
-- La **instrucción del movimiento**.
-- Las **prohibiciones**, en frases.
+- La **instrucción del movimiento**. *Desde el 2026-11-25 (ADR 0022):* la **toma que escribió la IA**; en los videos anteriores, la instrucción del movimiento.
+- Las **prohibiciones**, en frases. *Desde el 2026-11-25:* las generales más las **prohibiciones extra del nivel de creatividad** del video.
 
 **Siempre prohibido:** manos, personas, caras, cuchillos o utensilios, texto, letras o logotipos, objetos o decoraciones que no estén en la foto (salvo lo que pide el movimiento, como el azúcar o el vapor), deformar, derretir, redecorar o duplicar el producto, zoom digital, destellos de lente, diálogo y voz en off. La misma lista va, como sustantivos, en el prompt negativo del proveedor que lo admite.
+
+*Cambio del 2026-11-25 (ADR 0022):* siempre prohibido: personas, caras, manos, dedos, cuchillos o utensilios; texto, letras, números, letreros, logotipos o marcas de agua; deformar, derretir, cortar, morder, redecorar o duplicar el producto, o cambiar sus colores; agregar algo que la toma no describa; destellos de lente, diálogo y voz en off. Lo que antes era "objetos o decoraciones que no estén en la foto" depende ahora del nivel de creatividad: en **Producto** no se agregan objetos, decoraciones ni otro fondo; en **Ambiente** el lugar nuevo no tiene personas ni letreros, y las velas, globos, platos o flores van alrededor del producto, nunca encima; en **Origen** solo aparecen ingredientes que se ven en la foto o que nombra la descripción, y al producto no le pasa nada irreal. Los negativos (como sustantivos) también suman los del nivel; el zoom digital sigue entre ellos.
 
 ### 7.6 Vocabulario
 
@@ -338,13 +370,15 @@ Una fecha especial se considera "próxima" durante los 15 días anteriores.
 Hacen trabajos distintos, y ninguno puede hacer el del otro:
 
 - **El modelo de video (Veo) solo anima una imagen.** Recibe una foto y una instrucción de movimiento, y devuelve un clip. No escribe los textos que aparecen en pantalla (esos los pone nuestra plantilla, para que nunca salgan deformes), ni la descripción de la publicación, ni los hashtags.
-- **El modelo de texto (Gemini) convierte las respuestas del negocio en el guion.** Las respuestas del chat son datos sueltos ("fresas frescas, crema batida, la más pedida, S/ 65"). El modelo de texto las transforma en frases cortas de antojo para cada plano, elige qué movimiento conviene a cada foto, y redacta la descripción y los hashtags con el tono del negocio. *Desde el 2026-11-12 (ADR 0021)* también escribe los textos del cierre: interpreta la respuesta del precio (un precio real o una instrucción) y propone una frase gancho. Pasarle los campos tal cual al modelo de video no produciría esos textos.
+- **El modelo de texto (Gemini) convierte las respuestas del negocio en el guion.** Las respuestas del chat son datos sueltos ("fresas frescas, crema batida, la más pedida, S/ 65"). El modelo de texto las transforma en frases cortas de antojo para cada plano, elige qué movimiento conviene a cada foto, y redacta la descripción y los hashtags con el tono del negocio. *Desde el 2026-11-12 (ADR 0021)* también escribe los textos del cierre: interpreta la respuesta del precio (un precio real o una instrucción) y propone una frase gancho. Pasarle los campos tal cual al modelo de video no produciría esos textos. *Desde el 2026-11-25 (ADR 0022)* además **ve las fotos del producto**, elige la estructura del video, el nivel de creatividad y qué foto usa cada toma, y escribe la toma de cámara de cada plano.
 
 **Lo que el modelo de texto no hace es escribir libremente la instrucción para el modelo de video.** Solo elige un movimiento de la lista permitida, y el sistema arma la instrucción con una plantilla fija (sección 8.2). Así se aprovecha la creatividad del modelo de texto donde suma, sin arriesgar que pida algo que genere errores.
 
+*Cambio del 2026-11-25 (ADR 0022):* **el modelo de texto sí escribe la toma** para el modelo de video, pero no el prompt completo: el sistema la envuelve con la plantilla de toma del paquete de nicho y le suma las prohibiciones generales y las del nivel de creatividad (sección 7.5). Así la toma puede tener sentido con lo que se ve en la foto y con el texto del gancho, y lo que nunca debe pasar (personas, texto, el producto deformado) lo sigue poniendo el sistema.
+
 **En la práctica es una sola integración:** Gemini y Veo se usan con la misma API de Google y la misma clave.
 
-**Qué modelos se usan lo decide el plan efectivo del negocio** (sección 10.8): en el plan Lite, Gemini para el texto y Veo 3.1 Lite para el video. Un plan Pro podría usar Veo 3.1 Fast, Veo 3.1 estándar o Runway sin cambiar el proceso. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.*
+**Qué modelos se usan lo decide el plan efectivo del negocio** (sección 10.8): en el plan Lite, Gemini para el texto y Veo 3.1 Lite para el video. Un plan Pro podría usar Veo 3.1 Fast, Veo 3.1 estándar o Runway sin cambiar el proceso. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.* *Cambio del 2026-11-25 (ADR 0022, migración `V11`): el plan Lite vuelve a usar **Veo 3.1 Lite** en Google Cloud para el video, y Gemini Omni Flash queda registrado sin plan. Con la clave de AI Studio solo existe Gemini Omni Flash: Veo salió de la API de Gemini el 2026-10-22 y hoy solo se usa en Google Cloud. `V11` también agrega **Veo 3.1 Fast** y **Veo 3.1** (estándar) con la misma configuración, para comparar Lite, Fast y estándar a 720p.*
 
 ### 8.1 Guion con el modelo de lenguaje
 
@@ -367,14 +401,25 @@ El sistema envía al modelo de texto del plan efectivo (Gemini en el plan Lite) 
 
 *Cambio del 2026-11-12 (ADR 0021): guion publicitario, cierre de la IA y sin guion de respaldo.*
 
-**Forma de la respuesta.** El modelo escribe los planos 1 a 3 y el objeto `cierre`. Los nombres son los del código:
+**Forma de la respuesta.** El modelo escribe los planos 1 a 3 y el objeto `cierre`. Hasta el 2026-11-25, cada plano traía solo `orden`, `movimiento` (un id de la lista de la sección 7.5) y `texto`.
+
+*Cambio del 2026-11-25 (ADR 0022): guion flexible.* La solicitud lleva, después de las instrucciones, **las fotos del producto como imágenes** (Foto 1, 2 y 3, las que tenga), reducidas a JPEG de hasta 1024 píxeles. El modelo elige la estructura y el nivel de creatividad, escribe la idea del video y una entrada por cada toma de la estructura (el cierre no va en `planos`). Los nombres son los del código:
 
 ```json
 {
+  "estructura": "CLASICA",
+  "creatividad": "AMBIENTE",
+  "idea": "Las fresas de la torta brillan de cerca y la cámara termina en la vitrina: muestra la fruta fresca y que ya está lista en el local.",
   "planos": [
-    { "orden": 1, "movimiento": "MACRO_DETALLE", "texto": "Antojo de fresa recién llegada" },
-    { "orden": 2, "movimiento": "ORBITA_FRONTAL", "texto": "Tres Leches de Fresa" },
-    { "orden": 3, "movimiento": "PARALAJE_LATERAL", "texto": "Cremosa en cada cucharada" }
+    { "orden": 1, "foto": 2,
+      "toma": "Extreme macro push-in over the glossy strawberries on top of the cake, shallow depth of field, soft window light...",
+      "descripcionToma": "La cámara se acerca a las fresas brillantes", "texto": "Fresas recién llegadas hoy" },
+    { "orden": 2, "foto": 1,
+      "toma": "The camera slowly pulls back and rises, revealing the same cake on a bakery display counter...",
+      "descripcionToma": "La cámara retrocede y revela la torta en la vitrina", "texto": null },
+    { "orden": 3, "foto": 3,
+      "toma": "Slow lateral parallax around the slice, the focus moving from the cream layers to the sponge...",
+      "descripcionToma": "La cámara pasa de lado frente a la porción", "texto": "Cremosa en cada cucharada" }
   ],
   "cierre": { "precio": "S/ 65 la torta entera", "frase": "Tu antojo te espera", "ubicacion": null },
   "descripcion": "Nuestra Tres Leches de Fresa ya está en vitrina...",
@@ -382,11 +427,15 @@ El sistema envía al modelo de texto del plan efectivo (Gemini en el plan Lite) 
 }
 ```
 
+- `estructura` y `creatividad`: un id de las listas del paquete de nicho (secciones 7.4 y 7.5). El esquema JSON los da como listas cerradas.
+- `idea`: el concepto del video en una o dos frases, en español, hasta 400 caracteres. Se muestra arriba del storyboard, con los nombres de la estructura y de la creatividad.
+- `planos`: tantos como tomas tiene la estructura, con `orden` de 1 en adelante. `foto` es el número de una foto que el producto tiene (1 a 3); la IA puede usar una sola o repetirla. `toma` va en inglés, hasta 1200 caracteres. `descripcionToma` va en español, hasta 160 caracteres, y el storyboard la muestra como "Toma: …". `texto` puede ir en `null`, salvo en el gancho.
+
 **Cómo escribe:**
 
-- Las instrucciones (`guion.md`, en el paquete de nicho) le piden escribir como el **copywriter** de la pastelería, con buena ortografía y tildes.
-- Las respuestas del negocio son **indicaciones**, no textos para copiar. Una instrucción ("no menciones precio") se cumple y nunca se muestra. Si la instrucción dice qué comunicar ("solo di que están recién salidas del horno"), ese mensaje es el material del gancho o de la frase del cierre.
-- Cada plano tiene su papel: el 1 engancha, el 2 presenta el producto y el 3 remata el antojo.
+- Las instrucciones (`guion.md`, en el paquete de nicho) le piden escribir como el **copywriter** de la pastelería, con buena ortografía y tildes. *Desde el 2026-11-25*, como su **director creativo y copywriter**: las tomas en inglés y los textos en español.
+- Las respuestas del negocio son **indicaciones**, no textos para copiar. Una instrucción ("no menciones precio") se cumple y nunca se muestra. Si la instrucción dice qué comunicar ("solo di que están recién salidas del horno"), ese mensaje es el material del gancho o de la frase del cierre. *Desde el 2026-11-25*, si el negocio pide algo para la escena ("que se vea en la tienda", "con frutas"), lo tiene en cuenta al elegir la creatividad y escribir las tomas.
+- Cada plano tiene su papel: el 1 engancha, el 2 presenta el producto y el 3 remata el antojo. *Cambio del 2026-11-25 (ADR 0022):* la toma 1 es siempre el **gancho** (lo más llamativo, con un texto que detenga el scroll); las demás tomas se ordenan según la estructura. Cada toma empieza exactamente en su foto, se escribe pensando en lo que de verdad se ve en ella y solo menciona ingredientes, decoraciones o frutas que se ven en las fotos o que dice la descripción. Los movimientos de la sección 7.5 le llegan como inspiración.
 
 **El cierre** (sección 7.4):
 
@@ -397,8 +446,8 @@ El sistema envía al modelo de texto del plan efectivo (Gemini en el plan Lite) 
 
 **El sistema valida el JSON antes de usarlo:**
 
-- La cantidad de planos y los movimientos dentro de la lista permitida, con al menos 2 de cámara 3D y sin repetir el mismo en los tres (sección 7.5).
-- La longitud de cada texto, la ausencia de palabras prohibidas y de precios en los planos 1 a 3, y ningún número o promoción que el negocio no haya escrito (RN-22).
+- La cantidad de planos y los movimientos dentro de la lista permitida, con al menos 2 de cámara 3D y sin repetir el mismo en los tres (sección 7.5). *Cambio del 2026-11-25 (ADR 0022):* que la estructura y el nivel de creatividad existan; que la idea venga y no pase de 400 caracteres; que haya exactamente tantos planos como tomas tiene la estructura, sin repetir ni sobrar; que la foto de cada plano exista en el producto; y que cada plano traiga su toma (hasta 1200 caracteres) y su descripción (hasta 160). Ya no hay lista cerrada de movimientos, mínimo de cámara 3D ni regla de no repetir.
+- La longitud de cada texto, la ausencia de palabras prohibidas y de precios en los planos 1 a 3, y ningún número o promoción que el negocio no haya escrito (RN-22). *Desde el 2026-11-25*, el máximo de palabras es el de la estructura (5, 6, 7 u 8), el texto es obligatorio solo en el gancho y los de las demás tomas se revisan solo si vienen.
 - En el cierre:
   - si el negocio escribió un precio real con moneda, `precio` no puede ir vacío;
   - si lo que escribió no trae números, `precio` debe ir vacío;
@@ -417,11 +466,11 @@ Si la validación falla, se reintenta hasta 2 veces indicando el error.
 
 ### 8.2 Clips con el modelo de video
 
-- **Modelo:** el modelo de video del plan efectivo del negocio. En el plan Lite, Google Veo 3.1 Lite, en modo imagen a video, 9:16, clips de 4 segundos. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.*
-- **Un clip por plano con IA** (3 en total), usando la foto correspondiente como primer cuadro.
-- **La instrucción de movimiento** se arma a partir de una plantilla fija por movimiento, en inglés, más la lista de prohibiciones de la sección 7.5. Si el proveedor admite una instrucción negativa separada, las prohibiciones van ahí. *Cambio del 2026-11-12 (ADR 0021):* el prompt completo sale del paquete de nicho: la plantilla de toma con la instrucción del movimiento y las prohibiciones en frases. La lista de lo prohibido como sustantivos va como prompt negativo en Veo, y al final del prompt ("Avoid: …") en Gemini Omni Flash, que no admite uno. Los dos modelos reciben el mismo prompt.
+- **Modelo:** el modelo de video del plan efectivo del negocio. En el plan Lite, Google Veo 3.1 Lite, en modo imagen a video, 9:16, clips de 4 segundos. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.* *Cambio del 2026-11-25 (ADR 0022, `V11`): el plan Lite vuelve a Veo 3.1 Lite en Google Cloud (720p, 9:16, sin audio), con clips de 4, 6 u 8 segundos según la toma.*
+- **Un clip por plano con IA** (3 en total), usando la foto correspondiente como primer cuadro. *Desde el 2026-11-25 (ADR 0022):* uno por toma (de 1 a 4, según la estructura), con la foto que eligió la IA para esa toma.
+- **La instrucción de movimiento** se arma a partir de una plantilla fija por movimiento, en inglés, más la lista de prohibiciones de la sección 7.5. Si el proveedor admite una instrucción negativa separada, las prohibiciones van ahí. *Cambio del 2026-11-12 (ADR 0021):* el prompt completo sale del paquete de nicho: la plantilla de toma con la instrucción del movimiento y las prohibiciones en frases. La lista de lo prohibido como sustantivos va como prompt negativo en Veo, y al final del prompt ("Avoid: …") en Gemini Omni Flash, que no admite uno. Los dos modelos reciben el mismo prompt. *Cambio del 2026-11-25 (ADR 0022):* el prompt es la `plantillaDeToma` con la **toma que escribió la IA**, más las prohibiciones generales y las extra del nivel de creatividad; los negativos también suman los del nivel. Los videos anteriores siguen usando la instrucción de su movimiento.
 - **Las tres generaciones se envían en paralelo** y el sistema consulta su estado periódicamente.
-- **Cada clip se recorta** a la duración de su plano (3 o 4 segundos).
+- **Cada clip se recorta** a la duración de su plano (3 o 4 segundos). *Cambio del 2026-11-25 (ADR 0022):* cada plano guarda sus segundos, y al modelo de video se le pide **la duración más corta que admite y que cubre el plano** (parámetro `duracionesClip` del modelo; en Veo, 4, 6 u 8 segundos). Por ejemplo, una toma de 3 s pide un clip de 4 s que se recorta; una de 6 s, uno de 6 s; y una de 8 s, uno de 8 s. Si ninguna duración alcanza, se pide la más larga y la composición alarga el clip con su último cuadro. Un modelo sin `duracionesClip` usa su `duracionClipSegundos`. El costo del clip usa la duración pedida (o la que informe el proveedor).
 
 ### 8.3 Composición
 
@@ -477,11 +526,11 @@ Evolución prevista:
 - **NotificacionAdmin:** id, tipo (PAGO_POR_VENCER, PAGO_HOY, PAGO_VENCIDO, SUGERENCIA_SUSPENSION, INTEGRACION_CON_ERROR), negocio, modeloIA (en las de integración), periodo, mensaje, fecha, leida.
 - **ConsumoDiario:** id, negocio, fecha, videosGenerados.
 - **Producto:** id, negocio, nombre, descripcion, temporadas, estado, fechaCreacion.
-- **FotoProducto:** id, producto, tipo (ENTERO, DETALLE o PORCION), claveS3, ancho, alto.
+- **FotoProducto:** id, producto, tipo (ENTERO, DETALLE o PORCION), claveS3, ancho, alto. *Desde el 2026-11-25 (ADR 0022, `V10`):* tipo FOTO_1, FOTO_2 o FOTO_3.
 - **Conversacion:** id, negocio, estado (EN_CURSO, COMPLETA o ABANDONADA), pasoActual, respuestas (JSON), video.
 - **MensajeChat:** id, conversacion, autor (SISTEMA o USUARIO), texto, fechaHora.
-- **Video:** id, negocio, conversacion, producto, tipoVideo, estado, planAplicado, modeloTextoUsado, modeloVideoUsado, opcionesProduccion (JSON), guion (JSON), descripcionPublicacion, hashtags, claveS3Final, regeneracionesUsadas, costoEstimado, motivoError, fechas.
-- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor. En el cierre: precio, frase (desde el 2026-11-12, ADR 0021), llamado y ubicación.
+- **Video:** id, negocio, conversacion, producto, tipoVideo, estado, planAplicado, modeloTextoUsado, modeloVideoUsado, opcionesProduccion (JSON), guion (JSON), descripcionPublicacion, hashtags, claveS3Final, regeneracionesUsadas, costoEstimado, motivoError, fechas. *Desde el 2026-11-25 (ADR 0022, `V10`):* también estructura, creatividad e idea, lo que eligió la IA.
+- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor. En el cierre: precio, frase (desde el 2026-11-12, ADR 0021), llamado y ubicación. *Desde el 2026-11-25 (ADR 0022, `V10`):* también segundos (en todos los planos, el cierre incluido), toma y descripcionToma (las escribe la IA). El orden va de 1 a 5: el cierre es el plano sin foto que sigue a la última toma. `movimiento` solo lo tienen los videos anteriores, y `texto` puede ir vacío salvo en el gancho.
 - **PistaMusical:** id, nicho, estilo, nombre, claveS3, duracion, licencia.
 - **CuentaInstagram:** id, negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken.
 - **Publicacion:** id, video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError.
@@ -531,7 +580,7 @@ stateDiagram-v2
 - **RN-09.** Mientras el onboarding no esté completo, el negocio no puede crear videos.
 - **RN-10.** El logo debe ser PNG de hasta 5 MB.
 - **RN-11.** Las fotos de productos deben ser JPG, PNG o WebP, de hasta 10 MB, con el lado menor de al menos 720 píxeles (lo que pide el clip de IA en 720p; antes 1080, cambio del 2026-11-06). *La foto del local, que solo es el fondo oscurecido del cierre, acepta desde 480 píxeles (cambio del 2026-11-12).* Las horizontales se aceptan con un aviso de que se recortarán al formato vertical.
-- **RN-12.** Un producto solo puede usarse en un video si tiene sus tres fotos.
+- **RN-12.** Un producto solo puede usarse en un video si tiene sus tres fotos. *Cambio del 2026-11-25 (ADR 0022):* un producto puede usarse en un video si tiene su **Foto 1** (la principal); la Foto 2 y la Foto 3 son opcionales.
 - **RN-13.** Un producto archivado no aparece en el chat, pero sus videos anteriores se conservan.
 - **RN-14.** Un producto subido desde el chat solo se guarda en el catálogo si el usuario lo acepta; si no, queda asociado únicamente a ese video.
 - **RN-15 (S).** Las fotos con personas o caras se rechazan automáticamente, usando un servicio de detección de rostros (Amazon Rekognition).
@@ -546,7 +595,7 @@ stateDiagram-v2
 
 ### 10.4 Guion
 
-- **RN-21.** El guion respeta la plantilla: 4 planos, las fotos y los movimientos permitidos, y las longitudes máximas de texto. *Desde el 2026-11-12 (ADR 0021):* al menos 2 de los 3 planos usan un movimiento de cámara 3D, los tres no repiten el mismo movimiento, y el cierre trae una frase y, si corresponde, el precio y la ubicación (sección 8.1).
+- **RN-21.** El guion respeta la plantilla: 4 planos, las fotos y los movimientos permitidos, y las longitudes máximas de texto. *Desde el 2026-11-12 (ADR 0021):* al menos 2 de los 3 planos usan un movimiento de cámara 3D, los tres no repiten el mismo movimiento, y el cierre trae una frase y, si corresponde, el precio y la ubicación (sección 8.1). *Cambio del 2026-11-25 (ADR 0022):* el guion respeta **la estructura que eligió** (que exista, con tantas tomas como pide), un nivel de creatividad que exista, una foto que el producto tenga en cada toma, la toma y su descripción en cada plano, el texto del gancho y los máximos de palabras de la estructura. Se quitaron la lista cerrada de movimientos, el mínimo de cámara 3D y la regla de no repetir el movimiento. Las reglas del cierre siguen igual.
 - **RN-22.** El guion nunca contiene precios, promociones, ingredientes, sabores ni datos que el usuario no haya escrito en el chat, el perfil o la descripción del producto. *Desde el 2026-11-12:* el precio del cierre solo usa los números y la moneda de la respuesta del precio, la ubicación del cierre solo usa palabras del negocio, y una instrucción del negocio ("no menciones precio") nunca se muestra.
 - **RN-23.** El guion no contiene palabras prohibidas por el paquete ni por el negocio.
 - **RN-24.** La descripción de la publicación tiene como máximo 600 caracteres, e incluye entre 5 y 8 hashtags, con al menos uno del distrito.
@@ -587,7 +636,7 @@ stateDiagram-v2
   - **VENCIDO:** la fecha de pago ya pasó y no se registró el pago.
 - **RN-44. Notificaciones del administrador.** Una tarea diaria crea una notificación al entrar en POR_VENCER, VENCE_HOY y VENCIDO, y nunca repite el mismo tipo para el mismo negocio y el mismo período.
 - **RN-45.** Un pago vencido **no suspende automáticamente** al negocio en el MVP. A los 7 días de vencido, se crea una notificación que sugiere suspenderlo, y el administrador decide.
-- **RN-46. Plan Lite**, el único del MVP: 1 video por día, 3 regeneraciones de plano por video, Gemini como modelo de texto, Veo 3.1 Lite como modelo de video, sin personas y con las opciones de producción fijas de la sección 8.6. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.*
+- **RN-46. Plan Lite**, el único del MVP: 1 video por día, 3 regeneraciones de plano por video, Gemini como modelo de texto, Veo 3.1 Lite como modelo de video, sin personas y con las opciones de producción fijas de la sección 8.6. *Desde el 2026-11-05 (ADR 0017), el plan Lite usa Gemini Omni Flash (`GEMINI_OMNI`, Google AI Studio, unos 0,07 dólares por segundo a 720p) con la misma clave que el guion; Veo 3.1 Lite (Google Cloud) queda listo e inactivo.* *Cambio del 2026-11-25 (ADR 0022, `V11`): el plan Lite vuelve a usar Veo 3.1 Lite (Google Cloud) para el video; Gemini Omni Flash queda sin plan.*
 - **RN-47.** Todo plan debe tener un modelo de texto y un modelo de video, ambos ACTIVOS y del tipo correcto.
 - **RN-48.** No se puede desactivar un modelo que esté asignado a un plan activo, o a un plan inactivo que todavía tenga negocios; antes hay que asignar otro a ese plan.
 - **RN-49.** Un cambio de plan aplica a los videos que se creen desde ese momento; los videos en proceso terminan con el plan con el que empezaron.
@@ -616,7 +665,7 @@ stateDiagram-v2
 En el MVP, una sola integración con la API de Gemini, con una sola clave, cubre los dos modelos.
 
 **Veo (video).** 
-Se usa en modo imagen a video. Veo 3.1 Lite cuesta 0,05 dólares por segundo a 720p, y Veo 3.1 Fast entre 0,10 y 0,12 dólares por segundo. La generación es asíncrona: se crea la tarea, se consulta su estado y se descarga el clip.
+Se usa en modo imagen a video. Veo 3.1 Lite cuesta 0,05 dólares por segundo a 720p, y Veo 3.1 Fast entre 0,10 y 0,12 dólares por segundo. La generación es asíncrona: se crea la tarea, se consulta su estado y se descarga el clip. *Cambio del 2026-11-25 (ADR 0022, `V11`):* hay tres modelos de Veo registrados en Google Cloud, con la misma configuración (720p, 9:16, sin audio, clips de 4, 6 u 8 s): **Veo 3.1 Lite** (`veo-3.1-lite-generate-001`, el del plan Lite), **Veo 3.1 Fast** (`veo-3.1-fast-generate-001`, costo de referencia 0,10 dólares por segundo) y **Veo 3.1** (`veo-3.1-generate-001`, 0,40 dólares por segundo). Los costos de Fast y estándar son conservadores (con audio) y se ajustan desde el panel con la factura real.
 
 ### 11.2 Gemini (texto)
 
@@ -778,7 +827,7 @@ Todas las respuestas de error tienen la forma `{"codigo": "...", "mensaje": "...
 - **Inicio de sesión** y **creación de contraseña.**
 - **Onboarding:** ventana de pantalla completa en tres pasos, con barra de progreso. Especialidad, clientes y canales tienen un chip "Otros" con texto de hasta 40 caracteres.
 - **Chat (pantalla principal):** centrado, con burbujas de conversación, botones de respuesta rápida, caja de texto (también en la primera pregunta) con un ejemplo de respuesta, carrusel de productos, subida de fotos con ejemplos y el aviso en un botón "?".
-- **Storyboard:** cuatro tarjetas verticales con la foto, el movimiento descrito en palabras simples y el texto editable, más el botón "Crear mi video" y el consumo del plan.
+- **Storyboard:** cuatro tarjetas verticales con la foto, el movimiento descrito en palabras simples y el texto editable, más el botón "Crear mi video" y el consumo del plan. *Cambio del 2026-11-25 (ADR 0022):* arriba, "La idea" con el nombre de la estructura y de la creatividad y la idea del video; luego una tarjeta por toma (de 1 a 4: "Gancho", "Toma 2"…) con su foto, sus segundos, "Toma: …" (la descripción en español) y el texto, que puede decir "Sin texto en pantalla" y "Agregar texto" fuera del gancho; y al final el cierre.
 - **Generando:** pantalla de espera con mensajes amables; el usuario puede salir y recibe el aviso cuando está listo.
 - **Revisión:** reproductor vertical, botones "Regenerar este plano" y "Editar texto", y "Aprobar".
 - **Publicar:** descripción y hashtags editables, y las opciones "Publicar ahora", "Programar" y "Descargar".
@@ -799,10 +848,21 @@ Con 3 clips de 4 segundos (12 segundos de IA):
 - **Veo 3.1 Fast a 1080p:** 12 × 0,12 = **1,44 dólares**.
 - A eso se suman el guion (centavos), la composición con FFmpeg (sin costo por video) y las regeneraciones.
 
+*Cambio del 2026-11-25 (ADR 0022):* los segundos de IA dependen de la estructura, porque cada toma pide la duración más corta de Veo que la cubre (4, 6 u 8 s):
+
+| Estructura | Clips pedidos | Segundos de IA | Veo 3.1 Lite (0,05) | Veo 3.1 Fast (0,10) | Veo 3.1 (0,40) |
+|---|---|---|---|---|---|
+| Rápida | 4 de 4 s | 16 | 0,80 | 1,60 | 6,40 |
+| Clásica | 3 de 4 s | 12 | 0,60 | 1,20 | 4,80 |
+| Historia | 2 de 6 s | 12 | 0,60 | 1,20 | 4,80 |
+| Plano único | 1 de 8 s | 8 | 0,40 | 0,80 | 3,20 |
+
+La estructura Rápida paga 16 segundos para 12 segundos de video. El guion cuesta algo más que antes, porque lleva las fotos del producto como imágenes.
+
 ### 15.2 Plan del MVP: Lite
 
 - **Contenido:** 1 video por día, con 3 regeneraciones de plano por video.
-- **Modelos:** Gemini para el texto y Gemini Omni Flash para el video (antes Veo 3.1 Lite; ADR 0017).
+- **Modelos:** Gemini para el texto y Gemini Omni Flash para el video (antes Veo 3.1 Lite; ADR 0017). *Cambio del 2026-11-25 (ADR 0022, `V11`):* de nuevo Veo 3.1 Lite (Google Cloud) para el video; con él, un video cuesta entre 0,40 y 0,80 dólares según la estructura (sección 15.1).
 - **Restricciones:** sin personas, sin voz, opciones de producción fijas.
 - **Costo para nosotros**, si el cliente usa todos los días: 30 videos × 0,60 = **18 dólares al mes**. Si además usa todas sus regeneraciones (3 planos más de 4 segundos cada uno), el máximo teórico sube a unos 36 dólares. En la práctica se espera entre 20 y 27 dólares, y menos si el cliente no crea un video todos los días.
 - **Precio sugerido a validar:** entre 49 y 59 dólares mensuales, para mantener un margen razonable incluso con uso intensivo.
@@ -819,7 +879,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 ## 16. Datos iniciales
 
 - Un **administrador**, con correo y contraseña definidos por variables de entorno.
-- Los **modelos de IA** (migraciones V2 y V7): Gemini (texto, `GEMINI`) y Gemini Omni Flash (video, `GEMINI_OMNI`), activos con el secreto `autoreel/gemini`; Gemini en Google Cloud (`GEMINI_CLOUD`) y Veo 3.1 Lite (`VEO`), inactivos con el secreto `autoreel/google-cloud`.
+- Los **modelos de IA** (migraciones V2 y V7): Gemini (texto, `GEMINI`) y Gemini Omni Flash (video, `GEMINI_OMNI`), activos con el secreto `autoreel/gemini`; Gemini en Google Cloud (`GEMINI_CLOUD`) y Veo 3.1 Lite (`VEO`), inactivos con el secreto `autoreel/google-cloud`. *Cambio del 2026-11-25 (ADR 0022):* `V10` agrega a Veo el parámetro `duracionesClip` (4, 6 y 8 s), y `V11` activa Veo 3.1 Lite, lo pone en el plan Lite y agrega, activos y con su misma configuración, Veo 3.1 Fast y Veo 3.1.
 - El **plan Lite** de la sección 15.2.
 - Una **biblioteca de música** con al menos tres pistas libres de derechos por estilo (casero, elegante y divertido), con su licencia registrada.
 - En el perfil de desarrollo, un **negocio de ejemplo** ("Pastelería Dulce Encanto", Miraflores) con su perfil completo y tres productos con fotos.
@@ -843,7 +903,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 **Onboarding y catálogo**
 
 - **V10.** Sin completar el onboarding, el chat no deja crear videos.
-- **V11.** Un producto con solo dos fotos no aparece para elegir en el chat.
+- **V11.** Un producto con solo dos fotos no aparece para elegir en el chat. *Cambio del 2026-11-25 (ADR 0022):* un producto sin su Foto 1 no aparece; uno con solo su Foto 1 sí aparece y se puede usar.
 - **V12.** Una foto de 800 píxeles en su lado menor se rechaza.
 - **V13.** En verano, el carrusel muestra primero los productos etiquetados como "verano".
 - **V14.** Un producto subido desde el chat sin aceptar guardarlo no aparece en el catálogo.
@@ -856,7 +916,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 
 **Guion y storyboard**
 
-- **V18.** El storyboard tiene 4 planos con las fotos y los textos dentro de sus límites.
+- **V18.** El storyboard tiene 4 planos con las fotos y los textos dentro de sus límites. *Cambio del 2026-11-25 (ADR 0022):* tiene las tomas de la estructura que eligió la IA (de 1 a 4) más el cierre, con fotos del producto, la idea del video, el texto del gancho y los textos dentro del máximo de la estructura; los segundos suman 15.
 - **V19.** Si el usuario no escribió un precio, el guion no muestra ninguno. *Desde el 2026-11-12:* si escribió una instrucción en lugar de un precio ("no menciones precio, solo que están recién salidas del horno"), el cierre no tiene precio y muestra una frase de la IA ("Recién salidas del horno"), nunca la instrucción. Si escribió un precio real, el cierre lo muestra con sus mismos números y moneda.
 - **V20.** Si el modelo devuelve un guion inválido tres veces, se usa el guion de respaldo y el usuario igual ve su storyboard. *Cambio del 2026-11-12:* el video pasa a `ERROR` sin consumir el video del día, y "Reintentar" lo devuelve a "Preparando propuesta" sin consumirlo. Sin credencial de texto, el guion se reintenta solo durante 5 minutos y luego pasa a `ERROR`.
 - **V21.** Editar un texto del storyboard por encima del límite muestra un error.
@@ -890,7 +950,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 
 **Integraciones y beneficios**
 
-- **V37.** En Integraciones aparecen Gemini, Gemini Omni Flash y Veo 3.1 Lite, y "Probar conexión" informa si la credencial funciona.
+- **V37.** En Integraciones aparecen Gemini, Gemini Omni Flash y Veo 3.1 Lite, y "Probar conexión" informa si la credencial funciona. *Desde el 2026-11-25 (`V11`)* también Veo 3.1 Fast y Veo 3.1.
 - **V38.** Desactivar Veo 3.1 Lite mientras el plan Lite lo usa muestra un error.
 - **V39.** Un video del plan Lite registra Gemini y Veo 3.1 Lite como modelos usados.
 - **V40.** Con un plan Pro de prueba que use otro modelo de video, un beneficio temporal de un día hace que los videos de ese día usen el modelo del Pro, y al día siguiente el negocio vuelve al Lite solo.
@@ -902,7 +962,7 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 
 Pocas y enfocadas en lo que más puede fallar:
 
-- Validador del guion: longitudes, listas permitidas, palabras prohibidas y que el precio coincida con el escrito. Desde el 2026-11-12, también el cierre (precio frente a instrucción, frase y ubicación) y la variedad de movimientos.
+- Validador del guion: longitudes, listas permitidas, palabras prohibidas y que el precio coincida con el escrito. Desde el 2026-11-12, también el cierre (precio frente a instrucción, frase y ubicación) y la variedad de movimientos. *Desde el 2026-11-25 (ADR 0022)*, en lugar de la variedad: la estructura, la creatividad, la cantidad de tomas, las fotos, la toma y su descripción, y el texto opcional fuera del gancho. También la duración del clip que se pide para cada plano.
 - Agrupación de mensajes del chat y detección de preguntas.
 - Transiciones de estado del video.
 - Cálculo de consumo diario y regeneraciones.
@@ -933,7 +993,7 @@ Las fases 1 a 5 son el corazón del MVP: con ellas, una pastelería ya puede cre
 
 1. **Administrador:** crea "Pastelería Dulce Encanto" con el plan Lite y su fecha de pago, y copia la contraseña temporal y el enlace.
 2. **Primer ingreso:** el negocio entra, crea su contraseña y completa el onboarding.
-3. **Catálogo:** registra la "Torta Tres Leches de Fresa" con sus tres fotos y la etiqueta "verano".
+3. **Catálogo:** registra la "Torta Tres Leches de Fresa" con sus tres fotos y la etiqueta "verano". *Desde el 2026-11-25*, con su foto principal y, si quiere, dos fotos más de otros ángulos.
 4. **Chat:** elige "Producto estrella" y el producto del catálogo, y escribe dos mensajes seguidos sobre lo que lo hace especial (se agrupan). Escribe una pregunta y el chat le recuerda que solo recibe respuestas.
 5. **Storyboard:** ajusta una frase y aprueba.
 6. **Video:** recibe el Reel de 15 segundos, regenera un plano y aprueba.

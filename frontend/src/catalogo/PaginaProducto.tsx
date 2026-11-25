@@ -85,7 +85,7 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
     guardar.mutate()
   }
 
-  const fotosFaltantes = TIPOS_FOTO.filter((tipo) => !fotos[tipo]).length
+  const sinFotoPrincipal = !fotos.FOTO_1
 
   return (
     <form onSubmit={enviar} className="mx-auto max-w-xl space-y-6 pb-24">
@@ -135,8 +135,9 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
         <div>
           <h2 className="font-semibold">Fotos</h2>
           <p className="text-sm text-stone-600">
-            Las tres son necesarias para usar el producto en un video.
-            {fotosFaltantes > 0 && ` Te ${fotosFaltantes === 1 ? 'falta 1' : `faltan ${fotosFaltantes}`}.`}
+            La foto principal es necesaria para usar el producto en un video. Con 2 o 3 fotos distintas, la IA tiene
+            más ideas para tu Reel.
+            {sinFotoPrincipal && ' Te falta la foto principal.'}
           </p>
         </div>
         {TIPOS_FOTO.map((tipo) => (

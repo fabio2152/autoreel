@@ -149,29 +149,33 @@ class PaquetePasteleriaTest {
     }
 
     @Test
-    void conservaLosMovimientosGuardadosYTraeLosDeCamara3D() {
+    void conservaLosMovimientosDeLosVideosGuardados() {
         Movimientos movimientos = paquete.movimientos();
 
-        // Los videos ya guardados usan los ids viejos: si uno desaparece, su generación falla.
+        // Los videos anteriores al guion flexible usan los ids del catálogo: si uno desaparece, su generación falla.
         for (String id : List.of("ACERCAMIENTO_LENTO", "ALEJAMIENTO_LENTO", "DESPLAZAMIENTO_LATERAL", "BRILLO_GLASEADO",
                 "AZUCAR_CAYENDO", "VAPOR_SUAVE", "LUZ_CALIDA", "ORBITA_FRONTAL", "ARCO_HEROICO", "MACRO_DETALLE",
                 "GRUA_REVELADO", "PARALAJE_LATERAL", "DIAGONAL_ENFOQUE")) {
             assertThat(movimientos.buscar(id)).as(id).isPresent();
         }
-        assertThat(movimientos.para("PRODUCTO_ESTRELLA")).extracting(Movimientos.Movimiento::id)
-                .doesNotContain("VAPOR_SUAVE").contains("ORBITA_FRONTAL");
+        assertThat(movimientos.creatividades()).extracting(Movimientos.Creatividad::id)
+                .containsExactly("PRODUCTO", "AMBIENTE", "ORIGEN");
         assertThat(movimientos.prohibiciones()).doesNotContain("15 degrees");
     }
 
     @Test
-    void armaElPromptDelClipConLaPlantillaDeTomaYLasProhibiciones() {
+    void armaElPromptDelClipConLaTomaYLasProhibicionesDeLaCreatividad() {
         Movimientos movimientos = paquete.movimientos();
-        Movimientos.Movimiento orbita = movimientos.buscar("ORBITA_FRONTAL").orElseThrow();
+        String toma = "Slow orbit around the cake, soft window light.";
+        Movimientos.Creatividad producto = movimientos.creatividad("PRODUCTO").orElseThrow();
 
-        String prompt = movimientos.promptDeToma(orbita);
+        String prompt = movimientos.promptDeToma(toma, "PRODUCTO");
 
-        assertThat(prompt).contains(orbita.instruccion()).endsWith(movimientos.prohibiciones())
+        assertThat(prompt).contains(toma, movimientos.prohibiciones()).endsWith(producto.prohibicionesExtra())
                 .doesNotContain(Movimientos.MARCA_INSTRUCCION);
-        assertThat(movimientos.negativos()).contains("hands", "text", "logo");
+        // Un video anterior, sin creatividad, solo lleva las prohibiciones generales.
+        assertThat(movimientos.promptDeToma(toma, null)).endsWith(movimientos.prohibiciones());
+        assertThat(movimientos.negativos("PRODUCTO")).contains("hands", "text", "logo", "new background");
+        assertThat(movimientos.negativos(null)).isEqualTo(movimientos.negativos());
     }
 }

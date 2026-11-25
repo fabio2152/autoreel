@@ -11,7 +11,7 @@ interface Props {
   onSubirNuevo: () => void
 }
 
-/** RF-20: carrusel del catálogo (solo productos con sus tres fotos) o subir uno nuevo hoy. */
+/** RF-20: carrusel del catálogo (solo productos con su foto principal) o subir uno nuevo hoy. */
 export function SelectorDeProducto({ productos, incompletos, deshabilitado, onElegir, onSubirNuevo }: Props) {
   const [elegido, setElegido] = useState<ProductoCarrusel | null>(null)
 

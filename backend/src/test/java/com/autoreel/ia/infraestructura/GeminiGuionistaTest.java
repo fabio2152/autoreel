@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import com.autoreel.ia.dominio.ErrorDeProveedor;
 import com.autoreel.ia.dominio.EstadoModelo;
+import com.autoreel.ia.dominio.Guionista.ImagenAdjunta;
 import com.autoreel.ia.dominio.Guionista.RespuestaDelModelo;
 import com.autoreel.ia.dominio.ModeloIA;
 import com.autoreel.ia.dominio.TipoModelo;
@@ -39,10 +42,13 @@ class GeminiGuionistaTest {
     }
 
     @Test
-    void enviaLaPeticionConElModeloLaClaveYElEsquema() {
+    void enviaLaPeticionConElModeloLaClaveElEsquemaYLasFotos() {
         servidor.responderTexto("{\"planos\":[]}");
+        List<ImagenAdjunta> fotos = List.of(new ImagenAdjunta(new byte[] {1, 2, 3}, "image/jpeg"),
+                new ImagenAdjunta(new byte[] {4, 5}, "image/jpeg"));
 
-        RespuestaDelModelo respuesta = guionista.escribir(modelo(), "clave-de-prueba", "Escribe el guion", ESQUEMA);
+        RespuestaDelModelo respuesta = guionista.escribir(modelo(), "clave-de-prueba", "Escribe el guion", ESQUEMA,
+                fotos);
 
         assertThat(respuesta.texto()).isEqualTo("{\"planos\":[]}");
         ServidorGeminiSimulado.Peticion peticion = servidor.peticiones().getFirst();
@@ -51,6 +57,13 @@ class GeminiGuionistaTest {
         JsonNode cuerpo = json.readTree(peticion.cuerpo());
         assertThat(cuerpo.at("/contents/0/role").asString()).isEqualTo("user");
         assertThat(cuerpo.at("/contents/0/parts/0/text").asString()).isEqualTo("Escribe el guion");
+        // Las fotos van después del texto, en orden y en base64.
+        assertThat(cuerpo.at("/contents/0/parts")).hasSize(3);
+        assertThat(cuerpo.at("/contents/0/parts/1/inlineData/mimeType").asString()).isEqualTo("image/jpeg");
+        assertThat(cuerpo.at("/contents/0/parts/1/inlineData/data").asString())
+                .isEqualTo(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3}));
+        assertThat(cuerpo.at("/contents/0/parts/2/inlineData/data").asString())
+                .isEqualTo(Base64.getEncoder().encodeToString(new byte[] {4, 5}));
         assertThat(cuerpo.at("/generationConfig/responseMimeType").asString()).isEqualTo("application/json");
         assertThat(cuerpo.at("/generationConfig/responseJsonSchema/type").asString()).isEqualTo("object");
         assertThat(cuerpo.at("/generationConfig/temperature").asDouble()).isEqualTo(0.4);

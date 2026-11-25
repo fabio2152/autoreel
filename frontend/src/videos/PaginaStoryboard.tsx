@@ -32,7 +32,7 @@ import { PantallaGenerando, Reproductor } from './Generacion'
 /** A partir de este tiempo esperando el guion, se avisa y se consulta con menos frecuencia. */
 const ESPERA_LARGA_MS = 60_000
 
-const NOMBRES_FOTO: Record<TipoFoto, string> = { ENTERO: 'Entero', DETALLE: 'Detalle', PORCION: 'Porción' }
+const NOMBRES_FOTO: Record<TipoFoto, string> = { FOTO_1: 'Foto 1', FOTO_2: 'Foto 2', FOTO_3: 'Foto 3' }
 
 /** Igual que ValidadorDeGuion.MAXIMO_CARACTERES_TEXTO del backend. */
 const MAXIMO_CARACTERES_TEXTO = 200
@@ -152,9 +152,19 @@ function Storyboard({ video }: { video: Video }) {
             ? 'Tu video está listo. Míralo y, si quieres, cambia un texto o pide otra versión de un momento.'
             : video.estado === 'APROBADO'
               ? 'Aprobaste tu video. Ya puedes descargarlo.'
-              : 'Revisa los cuatro momentos de tu video de 15 segundos. Puedes cambiar los textos y las fotos.'}
+              : 'Revisa los momentos de tu video de 15 segundos. Puedes cambiar los textos y las fotos.'}
         </p>
       </header>
+
+      {video.concepto && (
+        <section className="rounded-2xl bg-marca-50 p-4 ring-1 ring-marca-100">
+          <p className="text-xs font-medium tracking-wide text-marca-700 uppercase">
+            La idea · {video.concepto.estructura}
+            {video.concepto.creatividad && ` · ${video.concepto.creatividad}`}
+          </p>
+          {video.concepto.idea && <p className="mt-1 text-sm text-stone-800">{video.concepto.idea}</p>}
+        </section>
+      )}
 
       {(enRevision || video.estado === 'APROBADO') && <Reproductor video={video} />}
       {video.generacion.avisoRevision && enRevision && <Aviso tipo="error">{video.generacion.avisoRevision}</Aviso>}
@@ -331,7 +341,7 @@ function TarjetaPlano({
   const guardarFoto = useEditarPlano(video, plano.orden, onGuardado)
   const elegirFoto = (cambio: CambioDePlano) =>
     guardarFoto.mutate(cambio, { onSuccess: () => setEligiendoFoto(false) })
-  const palabras = contarPalabras(texto ?? plano.texto)
+  const palabras = contarPalabras(texto ?? plano.texto ?? '')
   const excede = palabras > plano.maxPalabras
 
   return (
@@ -363,22 +373,26 @@ function TarjetaPlano({
             {plano.orden}. {plano.nombre} · {plano.segundos} s
           </p>
           <p className="text-sm text-stone-600">
-            <span className="font-medium text-stone-800">Movimiento:</span> {plano.movimiento.descripcion}
+            <span className="font-medium text-stone-800">Toma:</span> {plano.movimiento.descripcion}
           </p>
           {texto === null ? (
             <div>
-              <p className="text-lg leading-snug font-semibold text-stone-900">{plano.texto}</p>
+              {plano.texto ? (
+                <p className="text-lg leading-snug font-semibold text-stone-900">{plano.texto}</p>
+              ) : (
+                <p className="text-sm text-stone-500 italic">Sin texto en pantalla</p>
+              )}
               {editable && (
                 <button
                   type="button"
                   onClick={() => {
                     guardarTexto.reset()
-                    setTexto(plano.texto)
+                    setTexto(plano.texto ?? '')
                   }}
                   aria-label={'Editar texto del momento ' + plano.orden}
                   className={ENLACE_PEQUENO}
                 >
-                  Editar texto
+                  {plano.texto ? 'Editar texto' : 'Agregar texto'}
                 </button>
               )}
               {conIa && (
@@ -424,7 +438,7 @@ function TarjetaPlano({
                   type="submit"
                   className="flex-1"
                   cargando={guardarTexto.isPending}
-                  disabled={excede || !texto.trim()}
+                  disabled={excede || (plano.orden === 1 && !texto.trim())}
                 >
                   Guardar
                 </Boton>
