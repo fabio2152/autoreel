@@ -12,7 +12,7 @@ import com.autoreel.catalogo.dominio.TipoFoto;
  * @param opcion          botón elegido.
  * @param productoId      producto del catálogo.
  * @param productoNuevo   producto subido en el chat, con su foto principal (y hasta dos más).
- * @param omitir          "No, gracias" en una pregunta opcional.
+ * @param omitir          "No" en una pregunta opcional.
  */
 public record SolicitudMensaje(String paso, String texto, String opcion, Long productoId,
         ProductoNuevo productoNuevo, Boolean omitir) {

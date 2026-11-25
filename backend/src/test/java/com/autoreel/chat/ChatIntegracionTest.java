@@ -180,7 +180,7 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
 
         List<String> ultimos = ultimosMensajes(vista, 2);
         assertThat(ultimos.get(0)).startsWith("Soy un asistente para reunir información");
-        assertThat(ultimos.get(1)).isEqualTo("¿Qué lo hace especial hoy?");
+        assertThat(ultimos.get(1)).isEqualTo("¿Con qué frase quieres presentarlo?");
     }
 
     @Test
@@ -199,7 +199,7 @@ class ChatIntegracionTest extends PruebaDeIntegracion {
                 .andReturn().getResponse().getContentAsString());
         assertThat(ultimosMensajes(vista, 2).get(0)).startsWith("Como es una promoción");
 
-        // "No, gracias" tampoco vale: el chat recuerda que en una promoción el precio es obligatorio.
+        // "No" tampoco vale: el chat recuerda que en una promoción el precio es obligatorio.
         vista = json.readTree(responder(negocio, id, Map.of("paso", "precio", "omitir", true))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paso.id").value("precio"))

@@ -25,7 +25,7 @@ public record ConversacionVista(Long id, EstadoConversacion estado, Paso paso, L
         List<ProductoCarrusel> productos, int productosIncompletos, List<Resumen> resumen, Long videoId) {
 
     /**
-     * @param omitible    se puede responder "No, gracias" (no es obligatoria en este momento).
+     * @param omitible    se puede responder "No" (no es obligatoria en este momento).
      * @param sugerencia  texto que se ofrece como punto de partida (la descripción del producto).
      */
     public record Paso(String id, TipoPaso tipo, String texto, List<Opcion> opciones, boolean obligatoria,

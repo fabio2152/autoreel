@@ -231,12 +231,12 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
    - Producto estrella
    - Promoción
    - Fecha especial (muestra las fechas próximas)
-   - Tortas por encargo
+   - Tortas por encargo *(quitado del chat el 2026-11-25)*
    - Recién salido del horno
 2. **"¿Qué producto mostramos?"**, con dos botones:
    - **Elegir del catálogo:** un carrusel que muestra primero los productos de la temporada actual, con un mensaje como "Es verano: estos suelen funcionar mejor".
    - **Subir uno nuevo hoy:** pide nombre, descripción y las tres fotos, y al final pregunta "¿Lo guardo en tu catálogo?". *Cambio del 2026-11-25 (ADR 0022):* solo la foto principal es obligatoria; la Foto 2 y la Foto 3 son opcionales.
-3. **"¿Qué lo hace especial hoy?"**, texto libre. Se ofrece la descripción del catálogo como sugerencia.
+3. **"¿Qué lo hace especial hoy?"** *(desde el 2026-11-25: "¿Con qué frase quieres presentarlo?", una frase o idea para el gancho; el botón para omitir las preguntas opcionales dice "No")*, texto libre. Se ofrece la descripción del catálogo como sugerencia.
 4. **"¿Hay precio o promoción que quieras mencionar?"** Opcional; acepta "no". Si el tipo de video es Promoción, es obligatoria.
 5. **"¿Algo más que quieras que se diga?"** Opcional.
 5b. *(Quitado el 2026-11-25, ADR 0025: hay un solo modo de tomas, "Historia con ambiente y movimiento", y el chat ya no lo pregunta.)* **"Por último, ¿cómo quieres las tomas del video?"** *Nuevo el 2026-11-25 (ADR 0024), experimental.* Botones: **Tomas cortas** (por defecto: la IA elige entre Rápida y Clásica, clips con fundido), **Tomas largas con transiciones** (Clásica o Historia; cada clip termina en la foto de la toma siguiente con `lastFrame` de Veo), **Historia (2 tomas)**, **Plano único** y **Plano extendido** (una toma de 12 s: Veo genera 8 s y luego extiende el clip; si la extensión falla, se usa el clip base). Se guarda en `video.modo_tomas` y la IA solo puede elegir las estructuras de ese modo (`modosDeToma` en `plantilla.json`).

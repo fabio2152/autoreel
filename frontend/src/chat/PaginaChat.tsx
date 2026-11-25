@@ -269,7 +269,7 @@ function Chat({ conversacion, onActualizar, onRecargar, onEmpezarDeNuevo, empeza
                         onClick={() => enviar.mutate({ paso: paso.id, omitir: true })}
                         className="min-h-9 rounded-full bg-stone-100 px-3 text-xs font-medium text-stone-700 hover:bg-stone-200"
                       >
-                        No, gracias
+                        No
                       </button>
                     )}
                   </div>
