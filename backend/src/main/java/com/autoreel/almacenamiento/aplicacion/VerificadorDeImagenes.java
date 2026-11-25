@@ -40,8 +40,6 @@ public class VerificadorDeImagenes {
     /** Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse. */
     static final int LADO_MAYOR_MAXIMO = 8000;
     static final long PIXELES_MAXIMOS = 40_000_000L;
-    static final int LADO_MENOR_LOGO = 200;
-    static final int LADO_MAYOR_LOGO = 4000;
 
     private static final Map<String, String> TIPO_POR_FORMATO =
             Map.of("png", "image/png", "jpeg", "image/jpeg", "jpg", "image/jpeg", "webp", "image/webp");
@@ -94,16 +92,12 @@ public class VerificadorDeImagenes {
     private static void validarMedidas(int ancho, int alto, PropositoArchivo proposito) {
         int menor = Math.min(ancho, alto);
         int mayor = Math.max(ancho, alto);
-        if (mayor > LADO_MAYOR_MAXIMO || (long) ancho * alto > PIXELES_MAXIMOS
-                || (proposito == PropositoArchivo.LOGO && mayor > LADO_MAYOR_LOGO)) {
+        // Solo contra imágenes que pesan poco pero ocupan mucha memoria al abrirse. El logo no tiene medidas mínimas
+        // ni máximas propias (2026-11-25): basta con que sea PNG y pese hasta 5 MB.
+        if (mayor > LADO_MAYOR_MAXIMO || (long) ancho * alto > PIXELES_MAXIMOS) {
             throw new ExcepcionDeNegocio("IMAGEN_DEMASIADO_GRANDE",
                     "La imagen mide " + ancho + " × " + alto + " px y es demasiado grande. Usa una de hasta "
-                            + (proposito == PropositoArchivo.LOGO ? LADO_MAYOR_LOGO : LADO_MAYOR_MAXIMO) + " px por lado.");
-        }
-        if (proposito == PropositoArchivo.LOGO && menor < LADO_MENOR_LOGO) {
-            throw new ExcepcionDeNegocio("LOGO_MUY_PEQUENO",
-                    "Tu logo mide " + ancho + " × " + alto + " px. Necesitamos al menos " + LADO_MENOR_LOGO
-                            + " px en el lado más corto para que se vea nítido.");
+                            + LADO_MAYOR_MAXIMO + " px por lado.");
         }
         int minimo = ladoMenorMinimo(proposito);
         if (proposito.esFoto() && menor < minimo) {

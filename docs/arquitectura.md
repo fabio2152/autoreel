@@ -610,7 +610,7 @@ sequenceDiagram
     end
     S-->>D: ArchivoAlmacenado(contenido, tipo, tamano, etiqueta = ETag)
     D->>V: verificar(contenido, proposito, tipo según la extensión)
-    V-->>D: ImagenVerificada(ancho, alto, horizontal, sinTransparencia)<br/>o 400 ARCHIVO_INVALIDO / IMAGEN_ANIMADA / IMAGEN_DEMASIADO_GRANDE /<br/>LOGO_MUY_PEQUENO / FOTO_RESOLUCION_INSUFICIENTE / LOGO_DEBE_SER_PNG
+    V-->>D: ImagenVerificada(ancho, alto, horizontal, sinTransparencia)<br/>o 400 ARCHIVO_INVALIDO / IMAGEN_ANIMADA / IMAGEN_DEMASIADO_GRANDE /<br/>FOTO_RESOLUCION_INSUFICIENTE / LOGO_DEBE_SER_PNG
 
     Note over D,B: 4. copia a la clave definitiva
     D->>S: copiarSiNoCambio(claveTemporal, negocios/{id}/{carpeta}/{uuid}.{ext}, ETag)
@@ -640,8 +640,8 @@ Revisa el **contenido real** de la imagen, no su extensión ni el tipo que decla
 1. Al construirse llama a `ImageIO.setUseCache(false)` y `ImageIO.scanForPlugins()`; si no hay lector `image/webp` (TwelveMonkeys), la aplicación no arranca.
 2. El formato del lector (`png`, `jpeg`, `webp`) debe coincidir con el tipo que indica la extensión de la clave y estar admitido por el propósito. Si no: `ARCHIVO_INVALIDO` (o `LOGO_DEBE_SER_PNG` para el logo).
 3. Rechaza WebP animado (bandera de animación del bloque `VP8X`) y PNG animado (bloque `acTL` antes del primer `IDAT`, recorriendo los bloques del PNG por su longitud, no buscando el texto en los bytes): `IMAGEN_ANIMADA`.
-4. Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse: lado mayor ≤ 8000 px y total ≤ 40 MP; en el logo, lado mayor ≤ 4000 px (`IMAGEN_DEMASIADO_GRANDE`).
-5. Logo: lado menor ≥ 200 px (`LOGO_MUY_PEQUENO`). Fotos de producto: lado menor ≥ `LADO_MENOR_FOTO` = **720 px**; foto del local: ≥ `LADO_MENOR_FOTO_LOCAL` = **480 px** (desde el 2026-11-12, porque solo es el fondo del cierre) (`FOTO_RESOLUCION_INSUFICIENTE`, con las medidas reales en el mensaje; RN-11, V12). Hasta la revisión del flujo eran 1080 px; se bajó a 720 porque es lo que pide el clip de IA en 720p.
+4. Límites contra imágenes que pesan poco pero ocupan mucha memoria al abrirse: lado mayor ≤ 8000 px y total ≤ 40 MP (`IMAGEN_DEMASIADO_GRANDE`).
+5. Logo: solo PNG y hasta 5 MB, sin medidas mínimas ni máximas propias (desde el 2026-11-25; antes, lado menor ≥ 200 px y mayor ≤ 4000 px). Fotos de producto: lado menor ≥ `LADO_MENOR_FOTO` = **720 px**; foto del local: ≥ `LADO_MENOR_FOTO_LOCAL` = **480 px** (desde el 2026-11-12, porque solo es el fondo del cierre) (`FOTO_RESOLUCION_INSUFICIENTE`, con las medidas reales en el mensaje; RN-11, V12). Hasta la revisión del flujo eran 1080 px; se bajó a 720 porque es lo que pide el clip de IA en 720p.
 6. JPEG con orientación EXIF 5 a 8 (leída con `JPEGSegmentUtil` y `TIFFReader`): intercambia ancho y alto, así las medidas guardadas son las de la foto tal como se ve. `horizontal = ancho > alto`.
 7. Logo sin transparencia: solo se decodifica si el modelo de color tiene alfa, y se marca transparente si algún píxel tiene alfa < 255 (en los PNG de paleta, sin canal alfa separado, se mira el alfa de cada píxel con `getRGB`). Un PNG opaco se **acepta** con el aviso `LOGO_SIN_TRANSPARENCIA` (decisión del usuario).
 

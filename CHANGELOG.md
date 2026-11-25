@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Logo sin medidas] - 2026-11-25
+
+### Cambiado
+
+- **El logo solo debe ser PNG y pesar hasta 5 MB:** ya no se piden 200 px en el lado menor ni se limita a 4000 px por lado, ni en el navegador ni en el backend. Sigue el límite general contra imágenes enormes (8000 px por lado o 40 megapíxeles) y el aviso, que no bloquea, de un logo sin fondo transparente. Se quitó el error `LOGO_MUY_PEQUENO`.
+
 ## [Sin CI en GitHub Actions] - 2026-11-25
 
 ### Quitado

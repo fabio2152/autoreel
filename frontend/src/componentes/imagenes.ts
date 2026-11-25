@@ -73,18 +73,12 @@ export async function normalizarFoto(
   return { foto, horizontal: ancho > alto }
 }
 
-/** El logo se sube tal cual (PNG, para conservar la transparencia). */
+/** El logo se sube tal cual (PNG, para conservar la transparencia). Solo se piden el formato y el peso. */
 export async function revisarLogo(archivo: File): Promise<File> {
   if (archivo.type !== 'image/png') {
     throw new ErrorDeImagen('El logo debe ser una imagen PNG, idealmente con fondo transparente.')
   }
   if (archivo.size > 5 * MB) throw new ErrorDeImagen('El logo pesa más de 5 MB.')
-  const imagen = await abrir(archivo)
-  const menor = Math.min(imagen.width, imagen.height)
-  imagen.close()
-  if (menor < 200) {
-    throw new ErrorDeImagen('Tu logo es muy pequeño: necesitamos al menos 200 px en el lado más corto.')
-  }
   return archivo
 }
 

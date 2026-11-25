@@ -112,9 +112,11 @@ class VerificadorDeImagenesTest {
     }
 
     @Test
-    void rechazaUnLogoMuyPequeno() {
-        assertThatThrownBy(() -> verificador.verificar(Imagenes.png(120, 120, true), PropositoArchivo.LOGO,
-                "image/png"))
-                .extracting("codigo").isEqualTo("LOGO_MUY_PEQUENO");
+    void elLogoNoTieneMedidasMinimasNiMaximasPropias() {
+        assertThat(verificador.verificar(Imagenes.png(120, 120, true), PropositoArchivo.LOGO, "image/png").ancho())
+                .isEqualTo(120);
+        assertThat(verificador.verificar(Imagenes.png(5000, 1200, true), PropositoArchivo.LOGO, "image/png").ancho())
+                .isEqualTo(5000);
     }
+
 }
