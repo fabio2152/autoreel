@@ -17,7 +17,7 @@ El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la
 | Video | FFmpeg (composición del video final) |
 | Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, TanStack Query, React Router |
 | Pruebas | JUnit 5, Spring Security Test, Testcontainers (PostgreSQL y SeaweedFS), FFmpeg real para la composición |
-| CI | GitHub Actions: backend (`mvnw verify`) y frontend (lint y build) |
+| Verificación | En local antes de integrar: backend (`mvnw verify`) y frontend (lint y build). Sin CI en GitHub Actions (ADR 0023) |
 
 Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.autoreel`, un módulo por área de negocio con capas `api`, `aplicacion`, `dominio` e `infraestructura`) y una SPA en `frontend/`. La sesión es un JWT en una cookie `HttpOnly`, con protección CSRF.
 

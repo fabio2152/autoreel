@@ -353,7 +353,7 @@ Lo que exige el código actual. La configuración exacta se documenta en la fase
 
 - **Orden.** Primero el backend, que migra la base de datos con Flyway al arrancar, y después el frontend.
 - **Migraciones.** Deben ser compatibles con la versión anterior del backend mientras conviven las dos.
-- **CI.** Hoy GitHub Actions (`.github/workflows/ci.yml`) solo compila y prueba: no despliega. Automatizar el despliegue queda para la fase 8.
+- **CI.** No hay CI ni CD en GitHub Actions: se quitó el 2026-11-25 (ADR 0023). Las pruebas se corren en local antes de integrar y el despliegue es manual. Automatizarlo queda para después del MVP.
 
 ---
 
