@@ -2,6 +2,12 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin efectos raros al cambiar de fondo] - 2026-11-25
+
+### Cambiado
+
+- El prompt del clip prohíbe humo, nubes, niebla, destellos, flashes blancos, fundidos y transformaciones de escena: el lugar nuevo (la vitrina, la mesa) aparece solo porque la cámara se mueve, como si la foto se hubiera tomado ahí. En una prueba, Veo dibujó unas nubes blancas al pasar de la foto a la vitrina.
+
 ## [Movimiento del producto más marcado] - 2026-11-25
 
 ### Cambiado
