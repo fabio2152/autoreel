@@ -2,6 +2,14 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Venta por página web] - 2026-11-25
+
+### Agregado
+
+- **"¿Cómo te piden?" suma "Por página web"** y la pregunta **Página web** (tipo nuevo `WEB`): obligatoria si se elige ese canal, se guarda sin "https://", "www." ni la barra final, y se valida como dirección (por ejemplo `dulceencanto.pe` o `dulceencanto.com.pe/pedidos`).
+- **El cierre del video muestra la página web** junto al WhatsApp, y el llamado "Pide en nuestra web" (prioridad después de WhatsApp). El storyboard la muestra en el cierre.
+- Prueba `laPaginaWebSeGuardaSinProtocoloYSePideSiSeEligioElCanal`.
+
 ## [Logo sin medidas] - 2026-11-25
 
 ### Cambiado

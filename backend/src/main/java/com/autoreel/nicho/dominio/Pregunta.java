@@ -17,7 +17,9 @@ public record Pregunta(String id, int paso, String texto, String ayuda, TipoPreg
         TEXTO,
         SELECCION_MULTIPLE,
         /** Celular peruano de 9 dígitos que empieza con 9. */
-        TELEFONO
+        TELEFONO,
+        /** Dirección de una página web; se guarda sin "https://" ni "www." (2026-11-25). */
+        WEB
     }
 
     public record Condicion(String pregunta, String contiene) {

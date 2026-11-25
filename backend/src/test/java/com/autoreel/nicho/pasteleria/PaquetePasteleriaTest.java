@@ -128,6 +128,29 @@ class PaquetePasteleriaTest {
                 .extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
     }
 
+    /** Pedido del usuario (2026-11-25): el canal "Por página web" con su dirección, que se muestra en el cierre. */
+    @Test
+    void laPaginaWebSeGuardaSinProtocoloYSePideSiSeEligioElCanal() {
+        var preguntas = paquete.preguntasOnboarding();
+        assertThat(ValidadorDeRespuestas.normalizar(preguntas, Map.of("web", " https://www.DulceEncanto.pe/ ")))
+                .containsEntry("web", "DulceEncanto.pe");
+        assertThat(ValidadorDeRespuestas.normalizar(preguntas, Map.of("web", "dulceencanto.com.pe/pedidos")))
+                .containsEntry("web", "dulceencanto.com.pe/pedidos");
+        for (String invalida : List.of("dulce encanto", "dulceencanto", "https://")) {
+            assertThatThrownBy(() -> ValidadorDeRespuestas.normalizar(preguntas, Map.of("web", invalida)))
+                    .as(invalida).extracting("codigo").isEqualTo("RESPUESTA_INVALIDA");
+        }
+
+        Map<String, Object> respuestas = new HashMap<>(Map.of(
+                "especialidad", List.of("TORTAS_PERSONALIZADAS"), "publico", List.of("FAMILIAS"),
+                "ciudad", "Lima", "distrito", "Miraflores", "canales", List.of("WEB"),
+                "horario", "Todos los días de 9 a 6"));
+        assertThatThrownBy(() -> ValidadorDeRespuestas.exigirCompletas(preguntas, respuestas))
+                .extracting("codigo").isEqualTo("PERFIL_INCOMPLETO");
+        respuestas.put("web", "dulceencanto.pe");
+        assertThatCode(() -> ValidadorDeRespuestas.exigirCompletas(preguntas, respuestas)).doesNotThrowAnyException();
+    }
+
     @Test
     void exigeLasObligatoriasYWhatsappSoloSiSeEligio() {
         var preguntas = paquete.preguntasOnboarding();

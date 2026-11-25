@@ -634,6 +634,11 @@ function TarjetaCierre({
               <span className="font-medium text-stone-800">WhatsApp:</span> {cierre.whatsapp}
             </p>
           )}
+          {cierre.web && (
+            <p>
+              <span className="font-medium text-stone-800">Web:</span> {cierre.web}
+            </p>
+          )}
         </div>
       </div>
     </article>

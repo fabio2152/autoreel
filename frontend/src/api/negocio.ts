@@ -5,7 +5,7 @@ export interface Opcion {
   texto: string
 }
 
-export type TipoPregunta = 'TEXTO' | 'SELECCION_MULTIPLE' | 'TELEFONO'
+export type TipoPregunta = 'TEXTO' | 'SELECCION_MULTIPLE' | 'TELEFONO' | 'WEB'
 
 /** Pregunta del onboarding definida por el paquete de nicho. */
 export interface Pregunta {

@@ -69,7 +69,7 @@ class FfmpegComponedorTest {
                 new PlanoAComponer(3, 4, null, fotos.vertical(foto(1600, 1200)),
                         "Cada porción con fresas de Huaral y crema batida")),
                 new CierreAComponer(4, fotos.vertical(foto(1920, 1080)), logo(), "S/ 65 la torta entera",
-                        "Te esperamos en San Isidro", "San Isidro", "+51 987 654 321", "#be123c"),
+                        "Te esperamos en San Isidro", "San Isidro", "+51 987 654 321", "dulceencanto.pe", "#be123c"),
                 paquete.leerPista(paquete.pistas().getFirst()), paquete.tipografia("CASERO"));
 
         JsonNode info = sondear(componedor.componer(composicion));
@@ -90,7 +90,7 @@ class FfmpegComponedorTest {
                 new PlanoAComponer(1, 3, null, foto, "Recién salido del horno"),
                 new PlanoAComponer(2, 4, null, foto, "Alfajores de Maicena"),
                 new PlanoAComponer(3, 4, null, foto, "Rellenos de manjar")),
-                new CierreAComponer(4, null, null, null, "Pide por WhatsApp", "Miraflores", null, "#fde68a"),
+                new CierreAComponer(4, null, null, null, "Pide por WhatsApp", "Miraflores", null, null, "#fde68a"),
                 null, paquete.tipografia("ELEGANTE"));
 
         JsonNode info = sondear(componedor.componer(composicion));
@@ -111,7 +111,7 @@ class FfmpegComponedorTest {
                 new PlanoAComponer(2, 4, clip, null, "Cheesecake de maracuyá"),
                 new PlanoAComponer(3, 4, clip, null, "Cremosa, fresca y hecha hoy con piña y ñame")),
                 new CierreAComponer(4, null, logo(), "Recién salidas del horno", "Pide por WhatsApp",
-                        "Plaza Lima Sur, Chorrillos", "+51 987 654 321", "#be123c"),
+                        "Plaza Lima Sur, Chorrillos", "+51 987 654 321", null, "#be123c"),
                 paquete.leerPista(paquete.pistas().getFirst()), paquete.tipografia("ELEGANTE"));
 
         byte[] mp4 = componedor.componer(composicion);
@@ -135,7 +135,7 @@ class FfmpegComponedorTest {
                 new PlanoAComponer(1, 3, clip, null, "Uno"),
                 new PlanoAComponer(2, 4, clip, null, "Dos"),
                 new PlanoAComponer(3, 4, clip, null, "Tres")),
-                new CierreAComponer(4, null, null, "Recién salidas del horno", "Pide por WhatsApp", null, null,
+                new CierreAComponer(4, null, null, "Recién salidas del horno", "Pide por WhatsApp", null, null, null,
                         "#be123c"),
                 null, paquete.tipografia("CASERO"));
 
@@ -152,7 +152,7 @@ class FfmpegComponedorTest {
                 new FfmpegComponedor.PropiedadesFfmpeg("no-existe-ffmpeg", Duration.ofSeconds(5), 1));
         byte[] foto = fotos.vertical(foto(1080, 1920));
         Composicion composicion = new Composicion(List.of(new PlanoAComponer(1, 3, null, foto, "Hola")),
-                new CierreAComponer(4, foto, null, null, null, null, null, null), null, paquete.tipografia("CASERO"));
+                new CierreAComponer(4, foto, null, null, null, null, null, null, null), null, paquete.tipografia("CASERO"));
 
         assertThatThrownBy(() -> sinFfmpeg.componer(composicion)).isInstanceOf(ErrorDeComposicion.class);
     }

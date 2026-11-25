@@ -272,7 +272,7 @@ La versión anterior tenía **cuatro planos fijos:**
 1. **Gancho** (0 a 3 s), con IA, a partir de la foto **Detalle**. Texto: una frase de antojo de hasta 6 palabras.
 2. **Producto** (3 a 7 s), con IA, a partir de la foto **Entero**. Texto: el nombre del producto, hasta 5 palabras.
 3. **Relleno** (7 a 11 s), con IA, a partir de la foto **Porción**. Texto: lo que lo hace especial, hasta 7 palabras.
-4. **Cierre** (11 a 15 s), **sin clip de IA**. Fondo: la foto del local con un zoom suave hecho por el sistema, o los colores de marca. Contenido: el precio o la promoción (solo si el usuario los escribió), el llamado a la acción ("Pide por WhatsApp", "Te esperamos en [distrito]"), el WhatsApp y el logo.
+4. **Cierre** (11 a 15 s), **sin clip de IA**. Fondo: la foto del local con un zoom suave hecho por el sistema, o los colores de marca. Contenido: el precio o la promoción (solo si el usuario los escribió), el llamado a la acción ("Pide por WhatsApp", "Te esperamos en [distrito]"), el WhatsApp y el logo. *Cambio del 2026-11-25:* "¿Cómo te piden?" suma la opción **Por página web** (`WEB`), con la pregunta **Página web** (tipo `WEB`, obligatoria si se elige ese canal, se guarda sin "https://" ni "www."). Su llamado es "Pide en nuestra web" (prioridad después de WhatsApp) y el cierre muestra la dirección junto al WhatsApp.
 
    *Desde el 2026-11-25 (ADR 0022)*, el cierre dura 3 segundos (7 en el plano único) y su contenido no cambia.
 

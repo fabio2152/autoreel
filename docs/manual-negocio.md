@@ -190,8 +190,9 @@ Debajo del título dice: "Con esto escribimos los textos y el cierre de cada vid
 | **¿Quiénes son tus clientes principales?** | Toca una o varias opciones. Si no está el tuyo, usa **Otros**. | Familias · Jóvenes · Celebraciones y cumpleaños · Empresas y eventos · **Otros** |
 | **Ciudad** | Texto, hasta 60 caracteres. | Lima |
 | **Distrito** | Texto, hasta 60 caracteres. Se usa en el cierre del video: "Te esperamos en Miraflores". | Miraflores |
-| **¿Cómo te piden?** | Marca **al menos una** opción; puedes combinarlas. Si no está la tuya, usa **Otros**. | Por WhatsApp · Por apps de delivery · En la tienda · **Otros** |
+| **¿Cómo te piden?** | Marca **al menos una** opción; puedes combinarlas. Si no está la tuya, usa **Otros**. | Por WhatsApp · Por página web · Por apps de delivery · En la tienda · **Otros** |
 | **Número de WhatsApp** | Celular de **9 dígitos que empiece con 9**. El **+51** ya está puesto. Puedes escribirlo con espacios o guiones. Aparece en el cierre del video. | 987 654 321 |
+| **Página web** | Obligatoria si marcaste **Por página web**. Escribe la dirección, con o sin "https://" o "www." (se guarda sin ellos). Aparece en el cierre del video. | dulceencanto.pe |
 | **Horario de atención** | Texto, hasta 120 caracteres. | Lunes a sábado de 9 a. m. a 8 p. m. |
 
 - **El WhatsApp es obligatorio solo si marcas "Por WhatsApp"**. Si no lo marcas, la pregunta aparece como "(opcional)".
@@ -676,7 +677,7 @@ La tarjeta del cierre muestra:
 
 - **El texto grande:** el precio o, si no hay, la frase.
 - **Precio:** el precio que va en el video, o "Sin precio". Si hay precio y también frase, debajo dice "Si quitas el precio, se mostrará la frase: …".
-- **Llamado:** cómo pedir, según lo que marcaste en "¿Cómo te piden?" de tu perfil. Si tienes varias opciones, se usa la primera de esta lista: "Pide por WhatsApp", "Pídelo por delivery", "Te esperamos en *tu distrito*".
+- **Llamado:** cómo pedir, según lo que marcaste en "¿Cómo te piden?" de tu perfil. Si tienes varias opciones, se usa la primera de esta lista: "Pide por WhatsApp", "Pide en nuestra web", "Pídelo por delivery", "Te esperamos en *tu distrito*". Si vendes por WhatsApp o por tu web, el cierre muestra también tu número y tu página web.
 - **Ubicación:** tu distrito o, si en el chat dijiste dónde estás (por ejemplo, "nuestro local está en Plaza Lima Sur, Chorrillos"), ese lugar: "Plaza Lima Sur, Chorrillos". No se repite si el llamado ya lo dice.
 - **WhatsApp:** tu número, si vendes por WhatsApp.
 

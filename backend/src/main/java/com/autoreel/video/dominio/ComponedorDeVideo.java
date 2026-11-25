@@ -39,10 +39,11 @@ public interface ComponedorDeVideo {
      *                       desenfocado y oscurecido.
      * @param logo           el logo (PNG o JPEG); puede faltar.
      * @param textoPrincipal lo que va en grande: el precio o, si no hay, la frase que escribió la IA.
+     * @param web            página web a mostrar si el negocio vende por su web.
      * @param colorDeMarca   color primario del negocio (#rrggbb), para destacar el llamado.
      */
     record CierreAComponer(int segundos, byte[] fotoDelLocal, byte[] logo, String textoPrincipal, String llamado,
-            String ubicacion, String whatsapp, String colorDeMarca) {
+            String ubicacion, String whatsapp, String web, String colorDeMarca) {
     }
 
     class ErrorDeComposicion extends RuntimeException {
