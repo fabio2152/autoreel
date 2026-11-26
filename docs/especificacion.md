@@ -43,7 +43,7 @@ Una plataforma **especializada en un solo nicho**, que decide casi todo por el u
 - **Usa una plantilla fija de 4 planos y 15 segundos,** pensada para evitar los errores típicos de la IA. *Cambio del 2026-11-25 (ADR 0022):* el video sigue durando 15 segundos, pero la IA elige entre cuatro estructuras de 1 a 4 tomas, más el cierre (sección 7.4).
 - **Pide la información con un chat de preguntas fijas,** sin que el usuario tenga que saber de marketing.
 - **Muestra un storyboard antes de generar,** para no gastar en videos que el usuario no quiere.
-- **Publica directamente en Instagram,** con el texto y los hashtags ya escritos.
+- **Publica directamente en Instagram,** con el texto y los hashtags ya escritos. *Fuera del MVP desde el 2026-11-25 (ADR 0026): el negocio descarga el video y lo sube a mano.*
 
 ## 3. Modelo de negocio
 
@@ -71,7 +71,7 @@ Prioridad: **M** = imprescindible para el MVP, **S** = importante, **C** = desea
 - **RF-01 (M).** El administrador inicia sesión y entra al panel de administración.
 - **RF-02 (M).** El administrador ve la lista de negocios con su nombre, correo, nicho, plan, próxima fecha de pago, estado de pago, videos generados en el mes, estado y último acceso.
 - **RF-03 (M).** El administrador crea un negocio eligiendo el nicho (solo "Pastelería" por ahora, marcado por defecto), el nombre, el correo del usuario, el plan (solo "Lite" por ahora), el monto mensual acordado y la fecha del primer pago. El sistema genera una contraseña temporal y la muestra una sola vez.
-- **RF-04 (M).** El administrador reinicia la contraseña de un negocio: se genera una nueva contraseña temporal que el administrador entrega manualmente.
+- **RF-04 (M).** El administrador reinicia la contraseña de un negocio: se genera una nueva contraseña temporal que el administrador entrega manualmente. *Cambio del 2026-11-25 (ADR 0026):* el negocio puede pedirla desde Ajustes con "¿Olvidaste tu contraseña?" (RF-15): se crea una notificación `SOLICITUD_CONTRASENA` en la campana y el administrador la reinicia con esta misma función. No hay recuperación por correo.
 - **RF-05 (M).** El administrador entra al detalle de un negocio: perfil, suscripción, pagos, catálogo, videos y consumo.
 - **RF-06 (S).** El administrador suspende o reactiva un negocio y le cambia el plan.
 - **RF-07 (S).** El administrador ve el costo estimado acumulado de IA por negocio y por mes.
@@ -79,36 +79,36 @@ Prioridad: **M** = imprescindible para el MVP, **S** = importante, **C** = desea
 - **RF-09 (M).** El administrador recibe notificaciones en el panel cuando un cliente está por llegar a su fecha de pago, cuando la fecha es hoy y cuando el pago está vencido.
 - **RF-10 (M).** El administrador gestiona los planes: cada plan define cuántos videos por día permite, cuántas regeneraciones por video, qué modelo de texto y qué modelo de video usa, y qué opciones de producción habilita. En el MVP existe solo el plan Lite, pero se pueden crear más sin programar.
 - **RF-11 (M).** En los ajustes del panel, el administrador ve las **integraciones de IA**: los modelos disponibles, su tipo (texto o video), su costo de referencia y su estado; puede activarlos o desactivarlos y probar la conexión. *Hoy hay cuatro (ADR 0017): Gemini y Gemini Omni Flash por Google AI Studio (activos), y Gemini y Veo 3.1 Lite por Google Cloud (inactivos). Desde el 2026-11-06 también pega ahí las claves de los proveedores (ADR 0018).*
-- **RF-12 (S).** El administrador otorga a un negocio un **beneficio temporal**: usar un plan superior durante un período (por ejemplo, el plan Pro por un día), como cortesía a clientes antiguos o por un inconveniente.
+- **RF-12 (S).** El administrador otorga a un negocio un **beneficio temporal**: usar un plan superior durante un período (por ejemplo, el plan Pro por un día), como cortesía a clientes antiguos o por un inconveniente. *Cambio del 2026-11-25 (ADR 0026):* el beneficio ya no es por un período sino por una **cantidad de usos** (de 1 a 30, por ejemplo 5 videos con el plan Pro): cada video creado con el beneficio y aprobado gasta un uso (RN-50 a RN-53).
 
 ### 5.2 Acceso del negocio
 
 - **RF-13 (M).** El usuario inicia sesión con su correo y la contraseña temporal, y el sistema lo obliga a crear y confirmar una contraseña propia.
 - **RF-14 (M).** El usuario del negocio entra directamente a su negocio; solo el administrador ve el panel de administración.
-- **RF-15 (S).** El usuario cambia su contraseña desde Ajustes.
+- **RF-15 (S).** El usuario cambia su contraseña desde Ajustes. *Cambio del 2026-11-25 (ADR 0026):* debajo hay un botón **"¿Olvidaste tu contraseña?"** que abre una ventana con su correo, un WhatsApp opcional y un mensaje de hasta 200 caracteres; al enviarla, se avisa al administrador (una vez por día) para que le envíe una contraseña temporal (RF-04).
 
 ### 5.3 Perfil y catálogo
 
 - **RF-16 (M).** En el primer ingreso aparece el onboarding en pantalla completa, con las preguntas del paquete de nicho y el aviso de que podrá cambiarlas en Ajustes.
 - **RF-17 (M).** El usuario edita su perfil en Ajustes en cualquier momento.
-- **RF-18 (M).** El usuario gestiona su catálogo: crea productos con nombre, descripción y tres fotos; los edita y los archiva. *Cambio del 2026-11-06:* la temporada no se pide en el MVP (cada producto queda como "Todo el año"; ADR 0013). *Cambio del 2026-11-25 (ADR 0022):* solo la **Foto 1** (principal) es obligatoria; la Foto 2 y la Foto 3 son opcionales (sección 7.2).
+- **RF-18 (M).** El usuario gestiona su catálogo: crea productos con nombre, descripción y tres fotos; los edita y los archiva. *Cambio del 2026-11-06:* la temporada no se pide en el MVP (cada producto queda como "Todo el año"; ADR 0013). *Cambio del 2026-11-25 (ADR 0022):* solo la **Foto 1** (principal) es obligatoria; la Foto 2 y la Foto 3 son opcionales (sección 7.2). *Cambio del 2026-11-25 (ADR 0026):* cada producto tiene **una sola foto**.
 
 ### 5.4 Creación del video
 
 - **RF-19 (M).** La pantalla principal es un chat de preguntas fijas, sin IA, que reúne la información del video del día.
 - **RF-20 (M).** En el chat, el usuario elige un producto del catálogo (primero los de temporada) o sube uno nuevo ese día, con la opción de guardarlo en el catálogo.
 - **RF-21 (M).** Con las respuestas, el perfil y las fotos, el sistema genera un guion y muestra el storyboard de 4 planos. *Cambio del 2026-11-25 (ADR 0022):* el storyboard tiene de 1 a 4 tomas, según la estructura que eligió la IA, más el cierre, y muestra la idea del video.
-- **RF-22 (M).** El usuario ajusta los textos o cambia la foto de un plano, y aprueba el storyboard.
+- **RF-22 (M).** El usuario ajusta los textos o cambia la foto de un plano, y aprueba el storyboard. *Cambio del 2026-11-25 (ADR 0026):* ya no se cambia la foto de un plano. En cada toma, el usuario edita el texto y escribe **correcciones** (lo que no quiere que aparezca, hasta 300 caracteres); se aplican al crear el video (sección 8.4).
 - **RF-23 (M).** El sistema genera los clips con IA, compone el video con la plantilla y avisa cuando está listo.
-- **RF-24 (M).** El usuario ve el video, regenera un plano específico o edita un texto, y lo aprueba.
+- **RF-24 (M).** El usuario ve el video, regenera un plano específico o edita un texto, y lo aprueba. *Cambio del 2026-11-25 (ADR 0026):* "Regenerar plano" está dentro de la edición del plano, después de guardar el texto o las correcciones; el texto de la publicación se muestra justo debajo del video.
 - **RF-25 (M).** El usuario descarga el video.
 - **RF-26 (M).** El usuario ve el historial de sus videos con su estado.
 
 ### 5.5 Publicación
 
-- **RF-27 (M).** El usuario conecta su cuenta profesional de Instagram.
-- **RF-28 (M).** El usuario publica el video como Reel en Instagram, con el texto y los hashtags generados, que puede editar.
-- **RF-29 (S).** El usuario programa la publicación para una fecha y hora.
+- **RF-27 (M).** El usuario conecta su cuenta profesional de Instagram. *Cambio del 2026-11-25 (ADR 0026):* **fuera del MVP (futuro)**.
+- **RF-28 (M).** El usuario publica el video como Reel en Instagram, con el texto y los hashtags generados, que puede editar. *Cambio del 2026-11-25 (ADR 0026):* **fuera del MVP (futuro)**. Por ahora el usuario descarga su video (RF-25) y lo sube a mano.
+- **RF-29 (S).** El usuario programa la publicación para una fecha y hora. *Fuera del MVP desde el 2026-11-25 (ADR 0026), como RF-27 y RF-28.*
 - **RF-30 (F).** Publicación en una página de Facebook.
 
 ### 5.6 Futuro
@@ -158,7 +158,7 @@ Prioridad: **M** = imprescindible para el MVP, **S** = importante, **C** = desea
 3. El usuario ajusta y aprueba.
 4. El sistema genera los clips, compone el video y lo avisa.
 5. El usuario revisa, regenera un plano si hace falta y aprueba.
-6. Publica en Instagram, lo programa o lo descarga.
+6. Publica en Instagram, lo programa o lo descarga. *Desde el 2026-11-25 (ADR 0026), en el MVP solo lo descarga: la publicación en Instagram es futura.*
 
 ```mermaid
 flowchart LR
@@ -223,6 +223,8 @@ Cada producto tiene:
 
 Cada foto se pide con una imagen de ejemplo y tres indicaciones: luz natural, sin personas ni manos, y en vertical. *Desde el 2026-11-25*, la guía de fotos sugiere variedad (la Foto 2 y la Foto 3 distintas de la principal) y avisa que la IA elige cuáles usar.
 
+*Cambio del 2026-11-25 (ADR 0026): **una sola foto por producto**,* la **Foto del producto** (`FOTO_1`): la que mejor lo muestra, completo, bien iluminado y con lo que lo hace especial a la vista. Todas las tomas del video parten de ella, porque la IA trabaja mejor con una sola foto. La guía muestra un solo ejemplo. La migración `V15` dejó en cada producto su foto de menor número como `FOTO_1` y borró las demás (los videos ya hechos conservan las suyas).
+
 ### 7.3 Guion del chat
 
 El chat es una **conversación simulada**: las preguntas son siempre las mismas y están en el paquete. Cada pregunta tiene un tipo (botones, selector de producto, texto libre u opcional).
@@ -235,7 +237,7 @@ El chat es una **conversación simulada**: las preguntas son siempre las mismas 
    - Recién salido del horno
 2. **"¿Qué producto mostramos?"**, con dos botones:
    - **Elegir del catálogo:** un carrusel que muestra primero los productos de la temporada actual, con un mensaje como "Es verano: estos suelen funcionar mejor".
-   - **Subir uno nuevo hoy:** pide nombre, descripción y las tres fotos, y al final pregunta "¿Lo guardo en tu catálogo?". *Cambio del 2026-11-25 (ADR 0022):* solo la foto principal es obligatoria; la Foto 2 y la Foto 3 son opcionales.
+   - **Subir uno nuevo hoy:** pide nombre, descripción y las tres fotos, y al final pregunta "¿Lo guardo en tu catálogo?". *Cambio del 2026-11-25 (ADR 0022):* solo la foto principal es obligatoria; la Foto 2 y la Foto 3 son opcionales. *Desde el ADR 0026:* pide una sola foto.
 3. **"¿Qué lo hace especial hoy?"** *(desde el 2026-11-25: "¿Con qué frase quieres presentarlo?", una frase o idea para el gancho; el botón para omitir las preguntas opcionales dice "No")*, texto libre. Se ofrece la descripción del catálogo como sugerencia.
 4. **"¿Hay precio o promoción que quieras mencionar?"** Opcional; acepta "no". Si el tipo de video es Promoción, es obligatoria.
 5. **"¿Algo más que quieras que se diga?"** Opcional.
@@ -483,6 +485,15 @@ FFmpeg, ejecutado por el backend, une los clips, agrega el plano de cierre, los 
 - **Regenerar un plano** genera un clip nuevo solo para ese plano. Cada video permite la cantidad de regeneraciones que define su plan: **3 en el plan Lite**. Agotadas, el botón se desactiva.
 - **Cambiar la foto de un plano** también regenera ese clip.
 
+*Cambio del 2026-11-25 (ADR 0026):*
+
+- **Ya no se cambia la foto de un plano** (cada producto tiene una sola foto).
+- **Correcciones.** Al editar una toma, el usuario escribe, además del texto en pantalla, lo que no quiere que aparezca ("que no tenga hojas de menta"), hasta 300 caracteres. Guardarlas no tiene costo ni recompone el video.
+- **Regenerar** está dentro de la edición: después de guardar, el formulario muestra "Regenerar plano (te quedan N)" y "Listo". "Listo" aplica un texto nuevo (solo recompone).
+- **Si la toma tiene correcciones nuevas,** antes de pedir el clip el modelo de texto **reescribe la toma una sola vez** con la toma actual, las correcciones, la foto y las reglas del paquete de nicho (prompt `correccion-toma.md`). Cuesta un guion más (unos US$ 0,01). Si la reescritura falla, no se regenera y **no se gasta la regeneración** ("No pudimos aplicar tus correcciones; inténtalo en un rato. No se usó ninguna regeneración.").
+- Las correcciones escritas en el storyboard se aplican en la primera generación, antes de pedir el clip. Si ahí falla la reescritura, el clip sale con la toma de siempre y las correcciones quedan para una regeneración.
+- El **texto de la publicación** va justo debajo del video cuando está listo o aprobado.
+
 ### 8.5 Plan de respaldo
 
 *Cambio del 2026-11-06 (decisión del usuario):* **ya no hay respaldo sin IA para los clips**. El acercamiento de FFmpeg a la foto no sirve para el MVP.
@@ -522,19 +533,19 @@ Evolución prevista:
 - **Plan:** id, nombre, descripcion, videosPorDia, regeneracionesPorVideo, modeloTexto, modeloVideo, opcionesProduccionPermitidas (JSON), permitePersonas, precioReferencial, activo.
 - **ModeloIA:** id, nombre visible, proveedor (GOOGLE, RUNWAY, ANTHROPIC…), tipo (TEXTO o VIDEO), adaptador (el identificador de la implementación en el código, por ejemplo `VEO` o `GEMINI`), identificadorModelo (el nombre exacto que exige la API del proveedor), parametros (JSON: resolución, duración por clip, etc.), costoReferencial, unidadCosto (POR_SEGUNDO o POR_SOLICITUD), nombreSecreto (dónde está su credencial), estado (ACTIVO o INACTIVO), ultimaPrueba.
 - **Suscripcion:** id, negocio, plan, montoMensual, fechaInicio, proximaFechaPago, diasAviso (5 por defecto), diaPago (el día del primer pago, que se conserva al avanzar; RN-42).
-- **Pago:** id, suscripcion, fechaPago, monto, medio (TRANSFERENCIA, YAPE, PLIN, EFECTIVO u OTRO), periodoCubierto, nota, registradoPor.
-- **BeneficioTemporal:** id, negocio, plan, desde, hasta, motivo, otorgadoPor, fechaCreacion.
-- **NotificacionAdmin:** id, tipo (PAGO_POR_VENCER, PAGO_HOY, PAGO_VENCIDO, SUGERENCIA_SUSPENSION, INTEGRACION_CON_ERROR), negocio, modeloIA (en las de integración), periodo, mensaje, fecha, leida.
+- **Pago:** id, suscripcion, fechaPago, monto, medio (TRANSFERENCIA, YAPE, PLIN, EFECTIVO u OTRO), periodoCubierto, nota, registradoPor. *Desde el 2026-11-25 (ADR 0026, `V17`):* también comprobanteClave (la imagen del comprobante, opcional).
+- **BeneficioTemporal:** id, negocio, plan, desde, hasta, motivo, otorgadoPor, fechaCreacion. *Cambio del 2026-11-25 (ADR 0026):* usosOtorgados (1 a 30), usosConsumidos y terminado (`V16`); desde y hasta solo quedan en los beneficios anteriores.
+- **NotificacionAdmin:** id, tipo (PAGO_POR_VENCER, PAGO_HOY, PAGO_VENCIDO, SUGERENCIA_SUSPENSION, INTEGRACION_CON_ERROR y, desde el 2026-11-25, SOLICITUD_CONTRASENA), negocio, modeloIA (en las de integración), periodo, mensaje, fecha, leida.
 - **ConsumoDiario:** id, negocio, fecha, videosGenerados.
 - **Producto:** id, negocio, nombre, descripcion, temporadas, estado, fechaCreacion.
-- **FotoProducto:** id, producto, tipo (ENTERO, DETALLE o PORCION), claveS3, ancho, alto. *Desde el 2026-11-25 (ADR 0022, `V10`):* tipo FOTO_1, FOTO_2 o FOTO_3.
+- **FotoProducto:** id, producto, tipo (ENTERO, DETALLE o PORCION), claveS3, ancho, alto. *Desde el 2026-11-25 (ADR 0022, `V10`):* tipo FOTO_1, FOTO_2 o FOTO_3. *Desde el ADR 0026 (`V15`):* solo FOTO_1, una foto por producto.
 - **Conversacion:** id, negocio, estado (EN_CURSO, COMPLETA o ABANDONADA), pasoActual, respuestas (JSON), video.
 - **MensajeChat:** id, conversacion, autor (SISTEMA o USUARIO), texto, fechaHora.
-- **Video:** id, negocio, conversacion, producto, tipoVideo, estado, planAplicado, modeloTextoUsado, modeloVideoUsado, opcionesProduccion (JSON), guion (JSON), descripcionPublicacion, hashtags, claveS3Final, regeneracionesUsadas, costoEstimado, motivoError, fechas. *Desde el 2026-11-25 (ADR 0022, `V10`):* también estructura, creatividad e idea, lo que eligió la IA.
-- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor. En el cierre: precio, frase (desde el 2026-11-12, ADR 0021), llamado y ubicación. *Desde el 2026-11-25 (ADR 0022, `V10`):* también segundos (en todos los planos, el cierre incluido), toma y descripcionToma (las escribe la IA). El orden va de 1 a 5: el cierre es el plano sin foto que sigue a la última toma. `movimiento` solo lo tienen los videos anteriores, y `texto` puede ir vacío salvo en el gancho.
+- **Video:** id, negocio, conversacion, producto, tipoVideo, estado, planAplicado, modeloTextoUsado, modeloVideoUsado, opcionesProduccion (JSON), guion (JSON), descripcionPublicacion, hashtags, claveS3Final, regeneracionesUsadas, costoEstimado, motivoError, fechas. *Desde el 2026-11-25 (ADR 0022, `V10`):* también estructura, creatividad e idea, lo que eligió la IA. *Desde el ADR 0026 (`V16`):* también beneficio, el beneficio cuyo plan usa el video.
+- **Plano:** id, video, orden, tipoFoto, movimiento, texto, claveS3Clip, estado, intentos, usoRespaldo (solo en videos anteriores al 2026-11-06, ADR 0020), idTareaProveedor. En el cierre: precio, frase (desde el 2026-11-12, ADR 0021), llamado y ubicación. *Desde el 2026-11-25 (ADR 0022, `V10`):* también segundos (en todos los planos, el cierre incluido), toma y descripcionToma (las escribe la IA). El orden va de 1 a 5: el cierre es el plano sin foto que sigue a la última toma. `movimiento` solo lo tienen los videos anteriores, y `texto` puede ir vacío salvo en el gancho. *Desde el ADR 0026 (`V14`):* también correcciones (hasta 300 caracteres) y correccionesAplicadas (si la toma actual ya las tiene en cuenta).
 - **PistaMusical:** id, nicho, estilo, nombre, claveS3, duracion, licencia.
-- **CuentaInstagram:** id, negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken.
-- **Publicacion:** id, video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError.
+- **CuentaInstagram:** id, negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken. *(Futuro, fuera del MVP desde el 2026-11-25, ADR 0026.)*
+- **Publicacion:** id, video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError. *(Futuro, fuera del MVP desde el 2026-11-25, ADR 0026.)*
 - **RegistroCosto:** id, negocio, video, proveedor, concepto, cantidad, costoUsd, fechaHora.
 
 ### 9.2 Estados del video
@@ -580,8 +591,8 @@ stateDiagram-v2
 
 - **RN-09.** Mientras el onboarding no esté completo, el negocio no puede crear videos.
 - **RN-10.** El logo debe ser PNG de hasta 5 MB.
-- **RN-11.** Las fotos de productos deben ser JPG, PNG o WebP, de hasta 10 MB, con el lado menor de al menos 720 píxeles (lo que pide el clip de IA en 720p; antes 1080, cambio del 2026-11-06). *La foto del local, que solo es el fondo oscurecido del cierre, acepta desde 480 píxeles (cambio del 2026-11-12).* Las horizontales se aceptan con un aviso de que se recortarán al formato vertical. *Cambio del 2026-11-25: las fotos ya no tienen medidas mínimas; solo se revisan el tipo de archivo y el peso (`FOTO_RESOLUCION_INSUFICIENTE` ya no existe).*
-- **RN-12.** Un producto solo puede usarse en un video si tiene sus tres fotos. *Cambio del 2026-11-25 (ADR 0022):* un producto puede usarse en un video si tiene su **Foto 1** (la principal); la Foto 2 y la Foto 3 son opcionales.
+- **RN-11.** Las fotos de productos deben ser JPG, PNG o WebP, de hasta 10 MB, con el lado menor de al menos 720 píxeles (lo que pide el clip de IA en 720p; antes 1080, cambio del 2026-11-06). *La foto del local, que solo es el fondo oscurecido del cierre, acepta desde 480 píxeles (cambio del 2026-11-12).* Las horizontales se aceptan con un aviso de que se recortarán al formato vertical. *Cambio del 2026-11-25: las fotos ya no tienen medidas mínimas; solo se revisan el tipo de archivo y el peso (`FOTO_RESOLUCION_INSUFICIENTE` ya no existe).* *Cambio del 2026-11-25 (ADR 0026):* cada producto tiene **una sola foto** (`FOTO_1`). El **comprobante de pago** que adjunta el administrador sigue las mismas reglas de tipo (JPG, PNG o WebP), con un máximo de **5 MB**; el navegador convierte a JPG cualquier otra imagen que pueda abrir.
+- **RN-12.** Un producto solo puede usarse en un video si tiene sus tres fotos. *Cambio del 2026-11-25 (ADR 0022):* un producto puede usarse en un video si tiene su **Foto 1** (la principal); la Foto 2 y la Foto 3 son opcionales. *Cambio del 2026-11-25 (ADR 0026):* un producto puede usarse en un video si tiene **su foto**, la única que admite (`FOTO_1`); una segunda foto se rechaza.
 - **RN-13.** Un producto archivado no aparece en el chat, pero sus videos anteriores se conservan.
 - **RN-14.** Un producto subido desde el chat solo se guarda en el catálogo si el usuario lo acepta; si no, queda asociado únicamente a ese video.
 - **RN-15 (S).** Las fotos con personas o caras se rechazan automáticamente, usando un servicio de detección de rostros (Amazon Rekognition).
@@ -606,8 +617,8 @@ stateDiagram-v2
 
 - **RN-26.** Generar un video consume 1 video del día, en el momento en que el usuario aprueba el storyboard. El día es el calendario de Lima y los videos no usados no se acumulan. Si ya usó los videos del día, no puede aprobar y ve cuándo vuelve a tener disponible.
 - **RN-27.** Si el video termina en ERROR por una falla del sistema, se devuelve el video consumido. *Desde el 2026-11-12:* un video que falló al generarse se puede reintentar, y vuelve a consumir el video del día; uno que falló al escribir su guion se reintenta sin consumir (RN-25).
-- **RN-28.** Cada video permite las regeneraciones de plano que define su plan (3 en Lite). Agotadas, no se puede regenerar, pero sí editar textos.
-- **RN-29.** Editar un texto no consume videos ni regeneraciones.
+- **RN-28.** Cada video permite las regeneraciones de plano que define su plan (3 en Lite). Agotadas, no se puede regenerar, pero sí editar textos. *Cambio del 2026-11-25 (ADR 0026):* se regenera desde la edición del plano. Si la toma tiene correcciones nuevas, antes se reescribe con el modelo de texto; si eso falla, no se regenera y la regeneración no se descuenta (503 `CORRECCION_NO_DISPONIBLE`). Una segunda regeneración con las mismas correcciones no vuelve a reescribir la toma.
+- **RN-29.** Editar un texto no consume videos ni regeneraciones. *Cambio del 2026-11-25 (ADR 0026):* guardar correcciones tampoco consume nada ni recompone el video. Reescribir la toma con ellas registra el costo de un guion (RN-32), también si la respuesta no sirve.
 - **RN-30.** Un plano tiene dos intentos; si los dos fallan, se aplica la sección 8.5 (sin respaldo sin IA desde el 2026-11-06, ADR 0020).
 - **RN-31.** El video final dura exactamente 15 segundos y cumple las especificaciones de la sección 7.4.
 - **RN-32.** Cada llamada a un proveedor de IA registra su costo estimado.
@@ -644,10 +655,10 @@ stateDiagram-v2
 
 ### 10.9 Beneficios temporales
 
-- **RN-50. Plan efectivo.** Si el negocio tiene un beneficio temporal vigente, se usa el plan del beneficio; si no, el plan de su suscripción.
-- **RN-51.** Un beneficio tiene fecha y hora de inicio y de fin, un motivo obligatorio y una duración máxima de 30 días. Un negocio puede tener solo un beneficio vigente a la vez.
-- **RN-52.** Al terminar el beneficio, el negocio vuelve solo a su plan, sin intervención del administrador.
-- **RN-53.** El beneficio cambia los modelos, las regeneraciones y los videos por día del plan, pero no el monto de la suscripción ni la fecha de pago.
+- **RN-50. Plan efectivo.** Si el negocio tiene un beneficio temporal vigente, se usa el plan del beneficio; si no, el plan de su suscripción. *Cambio del 2026-11-25 (ADR 0026):* un beneficio está vigente mientras no esté terminado y le queden usos. El video guarda el beneficio con el que nació. **Un uso** es un video creado con el beneficio y aprobado con "Crear mi video" (o reintentado después de un error de generación); si el video falla y se devuelve el video del día (RN-27), también vuelve el uso.
+- **RN-51.** Un beneficio tiene fecha y hora de inicio y de fin, un motivo obligatorio y una duración máxima de 30 días. Un negocio puede tener solo un beneficio vigente a la vez. *Cambio del 2026-11-25 (ADR 0026):* en lugar de fechas, un beneficio tiene una **cantidad de usos, de 1 a 30**, y un motivo obligatorio. Un negocio puede tener solo un beneficio vigente a la vez (`BENEFICIO_VIGENTE`).
+- **RN-52.** Al terminar el beneficio, el negocio vuelve solo a su plan, sin intervención del administrador. *Cambio del 2026-11-25 (ADR 0026):* el beneficio termina al gastarse sus usos (queda **Agotado**) o cuando el administrador lo termina (**Terminado**). Un video creado con el beneficio que todavía no se aprobó ya no se puede aprobar si el beneficio se agotó (409 `BENEFICIO_AGOTADO`) o terminó (409 `BENEFICIO_TERMINADO`): el negocio lo descarta y crea otro con su plan.
+- **RN-53.** El beneficio cambia los modelos, las regeneraciones y los videos por día del plan, pero no el monto de la suscripción ni la fecha de pago. *Desde el 2026-11-25 (ADR 0026)* sigue igual: los videos por día del plan del beneficio limitan cuántos usos se pueden gastar cada día.
 - **RN-54.** Cada video guarda el plan y los modelos con los que se generó, para que el consumo y los costos queden bien registrados aunque el beneficio termine durante la generación.
 
 ### 10.10 Integraciones de IA
@@ -673,6 +684,8 @@ Se usa en modo imagen a video. Veo 3.1 Lite cuesta 0,05 dólares por segundo a 7
 Genera el guion en formato JSON. El costo por guion es de unos pocos centavos. Más adelante pueden agregarse otros proveedores de texto (por ejemplo, Claude) con su propio adaptador.
 
 ### 11.3 Instagram
+
+*Cambio del 2026-11-25 (ADR 0026): la publicación en Instagram queda **fuera del MVP** (futuro).* El negocio descarga su video y lo sube a mano. Lo que sigue describe cómo se integrará cuando se retome la fase 6.
 
 - Se usa la **API de Instagram con inicio de sesión de Instagram**, que solo requiere una cuenta profesional (empresa o creador), sin página de Facebook.
 - Permisos: `instagram_business_basic` e `instagram_business_content_publish`.
@@ -732,7 +745,7 @@ backend/src/main/java/com/autoreel/
 ├── catalogo/        productos y fotos
 ├── chat/            conversación guiada y agrupación de mensajes
 ├── video/           guion, storyboard, generación, composición, estados
-├── publicacion/     Instagram, programación
+├── publicacion/     Instagram, programación (futuro, fuera del MVP)
 ├── almacenamiento/  puerto de archivos y adaptador S3
 └── costos/          registro de costos
 ```
@@ -743,7 +756,7 @@ backend/src/main/java/com/autoreel/
 - `Guionista` → `GeminiGuionista` (después, otros proveedores de texto).
 - `ComponedorDeVideo` → `FfmpegComponedor`.
 - `AlmacenDeArchivos` → `S3Almacen`.
-- `PublicadorSocial` → `InstagramPublicador`.
+- `PublicadorSocial` → `InstagramPublicador` (futuro, fuera del MVP desde el ADR 0026).
 
 La implementación que se usa en cada video la elige la fábrica de proveedores según el plan efectivo del negocio (sección 11.5).
 
@@ -764,7 +777,7 @@ frontend/src/
 ├── chat/         pantalla principal
 ├── catalogo/     productos y subida de fotos
 ├── videos/       storyboard, revisión e historial
-├── ajustes/      perfil, contraseña y conexión de Instagram
+├── ajustes/      perfil, contraseña y "¿Olvidaste tu contraseña?" (Instagram, futuro)
 └── componentes/  piezas reutilizables
 ```
 
@@ -776,14 +789,15 @@ frontend/src/
 
 - `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/cambiar-contrasena`, `GET /api/auth/yo`.
 - `POST /api/auth/volver-al-panel`: el administrador que entró como un negocio vuelve a su sesión (ADR 0019).
+- `POST /api/auth/solicitar-reinicio`: el negocio que olvidó su contraseña le avisa al administrador (desde el 2026-11-25, ADR 0026).
 
 **Administración** (rol ADMIN)
 
 - `GET /api/admin/negocios`, `POST /api/admin/negocios`, `GET /api/admin/negocios/{id}`.
 - `POST /api/admin/negocios/{id}/reiniciar-contrasena`.
 - `POST /api/admin/negocios/{id}/suspender`, `POST /api/admin/negocios/{id}/reactivar`, `PUT /api/admin/negocios/{id}/plan`.
-- `GET /api/admin/nichos`, `GET /api/admin/costos?mes=`.
-- `GET /api/admin/negocios/{id}/pagos`, `POST /api/admin/negocios/{id}/pagos`.
+- `GET /api/admin/nichos`, `GET /api/admin/costos?mes=` y, desde el 2026-11-25, `GET /api/admin/costos/diario?mes=` (el gráfico por día).
+- `GET /api/admin/negocios/{id}/pagos`, `POST /api/admin/negocios/{id}/pagos` y, desde el 2026-11-25, `POST /api/admin/negocios/{id}/pagos/url-subida-comprobante`.
 - `GET /api/admin/notificaciones`, `POST /api/admin/notificaciones/{id}/leida`, `POST /api/admin/notificaciones/leidas`.
 - `GET`, `POST /api/admin/planes`, `PUT /api/admin/planes/{id}`.
 - `GET /api/admin/integraciones` (modelos, credenciales y adaptadores), `POST /api/admin/modelos-ia`, `PUT /api/admin/modelos-ia/{id}`, `POST /api/admin/modelos-ia/{id}/probar`, `POST /api/admin/modelos-ia/{id}/activar`, `POST /api/admin/modelos-ia/{id}/desactivar`.
@@ -799,11 +813,11 @@ frontend/src/
 - `GET`, `POST`, `PUT /api/productos`, `POST /api/productos/{id}/archivar`, `POST /api/productos/{id}/reactivar`.
 - `POST /api/chat/conversaciones`, `GET /api/chat/conversaciones/actual`, `POST /api/chat/conversaciones/{id}/mensajes`.
 - `GET /api/videos`, `GET /api/videos/{id}`.
-- `PUT /api/videos/{id}/planos/{orden}`: editar texto o cambiar foto en el storyboard y en la revisión (en la revisión, una foto nueva pide un clip nuevo).
-- `POST /api/videos/{id}/aprobar-storyboard`, `POST /api/videos/{id}/planos/{orden}/regenerar`, `POST /api/videos/{id}/aprobar`, `POST /api/videos/{id}/descartar`.
+- `PUT /api/videos/{id}/planos/{orden}`: editar texto o cambiar foto en el storyboard y en la revisión (en la revisión, una foto nueva pide un clip nuevo). *Desde el 2026-11-25 (ADR 0026):* texto o correcciones; ya no cambia la foto.
+- `POST /api/videos/{id}/aprobar-storyboard`, `POST /api/videos/{id}/planos/{orden}/regenerar` (desde el 2026-11-25, con un `{texto}` opcional), `POST /api/videos/{id}/aprobar`, `POST /api/videos/{id}/descartar`.
 - `GET /api/videos/{id}/descarga`.
-- `GET /api/instagram/conectar`, `GET /api/instagram/callback`, `DELETE /api/instagram`.
-- `POST /api/videos/{id}/publicar` (ahora o programado).
+- `GET /api/instagram/conectar`, `GET /api/instagram/callback`, `DELETE /api/instagram` (**futuro, fuera del MVP** desde el 2026-11-25, ADR 0026).
+- `POST /api/videos/{id}/publicar` (ahora o programado) (**futuro**, igual).
 
 Todas las respuestas de error tienen la forma `{"codigo": "...", "mensaje": "..."}`, con mensajes en español listos para mostrar.
 
@@ -814,11 +828,11 @@ Todas las respuestas de error tienen la forma `{"codigo": "...", "mensaje": "...
 **Administrador**
 
 - **Inicio de sesión.**
-- **Barra superior con campana de notificaciones**, con el número de notificaciones sin leer. Cada notificación de pago tiene el botón "Registrar pago".
+- **Barra superior con campana de notificaciones**, con el número de notificaciones sin leer. Cada notificación de pago tiene el botón "Registrar pago". *Desde el 2026-11-25*, la solicitud de contraseña de un negocio tiene "Ir a reiniciar contraseña".
 - **Lista de negocios:** tabla con búsqueda, filtro por estado de pago, la próxima fecha de pago con un color según su estado (verde al día, amarillo por vencer, naranja hoy, rojo vencido) y el botón "Crear negocio".
 - **Crear negocio:** nicho (Pastelería marcado), nombre, correo, plan (Lite marcado), monto mensual y fecha del primer pago. Al confirmar, una ventana muestra la contraseña temporal y el enlace, con un botón "Copiar mensaje para el cliente".
-- **Detalle del negocio:** datos, suscripción con el plan que rige hoy y sus modelos de video y de texto, historial de pagos con el botón "Registrar pago", consumo del mes, costo estimado (del mes y de cada video), beneficios con el botón "Otorgar beneficio", catálogo y videos, y los botones "Entrar como el negocio", reiniciar contraseña, suspender y cambiar plan.
-- **Costos:** costo estimado de IA por negocio en el mes elegido (clips y guiones).
+- **Detalle del negocio:** datos, suscripción con el plan que rige hoy y sus modelos de video y de texto, historial de pagos con el botón "Registrar pago", consumo del mes, costo estimado (del mes y de cada video), beneficios con el botón "Otorgar beneficio", catálogo y videos, y los botones "Entrar como el negocio", reiniciar contraseña, suspender y cambiar plan. *Desde el 2026-11-25:* "Registrar pago" permite adjuntar el comprobante (y el historial, "Ver comprobante"), y cada beneficio muestra sus usos ("3 de 5 usos").
+- **Costos:** costo estimado de IA por negocio en el mes elegido (clips y guiones). *Desde el 2026-11-25:* entre las cifras y la tabla, un gráfico de líneas con el costo acumulado de cada negocio por día del mes.
 - **Ajustes → Planes:** lista de planes con sus videos por día, regeneraciones, modelos y precio; crear y editar planes.
 - **Ajustes → Integraciones y claves:** las claves de cada proveedor (pegar o cambiar; solo se ve una pista y su origen) y la lista de modelos de IA con su proveedor, tipo, identificador, costo de referencia, estado y planes que lo usan, más los botones "Probar conexión", "Activar", "Desactivar", "Editar" y "Agregar modelo".
 - **Dentro de un negocio:** una franja fija "Estás viendo AutoReel como …" con el botón "Volver al panel".
@@ -828,13 +842,13 @@ Todas las respuestas de error tienen la forma `{"codigo": "...", "mensaje": "...
 - **Inicio de sesión** y **creación de contraseña.**
 - **Onboarding:** ventana de pantalla completa en tres pasos, con barra de progreso. Especialidad, clientes y canales tienen un chip "Otros" con texto de hasta 40 caracteres.
 - **Chat (pantalla principal):** centrado, con burbujas de conversación, botones de respuesta rápida, caja de texto (también en la primera pregunta) con un ejemplo de respuesta, carrusel de productos, subida de fotos con ejemplos y el aviso en un botón "?".
-- **Storyboard:** cuatro tarjetas verticales con la foto, el movimiento descrito en palabras simples y el texto editable, más el botón "Crear mi video" y el consumo del plan. *Cambio del 2026-11-25 (ADR 0022):* arriba, "La idea" con el nombre de la estructura y de la creatividad y la idea del video; luego una tarjeta por toma (de 1 a 4: "Gancho", "Toma 2"…) con su foto, sus segundos, "Toma: …" (la descripción en español) y el texto, que puede decir "Sin texto en pantalla" y "Agregar texto" fuera del gancho; y al final el cierre.
+- **Storyboard:** cuatro tarjetas verticales con la foto, el movimiento descrito en palabras simples y el texto editable, más el botón "Crear mi video" y el consumo del plan. *Cambio del 2026-11-25 (ADR 0022):* arriba, "La idea" con el nombre de la estructura y de la creatividad y la idea del video; luego una tarjeta por toma (de 1 a 4: "Gancho", "Toma 2"…) con su foto, sus segundos, "Toma: …" (la descripción en español) y el texto, que puede decir "Sin texto en pantalla" y "Agregar texto" fuera del gancho; y al final el cierre. *Cambio del 2026-11-25 (ADR 0026):* cada toma tiene "Editar texto y correcciones" (el texto en pantalla y "¿Qué no quieres que aparezca?"), sin "Cambiar foto".
 - **Generando:** pantalla de espera con mensajes amables; el usuario puede salir y recibe el aviso cuando está listo.
-- **Revisión:** reproductor vertical, botones "Regenerar este plano" y "Editar texto", y "Aprobar".
-- **Publicar:** descripción y hashtags editables, y las opciones "Publicar ahora", "Programar" y "Descargar".
+- **Revisión:** reproductor vertical, botones "Regenerar este plano" y "Editar texto", y "Aprobar". *Cambio del 2026-11-25 (ADR 0026):* debajo del reproductor, el texto de la publicación; en cada toma, "Editar texto y correcciones" ("Regenerar plano" aparece dentro, después de guardar).
+- **Publicar:** descripción y hashtags editables, y las opciones "Publicar ahora", "Programar" y "Descargar". *Desde el 2026-11-25, fuera del MVP: solo "Descargar".*
 - **Mis videos:** historial con miniatura y estado.
 - **Catálogo:** productos con sus fotos (sin temporadas en el MVP).
-- **Ajustes:** perfil, contraseña e Instagram.
+- **Ajustes:** perfil, contraseña e Instagram. *Cambio del 2026-11-25 (ADR 0026):* perfil y contraseña, con el botón "¿Olvidaste tu contraseña?". Sin Instagram.
 
 ---
 
@@ -927,8 +941,8 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 - **V22.** Aprobar el storyboard consume el video del día; un segundo video el mismo día no se puede aprobar, y al día siguiente sí.
 - **V23.** El video final dura 15 segundos, es vertical de 1080 × 1920 y tiene música.
 - **V24.** *Cambio del 2026-11-06:* si un clip falla dos veces, el video pasa a ERROR y se devuelve el video del día; en una regeneración, el plano conserva su clip anterior y la regeneración no se descuenta.
-- **V25.** Editar un texto después de generado no consume regeneraciones.
-- **V26.** Después de 3 regeneraciones, el botón de regenerar se desactiva, pero se pueden seguir editando textos.
+- **V25.** Editar un texto después de generado no consume regeneraciones. *Cambio del 2026-11-25 (ADR 0026):* guardar correcciones tampoco consume regeneraciones ni recompone. Al regenerar ese plano, el modelo de texto reescribe la toma con las correcciones una sola vez (se registra el costo del guion) y el clip nuevo usa la toma nueva; si la reescritura falla, la regeneración no se descuenta.
+- **V26.** Después de 3 regeneraciones, el botón de regenerar se desactiva, pero se pueden seguir editando textos. *Cambio del 2026-11-25 (ADR 0026):* el botón "Regenerar plano" vive dentro de la edición y deja de aparecer al agotarse ("Ya usaste las regeneraciones de este video."); el texto y las correcciones se siguen editando.
 - **V27.** Un video en ERROR por falla del sistema devuelve el video consumido.
 
 **Publicación**
@@ -954,8 +968,8 @@ Con el plan Pro creado, el administrador también podrá ofrecerlo como **benefi
 - **V37.** En Integraciones aparecen Gemini, Gemini Omni Flash y Veo 3.1 Lite, y "Probar conexión" informa si la credencial funciona. *Desde el 2026-11-25 (`V11`)* también Veo 3.1 Fast y Veo 3.1.
 - **V38.** Desactivar Veo 3.1 Lite mientras el plan Lite lo usa muestra un error.
 - **V39.** Un video del plan Lite registra Gemini y Veo 3.1 Lite como modelos usados.
-- **V40.** Con un plan Pro de prueba que use otro modelo de video, un beneficio temporal de un día hace que los videos de ese día usen el modelo del Pro, y al día siguiente el negocio vuelve al Lite solo.
-- **V41.** Un beneficio sin motivo, o de más de 30 días, se rechaza.
+- **V40.** Con un plan Pro de prueba que use otro modelo de video, un beneficio temporal de un día hace que los videos de ese día usen el modelo del Pro, y al día siguiente el negocio vuelve al Lite solo. *Cambio del 2026-11-25 (ADR 0026):* un beneficio de 2 usos del plan Pro hace que los videos nuevos usen el modelo del Pro; al aprobar dos videos, el beneficio queda **Agotado** y el negocio vuelve solo al Lite (un tercer video creado con el Pro no se aprueba: 409 `BENEFICIO_AGOTADO`). Si un video del beneficio falla, vuelven el video del día y el uso. El beneficio no vence por fecha: 40 días después sigue vigente si le quedan usos.
+- **V41.** Un beneficio sin motivo, o de más de 30 días, se rechaza. *Cambio del 2026-11-25 (ADR 0026):* se rechaza un beneficio sin motivo, con 0 o más de 30 usos, con el mismo plan de la suscripción o si el negocio ya tiene uno vigente (409 `BENEFICIO_VIGENTE`).
 
 ---
 
@@ -994,11 +1008,11 @@ Las fases 1 a 5 son el corazón del MVP: con ellas, una pastelería ya puede cre
 
 1. **Administrador:** crea "Pastelería Dulce Encanto" con el plan Lite y su fecha de pago, y copia la contraseña temporal y el enlace.
 2. **Primer ingreso:** el negocio entra, crea su contraseña y completa el onboarding.
-3. **Catálogo:** registra la "Torta Tres Leches de Fresa" con sus tres fotos y la etiqueta "verano". *Desde el 2026-11-25*, con su foto principal y, si quiere, dos fotos más de otros ángulos.
+3. **Catálogo:** registra la "Torta Tres Leches de Fresa" con sus tres fotos y la etiqueta "verano". *Desde el 2026-11-25*, con su foto principal y, si quiere, dos fotos más de otros ángulos. *Desde el ADR 0026*, con su única foto.
 4. **Chat:** elige "Producto estrella" y el producto del catálogo, y escribe dos mensajes seguidos sobre lo que lo hace especial (se agrupan). Escribe una pregunta y el chat le recuerda que solo recibe respuestas.
 5. **Storyboard:** ajusta una frase y aprueba.
-6. **Video:** recibe el Reel de 15 segundos, regenera un plano y aprueba.
-7. **Publicación:** lo publica en una cuenta de Instagram de prueba y se abre la publicación.
+6. **Video:** recibe el Reel de 15 segundos, regenera un plano y aprueba. *Desde el 2026-11-25*, escribe una corrección ("que no tenga hojas de menta") y regenera el plano con ella.
+7. **Publicación:** lo publica en una cuenta de Instagram de prueba y se abre la publicación. *Desde el 2026-11-25 (ADR 0026), fuera del MVP:* lo descarga.
 8. **Administrador:** ve el video consumido, los modelos usados y el costo estimado de ese cliente, revisa una notificación de pago por vencer y registra el pago.
 
 ---
@@ -1013,7 +1027,8 @@ Las fases 1 a 5 son el corazón del MVP: con ellas, una pastelería ya puede cre
 - Otros nichos.
 - Métricas de rendimiento de las publicaciones.
 - Aplicación móvil nativa.
-- Correos automáticos de bienvenida o de recuperación de contraseña.
+- Correos automáticos de bienvenida o de recuperación de contraseña. *Desde el 2026-11-25 (ADR 0026)*, el negocio pide una contraseña temporal desde Ajustes y el administrador recibe el aviso en la campana (RF-04, RF-15).
+- **Publicación en Instagram** (RF-27 a RF-29, sección 11.3, `/api/instagram/**` y `POST /api/videos/{id}/publicar`), por decisión del usuario del 2026-11-25 (ADR 0026): el negocio descarga su video y lo sube a mano. Queda como trabajo futuro (fase 6).
 
 ---
 

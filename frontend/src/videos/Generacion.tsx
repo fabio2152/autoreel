@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import { claveVideo, type EstadoPlano, type Video } from '../api/videos'
 
 const MENSAJES = [
-  'Estamos dando vida a tus fotos…',
+  'Estamos dando vida a tu foto…',
   'Cada momento se prepara con su movimiento…',
   'Ya casi: le estamos poniendo música…',
   'Tu video de 15 segundos está en camino…',

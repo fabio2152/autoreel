@@ -25,11 +25,20 @@ interface Props {
   forma?: 'vertical' | 'cuadrada'
   /** Bloquea el subidor (por ejemplo, mientras se guarda el formulario). */
   deshabilitado?: boolean
+  /** Dónde pedir la URL firmada, si no es la del negocio (por ejemplo, la del comprobante de un pago en el panel). */
+  urlDeFirma?: string
+}
+
+/** Lo que admite cada propósito al elegir el archivo. El comprobante acepta cualquier imagen y se convierte a JPEG. */
+function tiposAceptados(proposito: PropositoArchivo) {
+  if (proposito === 'LOGO') return 'image/png'
+  if (proposito === 'COMPROBANTE_PAGO') return 'image/*'
+  return 'image/jpeg,image/png,image/webp'
 }
 
 /**
  * Elige una imagen, la prepara en el navegador y la sube directo al almacenamiento. Devuelve la clave temporal,
- * que el perfil o el producto envían al guardar.
+ * que el perfil, el producto o el pago envían al guardar.
  */
 export function SubidorDeImagen({
   proposito,
@@ -41,6 +50,7 @@ export function SubidorDeImagen({
   onSubiendo,
   forma = 'vertical',
   deshabilitado = false,
+  urlDeFirma,
 }: Props) {
   const id = useId()
   const entrada = useRef<HTMLInputElement>(null)
@@ -52,6 +62,7 @@ export function SubidorDeImagen({
   // La vista previa (object URL) no se revoca aquí: quien recibe la subida puede seguir mostrándola
   // (por ejemplo, al volver a un paso anterior del asistente). El navegador la libera al cerrar la página.
   const ocupado = progreso !== null || deshabilitado
+  const esComprobante = proposito === 'COMPROBANTE_PAGO'
 
   const elegir = async (archivo: File | undefined) => {
     if (!archivo || ocupado) return
@@ -62,8 +73,8 @@ export function SubidorDeImagen({
       const preparado =
         proposito === 'LOGO'
           ? { foto: await revisarLogo(archivo), horizontal: false }
-          : await normalizarFoto(archivo)
-      const clave = await subirArchivo(proposito, preparado.foto, setProgreso)
+          : await normalizarFoto(archivo, esComprobante ? { cualquierImagen: true, megabytesMaximos: 5 } : {})
+      const clave = await subirArchivo(proposito, preparado.foto, setProgreso, urlDeFirma)
       const url = URL.createObjectURL(preparado.foto)
       setVistaPrevia(url)
       setHorizontal(preparado.horizontal)
@@ -95,7 +106,7 @@ export function SubidorDeImagen({
           aria-describedby={`${id}-guia`}
         >
           {mostrada ? (
-            <img src={mostrada} alt={etiqueta} className={`size-full ${proposito === 'LOGO' ? 'object-contain p-2' : 'object-cover'}`} />
+            <img src={mostrada} alt={etiqueta} className={`size-full ${proposito === 'LOGO' ? 'object-contain p-2' : esComprobante ? 'object-contain' : 'object-cover'}`} />
           ) : (
             <span className="flex size-full flex-col items-center justify-center gap-1 text-xs font-medium text-stone-500">
               <span aria-hidden className="text-2xl leading-none">+</span>
@@ -139,12 +150,12 @@ export function SubidorDeImagen({
         id={id}
         ref={entrada}
         type="file"
-        accept={proposito === 'LOGO' ? 'image/png' : 'image/jpeg,image/png,image/webp'}
+        accept={tiposAceptados(proposito)}
         className="sr-only"
         disabled={ocupado}
         onChange={(evento) => elegir(evento.target.files?.[0])}
       />
-      {horizontal && <Aviso tipo="info">La foto es horizontal: la recortaremos al formato vertical del Reel.</Aviso>}
+      {horizontal && !esComprobante && <Aviso tipo="info">La foto es horizontal: la recortaremos al formato vertical del Reel.</Aviso>}
       {error && <Aviso tipo="error">{error}</Aviso>}
     </div>
   )

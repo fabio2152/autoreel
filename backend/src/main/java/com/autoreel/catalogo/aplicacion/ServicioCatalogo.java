@@ -76,8 +76,8 @@ public class ServicioCatalogo {
     }
 
     /**
-     * Carrusel del chat (RF-20, V11): productos activos del catálogo con su foto principal, del más reciente al más
-     * antiguo, y cuántos se quedaron fuera por faltarles fotos.
+     * Carrusel del chat (RF-20, V11): productos activos del catálogo con su foto, del más reciente al más antiguo,
+     * y cuántos se quedaron fuera por faltarles la foto.
      */
     public record Carrusel(List<Producto> productos, int incompletos) {
     }
@@ -106,7 +106,7 @@ public class ServicioCatalogo {
     }
 
     /**
-     * Producto subido desde el chat (RF-20): exige la foto principal para usarse en el video y, si el usuario no aceptó
+     * Producto subido desde el chat (RF-20): exige la foto del producto para usarse en el video y, si el usuario no aceptó
      * guardarlo, queda fuera del catálogo (RN-14). Su temporada es "Todo el año" (no se piden en el MVP).
      */
     @Transactional
@@ -114,7 +114,7 @@ public class ServicioCatalogo {
             boolean guardarEnCatalogo) {
         if (fotos == null || fotos.get(TipoFoto.FOTO_1) == null || fotos.get(TipoFoto.FOTO_1).isBlank()) {
             throw new ExcepcionDeNegocio("PRODUCTO_INCOMPLETO",
-                    "Para usar el producto en tu video necesitamos al menos su foto principal.");
+                    "Para usar el producto en tu video necesitamos su foto.");
         }
         Negocio negocio = negocios.findById(negocioId)
                 .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos tu negocio."));
@@ -152,7 +152,7 @@ public class ServicioCatalogo {
         return vista(producto, List.of());
     }
 
-    /** Cada foto: igual a la guardada, se conserva; subida nueva, se verifica; ausente, se quita. */
+    /** La foto: igual a la guardada, se conserva; subida nueva, se verifica; ausente, se quita. */
     private List<String> aplicarFotos(Long negocioId, Producto producto, Map<TipoFoto, String> fotos) {
         List<String> avisos = new ArrayList<>();
         for (TipoFoto tipo : TipoFoto.values()) {

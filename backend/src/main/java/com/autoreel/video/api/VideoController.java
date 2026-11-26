@@ -53,11 +53,11 @@ public class VideoController {
         return servicio.reintentar(usuario.negocioId(), id);
     }
 
-    /** RF-24: otro clip para un plano (RN-28). */
+    /** RF-24: otro clip para un plano (RN-28), con su texto nuevo si cambió y sus correcciones guardadas. */
     @PostMapping("/{id}/planos/{orden}/regenerar")
     public VideoVista regenerar(@AuthenticationPrincipal UsuarioAutenticado usuario, @PathVariable Long id,
-            @PathVariable int orden) {
-        return servicio.regenerar(usuario.negocioId(), id, orden);
+            @PathVariable int orden, @RequestBody(required = false) SolicitudRegeneracion solicitud) {
+        return servicio.regenerar(usuario.negocioId(), id, orden, solicitud == null ? null : solicitud.texto());
     }
 
     @PostMapping("/{id}/aprobar")

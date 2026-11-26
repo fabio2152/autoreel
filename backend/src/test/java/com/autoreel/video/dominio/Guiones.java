@@ -11,8 +11,8 @@ final class Guiones {
 
     static final PaquetePasteleria PAQUETE = new PaquetePasteleria(JsonMapper.builder().build());
 
-    /** Las tres fotos del producto. */
-    static final Set<Integer> FOTOS = Set.of(1, 2, 3);
+    /** La foto del producto (una sola desde el 2026-11-25). */
+    static final Set<Integer> FOTOS = Set.of(1);
 
     static final String IDEA = "La torta gira despacio mientras la cámara descubre las fresas frescas.";
 

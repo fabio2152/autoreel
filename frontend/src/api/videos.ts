@@ -20,7 +20,7 @@ export type EstadoPlano = 'PENDIENTE' | 'GENERANDO' | 'LISTO' | 'RESPALDO'
 export const EN_PROCESO: EstadoVideo[] = ['GUION_PENDIENTE', 'GENERANDO', 'COMPONIENDO']
 
 export interface FotoVista {
-  /** null si el usuario subió una foto que no es del producto. */
+  /** null en planos de videos anteriores cuya foto no era del producto. */
   tipo: TipoFoto | null
   url: string
 }
@@ -34,6 +34,8 @@ export interface PlanoVista {
   movimiento: { id: string | null; descripcion: string }
   /** null si la toma va sin texto (nunca el gancho). */
   texto: string | null
+  /** Lo que el negocio no quiere ver en la toma; la IA reescribe la toma con esto al regenerar o al crear el video. */
+  correcciones: string | null
   maxPalabras: number
   estado: EstadoPlano | null
   /** El plano usa el acercamiento hecho por el sistema en lugar del clip de IA. */
@@ -76,7 +78,6 @@ export interface Video {
   descripcion: string | null
   hashtags: string[]
   maximoPublicacion: number
-  fotosDelProducto: FotoVista[]
   fechaCreacion: string
   /** Desde cuándo se escribe el guion: la creación o el último "Reintentar". */
   inicioDelGuion: string
@@ -106,10 +107,11 @@ export interface VideoResumen {
   fechaCreacion: string
 }
 
-export type CambioDePlano =
-  | { texto: string }
-  | { foto: { tipo: TipoFoto } | { clave: string } }
-  | { precio?: string; frase?: string }
+/** En una toma, el texto y las correcciones; en el cierre, el precio y la frase. */
+export type CambioDePlano = { texto?: string; correcciones?: string } | { precio?: string; frase?: string }
+
+/** Igual que ServicioVideos.MAXIMO_CARACTERES_CORRECCIONES del backend. */
+export const MAXIMO_CARACTERES_CORRECCIONES = 300
 
 export const CLAVE_VIDEOS = ['videos']
 export const claveVideo = (id: number) => ['videos', id]
@@ -129,8 +131,12 @@ export const aprobarStoryboard = (id: number) => pedir<Video>(`/api/videos/${id}
 /** Reintentar un video que falló al escribir su guion o al generarse. */
 export const reintentarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/reintentar`, 'POST')
 
-export const regenerarPlano = (id: number, orden: number) =>
-  pedir<Video>(`/api/videos/${id}/planos/${orden}/regenerar`, 'POST')
+/**
+ * Otro clip para un plano. Si sus correcciones todavía no se aplicaron, la IA reescribe antes la toma. `texto` es el
+ * texto en pantalla nuevo, si cambió en la misma edición.
+ */
+export const regenerarPlano = (id: number, orden: number, texto?: string) =>
+  pedir<Video>(`/api/videos/${id}/planos/${orden}/regenerar`, 'POST', texto === undefined ? undefined : { texto })
 
 export const aprobarVideo = (id: number) => pedir<Video>(`/api/videos/${id}/aprobar`, 'POST')
 

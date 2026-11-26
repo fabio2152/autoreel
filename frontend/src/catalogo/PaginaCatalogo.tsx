@@ -56,14 +56,14 @@ export function PaginaCatalogo() {
             {estado === 'ACTIVO' ? 'Todavía no tienes productos.' : 'No tienes productos archivados.'}
           </p>
           {estado === 'ACTIVO' && (
-            <p className="mt-1 text-sm text-stone-600">Registra tu producto estrella con hasta tres fotos.</p>
+            <p className="mt-1 text-sm text-stone-600">Registra tu producto estrella con su mejor foto.</p>
           )}
         </div>
       )}
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {productos.data?.map((producto) => {
-          const portada = fotoDe(producto, 'FOTO_1') ?? producto.fotos[0]
+          const portada = fotoDe(producto)
           return (
             <li key={producto.id}>
               <Link
@@ -82,7 +82,7 @@ export function PaginaCatalogo() {
                   )}
                   {!producto.completo && (
                     <span className="absolute top-2 left-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      Faltan fotos
+                      Falta la foto
                     </span>
                   )}
                 </div>

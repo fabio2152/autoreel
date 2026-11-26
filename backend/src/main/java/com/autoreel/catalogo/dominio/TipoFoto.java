@@ -1,19 +1,15 @@
 package com.autoreel.catalogo.dominio;
 
 /**
- * Las fotos de cada producto (sección 7.2, cambio del 2026-11-25): la primera es obligatoria y las otras dos son
- * opcionales, de cualquier ángulo (entero, detalle, porción o en su ambiente). La IA las ve todas y decide cuál usa en
- * cada toma del video.
+ * La foto de cada producto (sección 7.2, cambio del 2026-11-25): una sola, obligatoria para usarlo en un video. La IA
+ * trabaja mejor con una sola foto, y cada toma del video empieza en ella. Se conserva como enum para mantener el
+ * contrato de la API ({@code {"FOTO_1": clave}}) y el campo {@code foto} del guion.
  */
 public enum TipoFoto {
-    /** La foto principal, obligatoria: la que mejor muestra el producto. */
-    FOTO_1,
-    /** Opcional. */
-    FOTO_2,
-    /** Opcional. */
-    FOTO_3;
+    /** La foto del producto: la que mejor lo muestra. */
+    FOTO_1;
 
-    /** Número de la foto (1 a 3), como la ve la IA. */
+    /** Número de la foto, como la ve la IA (siempre 1). */
     public int numero() {
         return ordinal() + 1;
     }

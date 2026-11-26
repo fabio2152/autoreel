@@ -5,14 +5,17 @@ import {
   listarPlanes,
   otorgarBeneficio,
   registrarPago,
+  urlFirmaComprobante,
+  USOS_MAXIMOS_BENEFICIO,
   type MedioPago,
   type NegocioDetalle,
 } from '../api/admin'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Campo, Selector } from '../componentes/Campo'
-import { aEntradaLocal, formatearFecha, hoyEnLima } from '../componentes/formato'
+import { formatearFecha, hoyEnLima } from '../componentes/formato'
 import { Modal } from '../componentes/Modal'
+import { SubidorDeImagen } from '../componentes/SubidorDeImagen'
 import { MEDIOS } from './medios'
 
 
@@ -22,13 +25,23 @@ interface Props {
   onCerrar: () => void
 }
 
-function Botones({ onCancelar, cargando, texto }: { onCancelar: () => void; cargando: boolean; texto: string }) {
+function Botones({
+  onCancelar,
+  cargando,
+  texto,
+  deshabilitado = false,
+}: {
+  onCancelar: () => void
+  cargando: boolean
+  texto: string
+  deshabilitado?: boolean
+}) {
   return (
     <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
       <Boton type="button" variante="secundario" onClick={onCancelar}>
         Cancelar
       </Boton>
-      <Boton type="submit" cargando={cargando}>
+      <Boton type="submit" cargando={cargando} disabled={deshabilitado}>
         {texto}
       </Boton>
     </div>
@@ -45,10 +58,18 @@ export function ModalRegistrarPago({ negocio, abierto, onCerrar }: Props) {
   const [monto, setMonto] = useState(String(negocio.suscripcion.montoMensual))
   const [medio, setMedio] = useState<MedioPago | ''>('')
   const [nota, setNota] = useState('')
+  const [comprobante, setComprobante] = useState<string | null>(null)
+  const [subiendo, setSubiendo] = useState(false)
 
   const registrar = useMutation({
     mutationFn: () =>
-      registrarPago(negocio.id, { fechaPago: fecha, monto: monto ? Number(monto) : null, medio: medio || null, nota }),
+      registrarPago(negocio.id, {
+        fechaPago: fecha,
+        monto: monto ? Number(monto) : null,
+        medio: medio || null,
+        nota,
+        comprobanteClave: comprobante,
+      }),
     onSuccess: () => {
       clienteConsultas.invalidateQueries({ queryKey: ['negocios'] })
       clienteConsultas.invalidateQueries({ queryKey: ['notificaciones'] })
@@ -60,11 +81,13 @@ export function ModalRegistrarPago({ negocio, abierto, onCerrar }: Props) {
     registrar.reset()
     setMedio('')
     setNota('')
+    setComprobante(null)
     onCerrar()
   }
 
   const enviar = (evento: FormEvent) => {
     evento.preventDefault()
+    if (subiendo) return
     registrar.mutate()
   }
 
@@ -104,8 +127,23 @@ export function ModalRegistrarPago({ negocio, abierto, onCerrar }: Props) {
           </label>
           <textarea id="nota-pago" rows={2} maxLength={300} value={nota} onChange={(e) => setNota(e.target.value)} className={estiloTexto} placeholder="Número de operación, comentario…" />
         </div>
+        <SubidorDeImagen
+          proposito="COMPROBANTE_PAGO"
+          etiqueta="Comprobante (opcional)"
+          urlDeFirma={urlFirmaComprobante(negocio.id)}
+          guia="La captura de Yape o Plin, o la foto del voucher. Una imagen de hasta 5 MB."
+          onSubida={(imagen) => setComprobante(imagen.clave)}
+          onQuitar={() => setComprobante(null)}
+          onSubiendo={setSubiendo}
+          deshabilitado={registrar.isPending}
+        />
         {registrar.error && <Aviso tipo="error">{registrar.error.message}</Aviso>}
-        <Botones onCancelar={cerrar} cargando={registrar.isPending} texto="Registrar pago" />
+        <Botones
+          onCancelar={cerrar}
+          cargando={registrar.isPending}
+          deshabilitado={subiendo}
+          texto={subiendo ? 'Subiendo el comprobante…' : 'Registrar pago'}
+        />
       </form>
     </Modal>
   )
@@ -172,14 +210,13 @@ export function ModalCambiarPlan({ negocio, abierto, onCerrar }: Props) {
   )
 }
 
-/** RF-12 y RN-51: otro plan durante un período de hasta 30 días, con motivo. */
+/** RF-12 y RN-51: otro plan durante una cantidad de videos aprobados (de 1 a 30 usos), con motivo. */
 export function ModalOtorgarBeneficio({ negocio, abierto, onCerrar }: Props) {
   const clienteConsultas = useQueryClient()
   const planes = useQuery({ queryKey: ['planes'], queryFn: listarPlanes, enabled: abierto })
   const opciones = (planes.data ?? []).filter((plan) => plan.activo && plan.id !== negocio.suscripcion.planId)
   const [planElegido, setPlanElegido] = useState('')
-  const [desde, setDesde] = useState(() => aEntradaLocal(new Date()))
-  const [hasta, setHasta] = useState(() => aEntradaLocal(new Date(Date.now() + 24 * 3600_000)))
+  const [usos, setUsos] = useState('5')
   const [motivo, setMotivo] = useState('')
   const planId = planElegido || (opciones[0] ? String(opciones[0].id) : '')
 
@@ -187,8 +224,7 @@ export function ModalOtorgarBeneficio({ negocio, abierto, onCerrar }: Props) {
     mutationFn: () =>
       otorgarBeneficio(negocio.id, {
         planId: planId ? Number(planId) : null,
-        desde: new Date(desde).toISOString(),
-        hasta: new Date(hasta).toISOString(),
+        usos: usos.trim() ? Number(usos) : null,
         motivo,
       }),
     onSuccess: () => {
@@ -199,6 +235,7 @@ export function ModalOtorgarBeneficio({ negocio, abierto, onCerrar }: Props) {
 
   const cerrar = () => {
     otorgar.reset()
+    setUsos('5')
     setMotivo('')
     onCerrar()
   }
@@ -223,10 +260,18 @@ export function ModalOtorgarBeneficio({ negocio, abierto, onCerrar }: Props) {
             ))}
           </Selector>
         )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo etiqueta="Desde" type="datetime-local" required value={desde} onChange={(e) => setDesde(e.target.value)} />
-          <Campo etiqueta="Hasta" type="datetime-local" required value={hasta} onChange={(e) => setHasta(e.target.value)} ayuda="Máximo 30 días." />
-        </div>
+        <Campo
+          etiqueta="Cantidad de usos"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={USOS_MAXIMOS_BENEFICIO}
+          step={1}
+          required
+          value={usos}
+          onChange={(e) => setUsos(e.target.value)}
+          ayuda={`Cada video que el negocio crea con el beneficio y aprueba gasta un uso. De 1 a ${USOS_MAXIMOS_BENEFICIO}.`}
+        />
         <div>
           <label htmlFor="motivo-beneficio" className="mb-1 block text-sm font-medium text-stone-700">
             Motivo
@@ -243,8 +288,8 @@ export function ModalOtorgarBeneficio({ negocio, abierto, onCerrar }: Props) {
           />
         </div>
         <p className="text-sm text-stone-600">
-          Cambia los modelos, los videos por día y las regeneraciones. No cambia el monto ni la fecha de pago. Al
-          terminar, el negocio vuelve solo a su plan.
+          Cambia los modelos, los videos por día y las regeneraciones. No cambia el monto ni la fecha de pago. Si un
+          video falla, su uso se devuelve. Al gastar los usos, el negocio vuelve solo a su plan.
         </p>
         {otorgar.error && <Aviso tipo="error">{otorgar.error.message}</Aviso>}
         <Botones onCancelar={cerrar} cargando={otorgar.isPending} texto="Otorgar beneficio" />

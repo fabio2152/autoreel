@@ -136,7 +136,7 @@ public class ServicioComposicion {
         }
         video.marcarError(MOTIVO_ERROR, ahora);
         if (video.devolverConsumo()) {
-            consumo.devolver(video.getNegocioId());
+            consumo.devolver(video);
         }
     }
 

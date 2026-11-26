@@ -5,7 +5,7 @@ import java.util.Set;
 
 /**
  * Para qué se sube un archivo. Cada propósito define los tipos y el tamaño admitidos (RN-10, RN-11) y la carpeta
- * donde se guarda.
+ * (dentro de la del negocio) donde se guarda.
  */
 public enum PropositoArchivo {
 
@@ -14,7 +14,12 @@ public enum PropositoArchivo {
     /** RN-11: JPG, PNG o WebP de hasta 10 MB, con el lado menor de al menos 720 px. */
     FOTO_PRODUCTO("foto_producto", Set.of("image/jpeg", "image/png", "image/webp"), 10),
     /** Fondo del plano de cierre: mismos tipos y peso que las fotos de productos, con el lado menor de al menos 480 px. */
-    FOTO_LOCAL("foto_local", Set.of("image/jpeg", "image/png", "image/webp"), 10);
+    FOTO_LOCAL("foto_local", Set.of("image/jpeg", "image/png", "image/webp"), 10),
+    /**
+     * Comprobante de un pago (captura de Yape u otra) que sube el administrador: JPG, PNG o WebP de hasta 5 MB, sin
+     * medidas mínimas. Se guarda en la carpeta del negocio que pagó.
+     */
+    COMPROBANTE_PAGO("comprobantes", Set.of("image/jpeg", "image/png", "image/webp"), 5);
 
     private static final Map<String, String> EXTENSIONES =
             Map.of("image/png", "png", "image/jpeg", "jpg", "image/webp", "webp");

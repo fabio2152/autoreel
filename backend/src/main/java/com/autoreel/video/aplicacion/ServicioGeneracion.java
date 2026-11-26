@@ -91,11 +91,15 @@ public class ServicioGeneracion {
     }
 
     /**
-     * @param toma     la toma que escribió la IA; vacía en los videos anteriores, que usan {@code movimiento}.
-     * @param segundos lo que dura el plano en el video.
+     * @param toma       la toma que escribió la IA; vacía en los videos anteriores, que usan {@code movimiento}.
+     * @param segundos   lo que dura el plano en el video.
+     * @param negativos  lo que las correcciones ya aplicadas piden evitar, en inglés; vacío si no hay.
+     * @param correccion si el plano tiene correcciones que su toma todavía no tiene en cuenta (las del storyboard);
+     *                   vacía si no.
      */
     private record PlanoATrabajar(int orden, EstadoPlano estado, int intentos, String idTarea, Instant enviadoEn,
-            String claveFoto, String toma, String movimiento, int segundos, boolean extensionEnCurso) {
+            String claveFoto, String toma, String movimiento, int segundos, boolean extensionEnCurso,
+            String negativos, CorrectorDeTomas.Pedido correccion) {
     }
 
     private final VideoRepositorio videos;
@@ -108,6 +112,7 @@ public class ServicioGeneracion {
     private final AlmacenDeArchivos almacen;
     private final PreparadorDeFotos preparador;
     private final ServicioConsumo consumo;
+    private final CorrectorDeTomas corrector;
     private final Clock reloj;
     private final TransactionTemplate transaccion;
     private final TransactionTemplate lectura;
@@ -115,7 +120,7 @@ public class ServicioGeneracion {
     public ServicioGeneracion(VideoRepositorio videos, NegocioRepositorio negocios, RegistroDeNichos nichos,
             FabricaDeProveedores proveedores, ProveedorDeSecretos secretos, AvisoDeIntegracion aviso,
             ServicioCostos costos, AlmacenDeArchivos almacen, PreparadorDeFotos preparador, ServicioConsumo consumo,
-            Clock reloj, PlatformTransactionManager transacciones) {
+            CorrectorDeTomas corrector, Clock reloj, PlatformTransactionManager transacciones) {
         this.videos = videos;
         this.negocios = negocios;
         this.nichos = nichos;
@@ -126,6 +131,7 @@ public class ServicioGeneracion {
         this.almacen = almacen;
         this.preparador = preparador;
         this.consumo = consumo;
+        this.corrector = corrector;
         this.reloj = reloj;
         this.transaccion = new TransactionTemplate(transacciones);
         this.lectura = new TransactionTemplate(transacciones);
@@ -209,9 +215,19 @@ public class ServicioGeneracion {
             return false;
         }
         byte[] foto = preparador.vertical(leerArchivo(plano.claveFoto()));
-        String toma = plano.toma() != null ? plano.toma() : trabajo.movimientos().buscar(plano.movimiento())
-                .map(Movimientos.Movimiento::instruccion)
-                .orElseThrow(() -> new IllegalStateException("Movimiento desconocido: " + plano.movimiento()));
+        String toma = plano.toma();
+        String negativosCorreccion = plano.negativos();
+        if (plano.correccion() != null) {
+            Optional<CorrectorDeTomas.TomaCorregida> corregida = corregirToma(trabajo, plano);
+            if (corregida.isPresent()) {
+                toma = corregida.get().toma();
+                negativosCorreccion = corregida.get().negativos();
+            }
+        }
+        if (toma == null) {
+            toma = trabajo.movimientos().buscar(plano.movimiento()).map(Movimientos.Movimiento::instruccion)
+                    .orElseThrow(() -> new IllegalStateException("Movimiento desconocido: " + plano.movimiento()));
+        }
         int segundos = segundosDelClip(trabajo.modelo(), plano.segundos());
         // Transiciones: el clip termina en la foto de la toma siguiente; la última toma termina libre.
         byte[] fotoFinal = trabajo.transiciones() ? trabajo.siguiente(plano)
@@ -221,7 +237,7 @@ public class ServicioGeneracion {
         try {
             String idTarea = generador.iniciar(trabajo.modelo(), credencial, new SolicitudDeClip(foto, "image/jpeg",
                     trabajo.movimientos().promptDeToma(toma, trabajo.creatividad()),
-                    trabajo.movimientos().negativos(trabajo.creatividad()), segundos, fotoFinal));
+                    negativos(trabajo, negativosCorreccion), segundos, fotoFinal));
             conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.enviado(idTarea));
             return false;
         } catch (ErrorDeProveedor e) {
@@ -239,6 +255,32 @@ public class ServicioGeneracion {
             }
             return true;
         }
+    }
+
+    /**
+     * Las correcciones que el negocio guardó en el storyboard se aplican una sola vez, antes del primer clip: el modelo
+     * de texto reescribe la toma. Si no lo logra, el clip sale con la toma de siempre y las correcciones quedan
+     * pendientes para una regeneración.
+     *
+     * @return la toma corregida; vacía si se usa la de siempre.
+     */
+    private Optional<CorrectorDeTomas.TomaCorregida> corregirToma(Trabajo trabajo, PlanoATrabajar plano) {
+        Optional<CorrectorDeTomas.TomaCorregida> corregida = corrector.corregir(plano.correccion());
+        if (corregida.isEmpty()) {
+            log.info("No se aplicaron las correcciones del plano {} del video {}: se usa su toma", plano.orden(),
+                    trabajo.videoId());
+            return corregida;
+        }
+        conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.aplicarCorrecciones(corregida.get().toma(),
+                corregida.get().descripcionToma(), corregida.get().negativos()));
+        return corregida;
+    }
+
+    /** Los negativos del nicho más lo que las correcciones del negocio piden evitar. */
+    private static String negativos(Trabajo trabajo, String negativosCorreccion) {
+        String delNicho = trabajo.movimientos().negativos(trabajo.creatividad());
+        return negativosCorreccion == null || negativosCorreccion.isBlank() ? delNicho
+                : delNicho + ", " + negativosCorreccion;
     }
 
     /** @return si se avisó al administrador. */
@@ -301,7 +343,7 @@ public class ServicioGeneracion {
         try {
             String idTarea = generador.extender(trabajo.modelo(), credencial, new SolicitudDeExtension(clipBase,
                     PREFIJO_DE_EXTENSION + trabajo.movimientos().promptDeToma(toma, trabajo.creatividad()),
-                    trabajo.movimientos().negativos(trabajo.creatividad())));
+                    negativos(trabajo, plano.negativos())));
             conPlano(trabajo, plano.orden(), (video, entidad) -> entidad.extendiendo(idTarea, reloj.instant()));
         } catch (RuntimeException e) {
             // Cualquier falla deja el plano con su clip base: no se vuelve a pagar el clip.
@@ -416,7 +458,7 @@ public class ServicioGeneracion {
         }
         video.marcarError(MOTIVO_SIN_CLIPS, reloj.instant());
         if (video.devolverConsumo()) {
-            consumo.devolver(video.getNegocioId());
+            consumo.devolver(video);
         }
     }
 
@@ -456,7 +498,10 @@ public class ServicioGeneracion {
         List<PlanoATrabajar> planos = video.planosConFoto().stream()
                 .map(plano -> new PlanoATrabajar(plano.getOrden(), plano.getEstado(), plano.getIntentos(),
                         plano.getIdTareaProveedor(), plano.getEnviadoEn(), plano.getClaveFoto(), plano.getToma(),
-                        plano.getMovimiento(), plano.getSegundos(), plano.isExtensionEnCurso()))
+                        plano.getMovimiento(), plano.getSegundos(), plano.isExtensionEnCurso(),
+                        plano.getNegativosCorreccion(),
+                        plano.getEstado() == EstadoPlano.PENDIENTE && plano.correccionesPendientes()
+                                ? CorrectorDeTomas.pedido(video, plano, paquete) : null))
                 .toList();
         boolean transiciones = paquete.plantillaVideo().modoDeTomas(video.getModoTomas()).transiciones();
         boolean extender = paquete.plantillaVideo().estructura(video.getEstructura())

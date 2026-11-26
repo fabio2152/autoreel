@@ -19,6 +19,11 @@ const FILTROS: { valor: EstadoPago | ''; texto: string }[] = [
 ]
 
 /** RF-02: lista de negocios con búsqueda por nombre o correo y filtro por estado de pago. */
+/** Usos que le quedan al beneficio vigente: "quedan 3 usos". */
+function textoUsos(restantes: number | null): string {
+  return restantes === 1 ? 'queda 1 uso' : `quedan ${restantes ?? 0} usos`
+}
+
 export function PaginaNegocios() {
   const [busqueda, setBusqueda] = useState('')
   const [estadoPago, setEstadoPago] = useState<EstadoPago | ''>('')
@@ -97,7 +102,7 @@ export function PaginaNegocios() {
                   </div>
                   <p className="mt-2 text-sm text-stone-600">
                     Pago: {formatearFecha(negocio.proximaFechaPago)} · Plan {negocio.plan}
-                    {negocio.conBeneficio && ' (beneficio)'} · {negocio.modeloVideo}
+                    {negocio.conBeneficio && ` (beneficio, ${textoUsos(negocio.beneficioUsosRestantes)})`} · {negocio.modeloVideo}
                     {negocio.estado === 'SUSPENDIDO' && <span className="ml-2 font-medium text-red-700">Suspendido</span>}
                   </p>
                 </Link>
@@ -131,7 +136,9 @@ export function PaginaNegocios() {
                     <td className="px-4 py-3 text-stone-700">{negocio.nicho === 'PASTELERIA' ? 'Pastelería' : negocio.nicho}</td>
                     <td className="px-4 py-3 text-stone-700">
                       {negocio.plan}
-                      {negocio.conBeneficio && <span className="ml-1 text-xs text-emerald-700">(beneficio)</span>}
+                      {negocio.conBeneficio && (
+                        <span className="ml-1 text-xs text-emerald-700">(beneficio, {textoUsos(negocio.beneficioUsosRestantes)})</span>
+                      )}
                       <p className="text-xs text-stone-500">{negocio.modeloVideo}</p>
                     </td>
                     <td className="px-4 py-3">

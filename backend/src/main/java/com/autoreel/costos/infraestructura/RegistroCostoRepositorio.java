@@ -24,4 +24,9 @@ public interface RegistroCostoRepositorio extends JpaRepository<RegistroCosto, L
             from RegistroCosto r where r.negocioId = :negocioId and r.fechaHora >= :desde and r.fechaHora < :hasta
             group by r.negocioId, r.concepto""")
     List<SumaDeCosto> sumarDeNegocio(Long negocioId, Instant desde, Instant hasta);
+
+    @Query("""
+            select new com.autoreel.costos.infraestructura.CostoRegistrado(r.negocioId, r.fechaHora, r.costoUsd)
+            from RegistroCosto r where r.fechaHora >= :desde and r.fechaHora < :hasta""")
+    List<CostoRegistrado> listarEntre(Instant desde, Instant hasta);
 }

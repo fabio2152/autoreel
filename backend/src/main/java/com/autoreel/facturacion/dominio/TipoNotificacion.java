@@ -7,5 +7,7 @@ public enum TipoNotificacion {
     PAGO_VENCIDO,
     /** RN-45: a los 7 días de vencido se sugiere suspender; el administrador decide. */
     SUGERENCIA_SUSPENSION,
-    INTEGRACION_CON_ERROR
+    INTEGRACION_CON_ERROR,
+    /** El negocio olvidó su contraseña y pide una temporal desde Ajustes. */
+    SOLICITUD_CONTRASENA
 }

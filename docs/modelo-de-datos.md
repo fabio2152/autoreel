@@ -1,6 +1,6 @@
 # AutoReel — Modelo de datos
 
-> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google y la revisión del flujo del negocio (2026-11-06). Este documento describe las tablas que **existen hoy** en la base de datos, creadas por las migraciones Flyway `V1` a `V11`. *Actualización del 2026-11-12:* `V9` (mejora de la calidad del video, ADR 0021) agrega `plano.frase`, `video.guion_iniciado_en` y `video.error_definitivo`. *Actualización del 2026-11-25 (guion flexible, ADR 0022):* `V10` renombra los tipos de foto a `FOTO_1`, `FOTO_2` y `FOTO_3`, agrega `plano.segundos`, `plano.toma`, `plano.descripcion_toma`, `video.estructura`, `video.creatividad` y `video.idea`, y permite de 1 a 4 tomas más el cierre; `V11` agrega Veo 3.1 Fast y Veo 3.1 y pone Veo 3.1 Lite en el plan Lite. Lo que todavía no existe (Instagram, fase 6, en pausa) aparece marcado como **(futuro, fase N)**.
+> Estado: **fases 1 a 5 y 7** en `main`, más los proveedores de Google y la revisión del flujo del negocio (2026-11-06). Este documento describe las tablas que **existen hoy** en la base de datos, creadas por las migraciones Flyway `V1` a `V11`. *Actualización del 2026-11-12:* `V9` (mejora de la calidad del video, ADR 0021) agrega `plano.frase`, `video.guion_iniciado_en` y `video.error_definitivo`. *Actualización del 2026-11-25 (guion flexible, ADR 0022):* `V10` renombra los tipos de foto a `FOTO_1`, `FOTO_2` y `FOTO_3`, agrega `plano.segundos`, `plano.toma`, `plano.descripcion_toma`, `video.estructura`, `video.creatividad` y `video.idea`, y permite de 1 a 4 tomas más el cierre; `V11` agrega Veo 3.1 Fast y Veo 3.1 y pone Veo 3.1 Lite en el plan Lite. *Actualización del 2026-11-25 (ADR 0026):* `V12` agrega `video.modo_tomas` y `plano.extension_en_curso` (ADR 0024) y `V13`, `recorteInicialSegundos` a los parámetros de Veo; `V14` agrega `plano.correcciones` y `plano.correcciones_aplicadas`; `V15` deja **una sola foto por producto** (`FOTO_1`); `V16` cambia los beneficios a **usos** (`usos_otorgados`, `usos_consumidos`, `terminado`) y agrega `video.beneficio_id`; `V17` agrega `pago.comprobante_clave`, `V18` el tipo de notificación `SOLICITUD_CONTRASENA` y `V19`, `plano.negativos_correccion`. Lo que todavía no existe (Instagram, fase 6, **fuera del MVP** desde el ADR 0026) aparece marcado como **(futuro, fase N)**.
 >
 > Fuentes: `backend/src/main/resources/db/migration/`, las entidades JPA del paquete `com.autoreel` y la sección 9 de `docs/especificacion.md`. Se actualiza con cada migración nueva (sección 23 de la especificación).
 
@@ -13,16 +13,16 @@
 | `modelo_ia` | `com.autoreel.ia.dominio.ModeloIA` | `ia` | V2 (V6 cambia el secreto y los parámetros de Veo; V7 agrega dos modelos y deja Veo inactivo; V8 agrega el resultado de la última prueba; V10 agrega `duracionesClip` a Veo; V11 agrega Veo 3.1 Fast y Veo 3.1 y activa Veo 3.1 Lite) | Modelos de IA administrables (texto y video), sin credenciales. |
 | `plan` | `com.autoreel.facturacion.dominio.Plan` | `facturacion` | V2 (V7 y V11 cambian el modelo de video del plan Lite) | Planes de suscripción: límites, modelos y opciones de producción. Desde la fase 7 se crean y editan desde el panel. |
 | `suscripcion` | `com.autoreel.facturacion.dominio.Suscripcion` | `facturacion` | V2 (V8 agrega `dia_pago`) | La suscripción única de cada negocio: plan, monto y fechas de pago. |
-| `pago` | `com.autoreel.facturacion.dominio.Pago` | `facturacion` | V8 | Pagos registrados por el administrador; cada uno salda una fecha de pago (RF-08, RN-42). |
-| `beneficio_temporal` | `com.autoreel.facturacion.dominio.BeneficioTemporal` | `facturacion` | V8 | Otro plan para un negocio durante un período de hasta 30 días (RF-12, RN-50 a RN-53). |
-| `notificacion_admin` | `com.autoreel.facturacion.dominio.NotificacionAdmin` | `facturacion` | V8 | Avisos del panel del administrador: estados de pago y fallas de integración (RF-09, RN-44, RN-45, RN-57). |
+| `pago` | `com.autoreel.facturacion.dominio.Pago` | `facturacion` | V8 (V17 agrega `comprobante_clave`) | Pagos registrados por el administrador; cada uno salda una fecha de pago (RF-08, RN-42). Desde V17, con la imagen del comprobante, opcional. |
+| `beneficio_temporal` | `com.autoreel.facturacion.dominio.BeneficioTemporal` | `facturacion` | V8 (V16 lo cambia a usos) | Otro plan para un negocio durante un período de hasta 30 días (RF-12, RN-50 a RN-53). Desde V16, por una cantidad de usos (de 1 a 30 videos aprobados). |
+| `notificacion_admin` | `com.autoreel.facturacion.dominio.NotificacionAdmin` | `facturacion` | V8 (V18 agrega un tipo) | Avisos del panel del administrador: estados de pago y fallas de integración (RF-09, RN-44, RN-45, RN-57) y, desde V18, solicitudes de contraseña de los negocios (RF-04). |
 | `perfil_negocio` | `com.autoreel.negocio.dominio.PerfilNegocio` | `negocio` | V3 | Marca del negocio (logo, colores, estilo, foto del local) y respuestas del onboarding. |
 | `producto` | `com.autoreel.catalogo.dominio.Producto` | `catalogo` | V3 (V4 agrega `en_catalogo`) | Productos de cada negocio, con sus temporadas: los del catálogo y los subidos desde el chat solo para un video. |
-| `foto_producto` | `com.autoreel.catalogo.dominio.FotoProducto` | `catalogo` | V3 (V10 renombra los tipos) | Las fotos de cada producto: la Foto 1 (principal, obligatoria para usarlo en un video) y la Foto 2 y la Foto 3, opcionales. Hasta V9 eran entero, detalle y porción. |
+| `foto_producto` | `com.autoreel.catalogo.dominio.FotoProducto` | `catalogo` | V3 (V10 renombra los tipos; V15 deja solo `FOTO_1`) | La foto de cada producto (desde V15, una sola: `FOTO_1`, obligatoria para usarlo en un video). De V10 a V14, la Foto 1 y la Foto 2 y la Foto 3 opcionales; hasta V9, entero, detalle y porción. |
 | `conversacion` | `com.autoreel.chat.dominio.Conversacion` | `chat` | V4 | Chat guiado del video del día: estado, paso actual y respuestas reunidas (la entrada del guion de la fase 4). |
 | `mensaje_chat` | `com.autoreel.chat.dominio.MensajeChat` | `chat` | V4 | Cada burbuja del chat, del sistema o del usuario, con la marca de agrupación pendiente. |
-| `video` | `com.autoreel.video.dominio.Video` | `video` | V5 (V6 agrega la generación; V9, el plazo del guion y el error definitivo; V10, la estructura, la creatividad y la idea) | El video que nace de cada conversación completa: estado, plan y modelos con que se creó (RN-54), guion, publicación y datos del guion de respaldo (solo en videos anteriores al 2026-11-12); desde la fase 5, consumo del día, regeneraciones, composición, MP4 final y pista; desde V10, lo que eligió la IA (estructura, creatividad e idea). |
-| `plano` | `com.autoreel.video.dominio.Plano` | `video` | V5 (V6 agrega el clip; V9, la frase del cierre; V10, los segundos y la toma) | Los planos del storyboard. Desde V10 (guion flexible): de 1 a 4 tomas, según la estructura, con foto, segundos, toma y texto, y el cierre (el plano sin foto que sigue a la última toma) con precio, frase, llamado y ubicación. Las tomas guardan el estado de su clip. Hasta V9 eran 4 planos fijos: 1 a 3 con foto y el 4, el cierre. |
+| `video` | `com.autoreel.video.dominio.Video` | `video` | V5 (V6 agrega la generación; V9, el plazo del guion y el error definitivo; V10, la estructura, la creatividad y la idea; V12, el modo de tomas; V16, el beneficio) | El video que nace de cada conversación completa: estado, plan y modelos con que se creó (RN-54), guion, publicación y datos del guion de respaldo (solo en videos anteriores al 2026-11-12); desde la fase 5, consumo del día, regeneraciones, composición, MP4 final y pista; desde V10, lo que eligió la IA (estructura, creatividad e idea). |
+| `plano` | `com.autoreel.video.dominio.Plano` | `video` | V5 (V6 agrega el clip; V9, la frase del cierre; V10, los segundos y la toma; V12, la extensión; V14 y V19, las correcciones) | Los planos del storyboard. Desde V10 (guion flexible): de 1 a 4 tomas, según la estructura, con foto, segundos, toma y texto, y el cierre (el plano sin foto que sigue a la última toma) con precio, frase, llamado y ubicación. Las tomas guardan el estado de su clip. Hasta V9 eran 4 planos fijos: 1 a 3 con foto y el 4, el cierre. |
 | `registro_costo` | `com.autoreel.costos.dominio.RegistroCosto` | `costos` | V5 | El costo de cada llamada a un proveedor de IA (RN-32): guiones desde la fase 4 y clips desde la fase 5. Desde la fase 7 alimenta la página Costos (RF-07). |
 | `consumo_diario` | `com.autoreel.video.dominio.ConsumoDiario` | `video` | V6 | Videos aprobados por cada negocio en cada día de Lima (RN-26). |
 | `pista_musical` | `com.autoreel.video.dominio.PistaMusical` | `video` | V6 | Biblioteca de música para la composición, por nicho y estilo. |
@@ -31,7 +31,7 @@ Base de datos: **PostgreSQL 17** (`postgres:17-alpine` en `docker-compose.yml`, 
 
 Los archivos (logos, fotos y, desde la fase 5, clips, videos finales y música) **no** están en la base de datos: viven en el almacén S3 (SeaweedFS en local, Amazon S3 en producción) y las tablas solo guardan su **clave**. Ver la sección 5.1.
 
-## 2. Diagrama entidad-relación (V1 a V11)
+## 2. Diagrama entidad-relación (V1 a V19)
 
 Los tipos son los de PostgreSQL tal como están en las migraciones. La precisión de los `numeric` va en el comentario de cada columna.
 
@@ -112,6 +112,7 @@ erDiagram
         varchar(20) medio "not null, check de los 5 medios"
         date periodo_cubierto UK "not null, fecha de pago que salda"
         varchar(300) nota "null"
+        varchar(300) comprobante_clave "null, V17"
         bigint registrado_por FK "not null, usuario ADMIN"
         timestamptz fecha_registro "not null"
     }
@@ -120,8 +121,11 @@ erDiagram
         bigint id PK "identity"
         bigint negocio_id FK "not null"
         bigint plan_id FK "not null"
-        timestamptz desde "not null"
-        timestamptz hasta "not null, > desde, <= desde + 30 días"
+        timestamptz desde "null desde V16, solo beneficios anteriores"
+        timestamptz hasta "null desde V16, solo beneficios anteriores"
+        integer usos_otorgados "not null, V16, entre 1 y 30"
+        integer usos_consumidos "not null, default 0, V16"
+        boolean terminado "not null, default false, V16"
         varchar(300) motivo "not null"
         bigint otorgado_por FK "not null, usuario ADMIN"
         timestamptz fecha_creacion "not null"
@@ -129,7 +133,7 @@ erDiagram
 
     notificacion_admin {
         bigint id PK "identity"
-        varchar(30) tipo UK "not null, check de los 5 tipos"
+        varchar(30) tipo UK "not null, check de los 6 tipos (V18)"
         bigint negocio_id FK, UK "null en las de integración"
         bigint modelo_ia_id FK, UK "null en las de pago"
         date periodo UK "not null"
@@ -227,19 +231,24 @@ erDiagram
         varchar(20) estructura "null, V10, id del paquete de nicho"
         varchar(20) creatividad "null, V10, id del paquete de nicho"
         varchar(400) idea "null, V10"
+        varchar(20) modo_tomas "null, V12"
+        bigint beneficio_id FK "null, V16"
     }
 
     plano {
         bigint id PK "identity"
         bigint video_id FK, UK "not null, on delete cascade, único con orden"
         integer orden UK "not null, entre 1 y 5 (V10)"
-        varchar(10) tipo_foto "null, check FOTO_1|FOTO_2|FOTO_3 (V10)"
+        varchar(10) tipo_foto "null, check FOTO_1 (V15)"
         varchar(300) clave_foto "null en el cierre"
         integer segundos "not null, entre 1 y 15, V10"
         varchar(40) movimiento "null, id del paquete de nicho, solo videos anteriores a V10"
         varchar(1500) toma "null, V10, en inglés"
         varchar(160) descripcion_toma "null, V10, en español"
         varchar(200) texto "null en el cierre y en tomas sin texto"
+        varchar(300) correcciones "null, V14"
+        boolean correcciones_aplicadas "not null, default false, V14"
+        varchar(300) negativos_correccion "null, V19"
         varchar(40) precio "null, cierre"
         varchar(60) frase "null, V9, cierre"
         varchar(120) llamado "null, cierre"
@@ -252,6 +261,7 @@ erDiagram
         timestamptz enviado_en "null, V6"
         varchar(300) clave_clip "null, V6"
         boolean regeneracion_en_curso "not null, default false, V6"
+        boolean extension_en_curso "not null, default false, V12"
     }
 
     consumo_diario {
@@ -290,7 +300,7 @@ erDiagram
     modelo_ia ||--o{ plan : "modelo de video"
     negocio ||--o| perfil_negocio : "tiene un perfil"
     negocio ||--o{ producto : "tiene en su catálogo"
-    producto ||--o{ foto_producto : "tiene hasta tres fotos (FOTO_1 obligatoria para videos)"
+    producto ||--o| foto_producto : "tiene su foto (FOTO_1, V15)"
     negocio ||--o{ conversacion : "conversa (una EN_CURSO como máximo)"
     conversacion ||--o{ mensaje_chat : "tiene sus mensajes"
     negocio ||--o{ video : "crea videos"
@@ -309,6 +319,7 @@ erDiagram
     negocio ||--o{ beneficio_temporal : "recibe beneficios (V8)"
     plan ||--o{ beneficio_temporal : "plan del beneficio (V8)"
     usuario ||--o{ beneficio_temporal : "los otorga (V8)"
+    beneficio_temporal |o--o{ video : "da el plan del video (V16)"
     negocio |o--o{ notificacion_admin : "avisos de pago (V8)"
     modelo_ia |o--o{ notificacion_admin : "avisos de integración (V8)"
 ```
@@ -328,7 +339,7 @@ Notas sobre la cardinalidad:
 - **`video` – `registro_costo`:** de cero a muchos: un registro por cada respuesta del modelo de texto (hasta 3 por guion) y, desde la fase 5, uno por cada clip que el proveedor cobra (los tres de la primera generación y los de cada regeneración, también los que se enviaron y se abandonaron a los 10 minutos, o al pasar el video a `ERROR`). `registro_costo.video_id` admite `null` para llamadas que no son de un video; hoy no hay ninguna, porque la prueba de conexión de la fase 7 no registra costo (ver 3.13).
 - **`plan` – `modelo_ia`:** son dos relaciones independientes (`modelo_texto_id` y `modelo_video_id`). Desde la fase 7, que el modelo de texto sea de tipo `TEXTO`, el de video de tipo `VIDEO` y ambos estén `ACTIVO` (RN-47) lo controla `ServicioPlanes` al crear o editar un plan (`MODELO_INVALIDO`, `MODELO_INACTIVO`), no una restricción de la base de datos; y `ServicioIntegraciones` no deja desactivar un modelo que use un plan activo o un plan con negocios (RN-48, `MODELO_EN_USO`). Desde la fase 4, al escribir el guion, `FabricaDeProveedores` solo usa el modelo de texto del video si es `TEXTO`, `ACTIVO` y `POR_SOLICITUD`; si no, hasta el 2026-11-12 el video usaba el guion de respaldo (`motivo_respaldo = MODELO_INACTIVO`) y, desde entonces (ADR 0021), el guion se reintenta durante 5 minutos y el video pasa a `ERROR`. Desde la fase 5, igual con el modelo de video: solo se usa si es `VIDEO`, `ACTIVO`, `POR_SEGUNDO`, su adaptador existe y tiene credencial. Desde la revisión del 2026-11-06 ya no hay acercamiento de FFmpeg como respaldo (ADR 0020): sin ese modelo, "Crear mi video" y el cambio de foto en la revisión responden 409 `IA_NO_DISPONIBLE`, y un video que ya se estaba generando pasa a `ERROR` y devuelve el video del día (ver 3.12).
 - **`suscripcion` – `pago`** (V8): de cero a muchos, **como máximo uno por fecha de pago** (`pago_periodo_uk` sobre `suscripcion_id` y `periodo_cubierto`). `registrado_por` es el `usuario` administrador que lo registró.
-- **`negocio` – `beneficio_temporal`** (V8): de cero a muchos, pero sin dos que se crucen en el tiempo (RN-51). Eso **no** lo garantiza la base de datos: lo comprueba `ServicioSuscripciones` (`BeneficioRepositorio.existeCruce`) con la suscripción bloqueada. `plan_id` es el plan que rige mientras el beneficio está vigente; `otorgado_por`, el administrador.
+- **`negocio` – `beneficio_temporal`** (V8): de cero a muchos, pero sin dos que se crucen en el tiempo (RN-51). Eso **no** lo garantiza la base de datos: lo comprueba `ServicioSuscripciones` (`BeneficioRepositorio.existeCruce`) con la suscripción bloqueada. *Desde V16 (ADR 0026):* sin dos vigentes a la vez (`BENEFICIO_VIGENTE`), lo que también comprueba la aplicación con la suscripción bloqueada. `video.beneficio_id` dice con qué beneficio nació cada video. `plan_id` es el plan que rige mientras el beneficio está vigente; `otorgado_por`, el administrador.
 - **`notificacion_admin`** (V8): las de pago tienen `negocio_id` y no `modelo_ia_id`; las de integración, al revés. Ninguna restricción `check` lo exige: lo hace `ServicioNotificaciones`. La restricción única `notificacion_uk` (con `nulls not distinct`) evita repetir el mismo tipo para el mismo negocio (o modelo) y período.
 - **`negocio` – `consumo_diario`** (V6): de cero a muchas filas, **como máximo una por día de Lima** (`consumo_diario_negocio_fecha_uk`). La fila del día se crea al aprobar el primer storyboard de ese día; un día sin aprobaciones no tiene fila (cuenta como 0).
 - **`pista_musical` – `video`** (V6): una pista puede estar en muchos videos; un video tiene cero o una (`video.pista_musical_id`, que se elige al aprobar el storyboard y es `null` en los videos anteriores a la fase 5, en los que no pasaron de `STORYBOARD` o si no hay pistas activas del estilo). `pista_musical` se asocia al nicho y al estilo por texto (`nicho`, `estilo`), no por clave foránea.
@@ -556,7 +567,7 @@ Consultas de `ProductoRepositorio`. Todas llevan el negocio (aislamiento entre n
 | `listarParaCarrusel(negocioId)` | `en_catalogo = true` y `estado = ACTIVO`, más recientes primero | `ServicioCatalogo.carrusel`, que además deja solo los completos y cuenta los que no tienen su foto principal (`Carrusel.incompletos`, mostrado como `productosIncompletos`). |
 | `buscarParaVideo(id, negocioId)` | **sin** filtro de catálogo | `ServicioCatalogo.paraVideo` (luego exige `disponibleParaVideo()`): elegir un producto y revalidarlo al cerrar el chat; al elegir un producto del carrusel por id, `ServicioChat` exige además `en_catalogo = true`. `ServicioCatalogo.elegidoParaVideo` (sin más filtros): la sugerencia y el resumen, que muestran el producto ya elegido aunque después se haya archivado. |
 
-### 3.8 `foto_producto` (V3, tipos renombrados en V10)
+### 3.8 `foto_producto` (V3, tipos renombrados en V10, una sola foto desde V15)
 
 Las fotos de cada producto (secciones 7.2 y 9.1). Entidad `FotoProducto` (`com.autoreel.catalogo.dominio`). No tiene repositorio propio: se guarda en cascada desde `Producto.fotos` (`@OneToMany(mappedBy = "producto", cascade = ALL, orphanRemoval = true)`).
 
@@ -579,7 +590,7 @@ Sobre la orientación: el frontend normaliza las fotos antes de subirlas (aplica
 
 Restricciones:
 
-- `foto_producto_tipo_ck`: `tipo in ('FOTO_1', 'FOTO_2', 'FOTO_3')` (V10; hasta V9, `ENTERO`, `DETALLE` y `PORCION`).
+- `foto_producto_tipo_ck`: `tipo in ('FOTO_1', 'FOTO_2', 'FOTO_3')` (V10; hasta V9, `ENTERO`, `DETALLE` y `PORCION`). **Desde V15** (2026-11-25, ADR 0026): `tipo = 'FOTO_1'`, una sola foto por producto (`TipoFoto` solo tiene `FOTO_1`; la API rechaza otra con `SOLICITUD_INVALIDA`). V15 pasó a `FOTO_1` la foto de menor número de los productos que no la tenían y borró las filas `FOTO_2` y `FOTO_3`; sus objetos del almacén no se borraron, porque los planos de videos anteriores guardan su clave.
 - `foto_producto_producto_tipo_uk`: `unique (producto_id, tipo)`. Una foto por tipo y producto.
 - Clave foránea `producto_id` → `producto(id)` **con `on delete cascade`**: es la única clave foránea con borrado en cascada, porque una foto no tiene sentido sin su producto. Hoy ningún flujo borra productos (RN-13 archiva), así que en la práctica no se dispara.
 
@@ -695,7 +706,7 @@ Restricciones e índices:
 - `mensaje_chat_conversacion_idx`: índice sobre (`conversacion_id`, `fecha_hora`, `id`), el mismo orden de `@OrderBy("fechaHora, id")`.
 - Clave foránea `conversacion_id` → `conversacion(id)` **con `on delete cascade`**: un mensaje no tiene sentido sin su conversación. Hoy ningún flujo borra conversaciones, así que no se dispara.
 
-### 3.11 `video` (V5, ampliada en V6, V9 y V10)
+### 3.11 `video` (V5, ampliada en V6, V9, V10, V12 y V16)
 
 El video del día (secciones 8 y 9.1, RF-21 a RF-26). Entidad `Video` (`com.autoreel.video.dominio`), repositorio `VideoRepositorio`. Lo crea `CreadorDeVideos` al completarse una conversación, en la misma transacción del chat; le escribe el guion `ServicioGuion` (llamado por `ProcesadorDeGuiones`), y lo muestra y edita `ServicioVideos` (`/api/videos`). Desde la fase 5, `ServicioVideos` también aprueba el storyboard, regenera, aprueba y descarga, y `ServicioGeneracion` y `ServicioComposicion` (llamados por `ProcesadorDeVideos`) generan los clips y componen el MP4. `negocio_id`, `conversacion_id`, `producto_id` y `pista_musical_id` se mapean como identificadores (`Long`), no como relaciones JPA.
 
@@ -737,6 +748,8 @@ El video del día (secciones 8 y 9.1, RF-21 a RF-26). Entidad `Video` (`com.auto
 | `estructura` | `varchar(20)` | sí | | `String` | **V10 (ADR 0022).** Id de la estructura que eligió la IA en `plantilla.json` del paquete de nicho (`RAPIDA`, `CLASICA`, `HISTORIA` o `PLANO_UNICO` en Pastelería): cuántas tomas tiene el video, sus segundos, los del cierre y el máximo de palabras por toma. Sin `check`: los valores son del paquete de nicho. Se escribe con el guion (`Video.elegirConcepto`). `null` mientras no hay guion. V10 puso `CLASICA` a los videos anteriores que ya tenían planos. |
 | `creatividad` | `varchar(20)` | sí | | `String` | **V10.** Id del nivel de creatividad que eligió la IA en `movimientos.json` (`PRODUCTO`, `AMBIENTE` u `ORIGEN`). Suma sus prohibiciones y negativos al prompt de cada clip. Sin `check`. `null` sin guion y en los videos anteriores a V10. |
 | `idea` | `varchar(400)` | sí | | `String` | **V10.** El concepto del video en una o dos frases, en español (hasta 400 caracteres, `ValidadorDeGuion.MAXIMO_CARACTERES_IDEA`). La vista lo muestra arriba del storyboard (`concepto`). `null` sin guion y en los videos anteriores a V10. |
+| `modo_tomas` | `varchar(20)` | sí | | `String` | **V12** (ADR 0024). Modo de tomas elegido en el chat. Desde el ADR 0025 el chat ya no lo pregunta y queda en `null`: el video usa el modo por defecto del paquete de nicho. |
+| `beneficio_id` | `bigint` | sí | | `Long` (`beneficioId`) | **V16** (2026-11-25, ADR 0026). El beneficio cuyo plan usa el video (`CreadorDeVideos`, con `ResolutorDePlanEfectivo.resolver`), o `null` si usa el plan de la suscripción. Al aprobar el storyboard (y al reintentar un video que falló al generarse), `ServicioConsumo` gasta un uso de ese beneficio junto con el video del día; si el video falla y se devuelve el video del día, también devuelve el uso. Clave foránea a `beneficio_temporal(id)`. No se actualiza. |
 
 Los planos se cargan con `Video.planos` (`@OneToMany(mappedBy = "video", cascade = ALL, orphanRemoval = true)`, `@OrderBy("orden")`) y se agregan con `agregarPlano` (1 a 3) y `agregarCierre` (4). *Desde V10*, `agregarPlano` agrega las tomas (de 1 a 4, según la estructura) con sus segundos, y `agregarCierre` el cierre en el orden que sigue a la última toma (`Estructura.ordenDelCierre`). `Video.planosConFoto()` devuelve las tomas en orden y `Video.cierre()` el plano sin foto.
 
@@ -757,7 +770,7 @@ Restricciones e índices:
 - `video_negocio_idx`: índice sobre (`negocio_id`, `fecha_creacion desc`), para "Mis videos" (`listarDeNegocio`).
 - `video_guion_pendiente_idx`: **índice parcial** sobre (`fecha_creacion`) `where estado = 'GUION_PENDIENTE'`, para la consulta del procesador (`pendientesDeGuion`).
 - `video_en_proceso_idx` (V6): **índice parcial** sobre (`fecha_actualizacion`) `where estado in ('GENERANDO', 'COMPONIENDO')`, para la consulta del procesador de videos (`enProceso`).
-- Claves foráneas `negocio_id` → `negocio(id)`, `conversacion_id` → `conversacion(id)`, `producto_id` → `producto(id)`, `plan_aplicado_id` → `plan(id)`, `modelo_texto_usado_id` y `modelo_video_usado_id` → `modelo_ia(id)` y, desde V6, `pista_musical_id` → `pista_musical(id)`. Ninguna con borrado en cascada.
+- Claves foráneas `negocio_id` → `negocio(id)`, `conversacion_id` → `conversacion(id)`, `producto_id` → `producto(id)`, `plan_aplicado_id` → `plan(id)`, `modelo_texto_usado_id` y `modelo_video_usado_id` → `modelo_ia(id)` y, desde V6, `pista_musical_id` → `pista_musical(id)`. Ninguna con borrado en cascada. Desde V16, también `beneficio_id` → `beneficio_temporal(id)`, sin borrado en cascada.
 
 Concurrencia:
 
@@ -765,7 +778,7 @@ Concurrencia:
 - **Reclamo del procesador de videos (V6):** `VideoRepositorio.reclamarTrabajo(id, estado, ahora, hasta)` hace lo mismo sobre `trabajo_reclamado_hasta`, exigiendo además el estado esperado (`GENERANDO` para los clips, `COMPONIENDO` para la composición).
 - **Bloqueo de la fila:** `bloquear(id)` (procesadores) y `bloquearDeNegocio(id, negocioId)` (edición, descarte y, desde la fase 5, aprobar el storyboard, regenerar y aprobar) usan `PESSIMISTIC_WRITE` (`SELECT ... FOR UPDATE`). El paso a `STORYBOARD` solo ocurre si el video sigue en `GUION_PENDIENTE`; cada cambio de un plano en la generación, solo si el video sigue en `GENERANDO`; y el paso a `LISTO`, solo si sigue en `COMPONIENDO`.
 
-### 3.12 `plano` (V5, ampliada en V6, V9 y V10)
+### 3.12 `plano` (V5, ampliada en V6, V9, V10, V12, V14 y V19)
 
 Los planos del storyboard y, desde la fase 5, el clip de cada uno (secciones 7.4, 8.2, 8.5 y 9.1). Entidad `Plano` (`com.autoreel.video.dominio`). No tiene repositorio propio: se guarda en cascada desde `Video.planos`. La plantilla (`resources/nichos/pasteleria/plantilla.json`) define el nombre, la foto, el máximo de palabras y los segundos de cada orden; esos datos no se copian a la tabla. *Desde V10 (guion flexible, ADR 0022)* la plantilla define **estructuras** (cuántas tomas, sus segundos, los del cierre y el máximo de palabras), y la IA elige una (`video.estructura`). Cada plano guarda sus `segundos`; el nombre se calcula ("Gancho" en el orden 1, "Toma N" en los demás y "Cierre" en el cierre, `PlantillaVideo.nombreDelPlano`) y el máximo de palabras sale de la estructura del video.
 
@@ -793,6 +806,10 @@ Los planos del storyboard y, desde la fase 5, el clip de cada uno (secciones 7.4
 | `enviado_en` | `timestamptz` | sí | | `Instant` | **V6.** Momento del último envío al proveedor. A los 10 minutos sin clip, el intento se da por perdido; un plano que quedó `PENDIENTE` después de un envío tiene además un plazo total de 20 minutos desde aquí (sección 8.5). |
 | `clave_clip` | `varchar(300)` | sí | | `String` | **V6.** Clave del clip de IA en el almacén: `negocios/{negocioId}/videos/{videoId}/clip-{orden}-{uuid}.mp4`. Al llegar un clip nuevo (regeneración), el anterior se borra del almacén después del commit. Si la foto del plano cambia en la revisión, se borra la referencia: el clip ya no corresponde. |
 | `regeneracion_en_curso` | `boolean` | no | `false` | `boolean` | **V6.** `true` mientras una regeneración pedida no termina. Si no consigue el clip nuevo y había un clip anterior (`Plano.conservarClipAnterior`), el plano vuelve a `LISTO` con ese clip, la regeneración se devuelve (`video.regeneraciones_usadas - 1`) y el video recibe el `aviso_revision`. |
+| `extension_en_curso` | `boolean` | no | `false` | `boolean` | **V12** (ADR 0024). `true` mientras Veo extiende el clip de un plano extendido. Desde el ADR 0025 ningún modo lo usa. |
+| `correcciones` | `varchar(300)` | sí | | `String` | **V14** (2026-11-25, ADR 0026). Lo que el negocio no quiere que aparezca en la toma ("que no tenga hojas de menta"), en una línea, sin emojis ni palabras prohibidas. `null` en el cierre y si no escribió nada. Se edita en el storyboard y en la revisión (`Plano.cambiarCorrecciones`). |
+| `correcciones_aplicadas` | `boolean` | no | `false` | `boolean` | **V14.** `true` cuando la `toma` y la `descripcion_toma` actuales ya se reescribieron con las `correcciones` guardadas (`Plano.aplicarCorrecciones`, con la respuesta de `CorrectorDeTomas`). Vuelve a `false` si las correcciones cambian. Mientras está en `false` y hay correcciones, la siguiente regeneración (o la primera generación) llama antes al modelo de texto; así una segunda regeneración con las mismas correcciones no lo vuelve a llamar. |
+| `negativos_correccion` | `varchar(300)` | sí | | `String` | **V19** (2026-11-25, ADR 0026). Lo que las correcciones piden evitar, en inglés y separado por comas ("flowers, floral decor, vase"). Lo escribe `CorrectorDeTomas` junto con la toma nueva (`Plano.aplicarCorrecciones`) y se suma al prompt negativo de Veo en el clip y en su extensión. Se borra si se quitan las correcciones. |
 
 El cierre (orden 4; desde V10, el plano sin foto que sigue a la última toma, de 3 s, o 7 s en el plano único) **no tiene clip de IA**. Hasta el 2026-11-12 lo armaba `ServicioGuion` solo con los datos del usuario; desde entonces (ADR 0021) toma de la respuesta del modelo el precio, la frase y la ubicación (`GuionPropuesto.CierrePropuesto`), y el sistema pone el llamado. El logo, los colores, la foto del local y el WhatsApp del cierre no se copian: la vista y, desde la fase 5, la composición los leen del perfil.
 
@@ -805,7 +822,7 @@ Restricciones:
 - `plano_video_orden_uk`: `unique (video_id, orden)`. Un plano por orden en cada video.
 - `plano_orden_ck`: `orden between 1 and 5` (desde V10; antes, `between 1 and 4`).
 - `plano_foto_ck`: `orden = 4 or clave_foto is not null`. Los planos 1 a 3 siempre tienen foto. **V10 la borró:** el cierre ya no es siempre el orden 4. Que cada toma tenga foto lo garantiza el código (`Video.agregarPlano`).
-- `plano_tipo_foto_ck`: `tipo_foto` es `null` o `FOTO_1`, `FOTO_2` o `FOTO_3` (V10; antes, `ENTERO`, `DETALLE` o `PORCION`).
+- `plano_tipo_foto_ck`: `tipo_foto` es `null` o `FOTO_1`, `FOTO_2` o `FOTO_3` (V10; antes, `ENTERO`, `DETALLE` o `PORCION`). **Desde V15:** `tipo_foto is null or tipo_foto = 'FOTO_1'`. Los planos que usaban la Foto 2 o la Foto 3 quedaron con `tipo_foto = null` y conservan su `clave_foto`.
 - `plano_segundos_ck` (V10): `segundos between 1 and 15`.
 - `plano_estado_ck` (V6): `estado` es `null` o `PENDIENTE`, `GENERANDO`, `LISTO` o `RESPALDO`.
 - `plano_intentos_ck` (V6): `intentos >= 0`.
@@ -904,10 +921,11 @@ Pagos que el administrador registra a mano (secciones 9.1 y 10.8, RF-08, RN-42, 
 | `medio` | `varchar(20)` | no | | `MedioPago` | `TRANSFERENCIA`, `YAPE`, `PLIN`, `EFECTIVO` u `OTRO`. |
 | `periodo_cubierto` | `date` | no | | `LocalDate` | La fecha de pago que salda: la `suscripcion.proxima_fecha_pago` que había al registrarlo. Al registrar el pago, esa fecha avanza un mes (ver 3.5). |
 | `nota` | `varchar(300)` | sí | | `String` | Nota opcional del administrador; vacía se guarda como `null`. |
+| `comprobante_clave` | `varchar(300)` | sí | | `String` (`comprobanteClave`) | **V17** (2026-11-25, ADR 0026). Clave **definitiva** de la imagen del comprobante (la captura de Yape o la foto del voucher): `negocios/{negocioId}/comprobantes/{uuid}.{jpg,png,webp}`, de hasta 5 MB (propósito `COMPROBANTE_PAGO`). Opcional: los pagos anteriores quedan en `null`. No se actualiza. La API devuelve una URL de lectura firmada (`comprobanteUrl`), nunca la clave. |
 | `registrado_por` | `bigint` | no | | `Long` (`registradoPor`) | `usuario.id` del administrador que lo registró. |
 | `fecha_registro` | `timestamptz` | no | | `Instant` | Momento del registro, con el `Clock` inyectado. |
 
-**Registrar un pago** bloquea la suscripción (`SuscripcionRepositorio.bloquearPorNegocio`, `PESSIMISTIC_WRITE`), guarda el pago con `periodo_cubierto = proxima_fecha_pago`, avanza la fecha (`Suscripcion.avanzarFechaPago`) y marca como leídas las notificaciones de pago pendientes del negocio con `periodo` igual o anterior (`NotificacionRepositorio.marcarLeidasDePago`). Todo en una transacción.
+**Registrar un pago** bloquea la suscripción (`SuscripcionRepositorio.bloquearPorNegocio`, `PESSIMISTIC_WRITE`), guarda el pago con `periodo_cubierto = proxima_fecha_pago`, avanza la fecha (`Suscripcion.avanzarFechaPago`) y marca como leídas las notificaciones de pago pendientes del negocio con `periodo` igual o anterior (`NotificacionRepositorio.marcarLeidasDePago`, que no toca las `INTEGRACION_CON_ERROR` ni, desde V18, las `SOLICITUD_CONTRASENA`). Todo en una transacción. Desde V17, si trae comprobante, verifica la subida temporal y la copia a su clave definitiva en la misma transacción (`ServicioDeArchivos.confirmar`); la temporal se borra después del commit.
 
 Restricciones:
 
@@ -918,7 +936,7 @@ Restricciones:
 
 Diferencias con la sección 9.1 de la especificación: ninguna en los atributos; se agregó `fecha_registro`.
 
-### 3.17 `beneficio_temporal` (V8)
+### 3.17 `beneficio_temporal` (V8, por usos desde V16)
 
 Otro plan para un negocio durante un período (secciones 9.1 y 10.9, RF-12, RN-50 a RN-53, V40, V41), como cortesía o por un inconveniente. Entidad `BeneficioTemporal` (`com.autoreel.facturacion.dominio`), repositorio `BeneficioRepositorio`. Lo administra `ServicioSuscripciones` (`/api/admin/negocios/{id}/beneficios`) y lo lee `ResolutorDePlanEfectivo`. `negocio_id` y `otorgado_por` se mapean como identificadores (`Long`).
 
@@ -927,20 +945,26 @@ Otro plan para un negocio durante un período (secciones 9.1 y 10.9, RF-12, RN-5
 | `id` | `bigint` identity | no | generado | `Long` | Clave primaria. |
 | `negocio_id` | `bigint` | no | | `Long` (`negocioId`) | Negocio que recibe el beneficio. No se actualiza. |
 | `plan_id` | `bigint` | no | | `Plan` (`@ManyToOne`, lazy, `optional = false`) | Plan que rige mientras el beneficio está vigente: sus videos por día, regeneraciones y modelos (RN-53). Debe estar activo y ser distinto del plan de la suscripción (`BENEFICIO_MISMO_PLAN`). No se actualiza. |
-| `desde` | `timestamptz` | no | | `Instant` | Inicio. Si el administrador elige un instante ya pasado, se guarda el momento del registro. No se actualiza. |
-| `hasta` | `timestamptz` | no | | `Instant` | Fin (exclusivo). Es la única columna que cambia: al terminar antes un beneficio vigente, pasa a "ahora" (`BeneficioTemporal.terminar`). |
+| `desde` | `timestamptz` | sí (desde V16) | | `Instant` | Inicio. Si el administrador elige un instante ya pasado, se guarda el momento del registro. No se actualiza. **Desde V16** solo lo tienen los beneficios por fechas anteriores; los nuevos lo dejan en `null`. |
+| `hasta` | `timestamptz` | sí (desde V16) | | `Instant` | Fin (exclusivo). Es la única columna que cambia: al terminar antes un beneficio vigente, pasa a "ahora" (`BeneficioTemporal.terminar`). **Desde V16**, igual que `desde`: solo en los beneficios anteriores. |
+| `usos_otorgados` | `integer` | no | | `int` | **V16** (2026-11-25, ADR 0026). Videos que regala el beneficio, de 1 a 30 (`BeneficioTemporal.USOS_MAXIMOS`). Los beneficios por fechas anteriores quedaron con 1. No se actualiza. |
+| `usos_consumidos` | `integer` | no | `0` | `int` | **V16.** Videos ya aprobados con el beneficio. Suma 1 al aprobar el storyboard o al reintentar un video que falló al generarse (`consumirUso`) y resta 1 cuando ese video falla y se devuelve el video del día (`devolverUso`, RN-27). |
+| `terminado` | `boolean` | no | `false` | `boolean` | **V16.** `true` cuando el administrador lo terminó (`BeneficioTemporal.terminar`; ya no se borra ni cambia `hasta`). Los beneficios por fechas anteriores quedaron en `true`. |
 | `motivo` | `varchar(300)` | no | | `String` | Motivo obligatorio (RN-51), sin espacios al borde. No se actualiza. |
 | `otorgado_por` | `bigint` | no | | `Long` (`otorgadoPor`) | `usuario.id` del administrador que lo otorgó. No se actualiza. |
 | `fecha_creacion` | `timestamptz` | no | | `Instant` | Momento del registro. No se actualiza. |
 
 **Vigencia.** No es una columna: un beneficio está vigente si `desde <= ahora < hasta` (`BeneficioTemporal.vigente`), programado si `ahora < desde` y terminado si `hasta <= ahora`. La API lo devuelve como `estado` (`PROGRAMADO`, `VIGENTE` o `TERMINADO`). Al vencer, el negocio vuelve solo a su plan, sin ninguna tarea (RN-52): `ResolutorDePlanEfectivo` simplemente deja de encontrarlo. Un beneficio programado que se retira se borra; uno vigente termina ahora y queda en el historial.
 
-**Sin cruces (RN-51).** Un negocio no puede tener dos beneficios que se crucen en el tiempo (`BeneficioRepositorio.existeCruce`: `desde < hasta_nuevo` y `hasta > desde_nuevo`). Lo comprueba la aplicación con la suscripción bloqueada, no la base de datos (`BENEFICIO_CRUZADO`).
+**Vigencia desde V16 (ADR 0026).** Un beneficio está vigente si `not terminado and usos_consumidos < usos_otorgados` (`BeneficioTemporal.vigente`); ya no cuentan las fechas. La API lo devuelve como `estado`: `VIGENTE`, `AGOTADO` (gastó sus usos) o `TERMINADO`. `BeneficioRepositorio.vigente(negocioId)` y `vigentes()` lo calculan igual y devuelven primero el más antiguo; `bloquear(id)` toma la fila con `PESSIMISTIC_WRITE` para gastar o devolver un uso; `listarDeNegocio` ordena por `fecha_creacion`. Cada video guarda el beneficio con el que nació (`video.beneficio_id`), para gastar y devolver sus usos aunque el administrador otorgue otro después.
+
+**Sin cruces (RN-51).** Un negocio no puede tener dos beneficios que se crucen en el tiempo (`BeneficioRepositorio.existeCruce`: `desde < hasta_nuevo` y `hasta > desde_nuevo`). Lo comprueba la aplicación con la suscripción bloqueada, no la base de datos (`BENEFICIO_CRUZADO`). **Desde V16** ya no hay cruces de fechas (`existeCruce` se quitó): no se otorga uno nuevo mientras haya otro vigente (`BENEFICIO_VIGENTE`), con la misma suscripción bloqueada. Puede haber dos vigentes si un video devuelve el uso a un beneficio agotado después de otorgarse otro; entonces se usa primero el más antiguo.
 
 Restricciones e índices:
 
-- `beneficio_rango_ck`: `hasta > desde`.
-- `beneficio_maximo_ck`: `hasta <= desde + interval '30 days'` (RN-51; la aplicación responde antes `BENEFICIO_MUY_LARGO`).
+- `beneficio_rango_ck`: `hasta > desde`. **V16 la borró.**
+- `beneficio_maximo_ck`: `hasta <= desde + interval '30 days'` (RN-51; la aplicación responde antes `BENEFICIO_MUY_LARGO`). **V16 la borró.**
+- `beneficio_usos_ck` (V16): `usos_otorgados between 1 and 30 and usos_consumidos between 0 and usos_otorgados`.
 - `beneficio_negocio_idx`: índice sobre (`negocio_id`, `hasta desc`), para el beneficio vigente y el historial del negocio.
 - Claves foráneas `negocio_id` → `negocio(id)`, `plan_id` → `plan(id)` y `otorgado_por` → `usuario(id)`, sin borrado en cascada.
 
@@ -951,8 +975,8 @@ Avisos de la campana del panel del administrador (secciones 9.1 y 10.10, RF-09, 
 | Columna | Tipo | Nulo | Por defecto | Java | Descripción |
 |---|---|---|---|---|---|
 | `id` | `bigint` identity | no | generado | `Long` | Clave primaria. |
-| `tipo` | `varchar(30)` | no | | `TipoNotificacion` | `PAGO_POR_VENCER`, `PAGO_HOY`, `PAGO_VENCIDO`, `SUGERENCIA_SUSPENSION` (a los 7 días de vencido, RN-45) o `INTEGRACION_CON_ERROR` (RN-57). |
-| `negocio_id` | `bigint` | sí | | `Long` (`negocioId`) | Negocio del aviso de pago. `null` en las de integración. |
+| `tipo` | `varchar(30)` | no | | `TipoNotificacion` | `PAGO_POR_VENCER`, `PAGO_HOY`, `PAGO_VENCIDO`, `SUGERENCIA_SUSPENSION` (a los 7 días de vencido, RN-45) o `INTEGRACION_CON_ERROR` (RN-57). Desde V18, también `SOLICITUD_CONTRASENA` (el negocio olvidó su contraseña, RF-04). |
+| `negocio_id` | `bigint` | sí | | `Long` (`negocioId`) | Negocio del aviso de pago o, desde V18, de la solicitud de contraseña. `null` en las de integración. |
 | `modelo_ia_id` | `bigint` | sí | | `Long` (`modeloIaId`) | Modelo de IA que falló. `null` en las de pago. No se expone en la API. |
 | `periodo` | `date` | no | | `LocalDate` | En las de pago, la fecha de pago (`suscripcion.proxima_fecha_pago`) a la que se refiere; en las de integración, el día de Lima de la falla. Con el tipo y el negocio (o modelo), es lo que no se repite. |
 | `mensaje` | `varchar(300)` | no | | `String` | Texto listo para mostrar ("El pago de … vence en 3 días.", "Gemini Omni Flash: el proveedor no está disponible. …"), recortado a 300 caracteres. |
@@ -962,11 +986,12 @@ Avisos de la campana del panel del administrador (secciones 9.1 y 10.10, RF-09, 
 **Cómo se crean.** Siempre con un `INSERT ... ON CONFLICT DO NOTHING` nativo (`NotificacionRepositorio.crearSiNoExiste`), así una tarea que corre dos veces el mismo día no duplica nada:
 
 - **De pago:** `TareaDiariaDePagos` (`@Scheduled`, 00:10 de Lima, y también al arrancar la aplicación) llama a `ServicioNotificaciones.generarDePagos`, que calcula el estado de pago de cada suscripción con el día de Lima y crea la del estado (`POR_VENCER`, `VENCE_HOY` o `VENCIDO`), más `SUGERENCIA_SUSPENSION` si lleva 7 días o más vencido y el negocio no está suspendido. Nunca suspende al negocio (RN-45).
+- **Solicitud de contraseña** (V18, 2026-11-25, ADR 0026): `ServicioNotificaciones.solicitudDeContrasena`, llamada por `POST /api/auth/solicitar-reinicio`. Tipo `SOLICITUD_CONTRASENA`, con el `negocio_id` y el día de Lima como `periodo`: una por negocio y por día. El mensaje junta el nombre del negocio, su correo, el WhatsApp (si lo escribió) y su texto, recortado a 300 caracteres. Se marca leída a mano.
 - **De integración:** `AvisoDeIntegracionEnPanel` (la implementación del puerto `AvisoDeIntegracion`) cuando el guion o un clip fallan por el proveedor (credencial inválida, configuración inválida o proveedor no disponible), o porque falta la credencial o el modelo. Va en su propia transacción (`REQUIRES_NEW`): si falla, no deshace el proceso del video. Una por modelo y por día.
 
 Restricciones e índices:
 
-- `notificacion_tipo_ck`: `tipo in ('PAGO_POR_VENCER', 'PAGO_HOY', 'PAGO_VENCIDO', 'SUGERENCIA_SUSPENSION', 'INTEGRACION_CON_ERROR')`.
+- `notificacion_tipo_ck`: `tipo in ('PAGO_POR_VENCER', 'PAGO_HOY', 'PAGO_VENCIDO', 'SUGERENCIA_SUSPENSION', 'INTEGRACION_CON_ERROR')`. **V18** suma `'SOLICITUD_CONTRASENA'`.
 - `notificacion_uk`: `unique nulls not distinct (tipo, negocio_id, modelo_ia_id, periodo)`. Con `nulls not distinct` (PostgreSQL 15 o superior), los `null` de `negocio_id` o `modelo_ia_id` cuentan como iguales: sin eso, dos avisos de integración del mismo modelo y día (con `negocio_id` en `null`) no chocarían. Es la regla de RN-44: el mismo tipo nunca se repite para el mismo negocio (o modelo) y el mismo período.
 - `notificacion_fecha_idx`: índice sobre (`fecha desc`), para la bandeja.
 - Claves foráneas `negocio_id` → `negocio(id)` y `modelo_ia_id` → `modelo_ia(id)`, sin borrado en cascada.
@@ -1007,7 +1032,7 @@ La prueba de integración `GestionNegociosIntegracionTest.lasSemillasDePlanesYMo
 
 - Un `perfil_negocio` vacío por cada `negocio` existente (ver 3.6). No siembra productos.
 
-### 4.3 Migraciones V4 a V11
+### 4.3 Migraciones V4 a V18
 
 - V4 no siembra datos. Los productos que ya existían quedan con `en_catalogo = true` por el `default` de la columna nueva.
 - V5 no siembra datos ni crea videos para las conversaciones que ya estaban `COMPLETA`: solo las que se completan desde la fase 4 tienen video. El negocio de ejemplo tampoco crea videos.
@@ -1062,6 +1087,15 @@ Así quedan los modelos después de V11, en una base de datos que no los editó 
 | Veo 3.1 | `VIDEO` | `VEO` | Google Cloud | `autoreel/google-cloud` | `ACTIVO` | — |
 
 Hasta V10, Gemini Omni Flash era el modelo de video del plan Lite y Veo 3.1 Lite estaba `INACTIVO`. Pasar también el texto a Google Cloud no requiere programar: activar Gemini (Google Cloud) en Ajustes → Integraciones (con la credencial `autoreel/google-cloud` configurada) y asignarlo al plan en Ajustes → Planes.
+
+- **V12** (modos de tomas, ADR 0024) y **V13** (sin la foto quieta al inicio) no siembran filas. V13 suma `"recorteInicialSegundos": 1.0` a los `parametros` de los modelos con `adaptador = 'VEO'`.
+- **V14 a V19** (edición con correcciones y mejoras del admin, ADR 0026, 2026-11-25) no siembran filas. Cambian datos que ya existen:
+  - **V14:** `plano.correcciones` queda en `null` y `correcciones_aplicadas` en `false`.
+  - **V15:** en cada producto sin `FOTO_1`, su foto de menor número pasa a ser la `FOTO_1`; después se borran todas las filas `FOTO_2` y `FOTO_3` (sin borrar sus objetos del almacén). Los planos con `tipo_foto` `FOTO_2` o `FOTO_3` pasan a `null` y conservan su `clave_foto`.
+  - **V16:** los beneficios que ya existían quedan con `usos_otorgados = 1`, `usos_consumidos = 0` y `terminado = true`, y conservan `desde` y `hasta`: siguen en el historial, pero ya no rigen. `video.beneficio_id` queda en `null` en los videos anteriores.
+  - **V17:** `pago.comprobante_clave` queda en `null` en los pagos anteriores.
+  - **V18:** solo cambia el `check` de `notificacion_admin.tipo`.
+  - **V19:** `plano.negativos_correccion` queda en `null`; las tomas ya corregidas siguen sin negativos hasta que se cambien sus correcciones.
 
 ### 4.4 Sembrados por la aplicación al arrancar
 
@@ -1141,7 +1175,15 @@ Ubicación: `backend/src/main/resources/db/migration/`. Cada fase agrega migraci
 | V9 | `V9__frase_del_cierre.sql` | Calidad del video (2026-11-12, ADR 0021) | Columnas `plano.frase` (`varchar(60)`), `video.guion_iniciado_en` (`timestamptz`) y `video.error_definitivo` (`boolean not null default false`). Sin datos. |
 | V10 | `V10__guion_flexible.sql` | Guion flexible (2026-11-25, ADR 0022) | Tipos de foto `FOTO_1`, `FOTO_2` y `FOTO_3` en `foto_producto` y `plano` (renombra `ENTERO`, `DETALLE` y `PORCION`); `plano_orden_ck` de 1 a 5 y sin `plano_foto_ck`; columnas `plano.segundos` (`integer not null`, con `plano_segundos_ck`), `plano.toma` (`varchar(1500)`), `plano.descripcion_toma` (`varchar(160)`), `video.estructura` y `video.creatividad` (`varchar(20)`) y `video.idea` (`varchar(400)`); `duracionesClip` en los parámetros de Veo; `CLASICA` en los videos anteriores (ver 4.3). |
 | V11 | `V11__modelos_veo.sql` | Guion flexible (2026-11-25, ADR 0022) | Inserta Veo 3.1 Fast y Veo 3.1 copiando Veo 3.1 Lite; activa Veo 3.1 Lite y lo pone en el plan Lite (ver 4.3). Sin tablas ni columnas nuevas. |
-| V12 en adelante | — | 6, 8 y 9 | **(futuro)** Una o más migraciones por fase, según la sección 7 de este documento. La fase 6 (Instagram) quedó en pausa y la fase 7 se adelantó, así que V8 es de la fase 7, V9 de la mejora de la calidad del video y V10 y V11 del guion flexible. |
+| V12 | `V12__modos_de_tomas.sql` | Modos de tomas (2026-11-25, ADR 0024) | Columnas `video.modo_tomas` (`varchar(20)`) y `plano.extension_en_curso` (`boolean not null default false`). Sin datos. |
+| V13 | `V13__recorte_inicial_de_clips.sql` | Sin la foto quieta al inicio (2026-11-25) | `recorteInicialSegundos = 1.0` en los `parametros` de los modelos Veo (ver 4.3). Sin tablas ni columnas nuevas. |
+| V14 | `V14__correcciones_de_planos.sql` | Edición con correcciones (2026-11-25, ADR 0026) | Columnas `plano.correcciones` (`varchar(300)`) y `plano.correcciones_aplicadas` (`boolean not null default false`). |
+| V15 | `V15__una_foto_por_producto.sql` | Una foto por producto (ADR 0026) | Deja solo `FOTO_1` en `foto_producto` (ver 4.3); `foto_producto_tipo_ck` y `plano_tipo_foto_ck` pasan a `FOTO_1`. |
+| V16 | `V16__beneficios_por_usos.sql` | Beneficios por usos (ADR 0026) | Columnas `beneficio_temporal.usos_otorgados`, `usos_consumidos` y `terminado`; `desde` y `hasta` opcionales; quita `beneficio_rango_ck` y `beneficio_maximo_ck` y agrega `beneficio_usos_ck`; columna `video.beneficio_id` (FK a `beneficio_temporal`). |
+| V17 | `V17__comprobante_de_pago.sql` | Comprobante de pago (ADR 0026) | Columna `pago.comprobante_clave` (`varchar(300)`, opcional). |
+| V18 | `V18__solicitud_de_contrasena.sql` | Solicitud de contraseña (ADR 0026) | `notificacion_tipo_ck` suma `SOLICITUD_CONTRASENA`. |
+| V19 | `V19__negativos_de_correcciones.sql` | Negativos de las correcciones (ADR 0026) | Columna `plano.negativos_correccion` (`varchar(300)`, opcional). |
+| V20 en adelante | — | 8 y 9 | **(futuro)** Una o más migraciones por fase, según la sección 7 de este documento. La fase 6 (Instagram) quedó fuera del MVP (ADR 0026) y la fase 7 se adelantó, así que V8 es de la fase 7, V9 de la mejora de la calidad del video, V10 y V11 del guion flexible, V12 y V13 de los modos de tomas y V14 a V19 de la edición con correcciones y las mejoras del admin. |
 
 ## 7. Entidades futuras
 
@@ -1149,8 +1191,8 @@ Entidades de la sección 9.1 de la especificación que todavía no tienen tabla.
 
 | Entidad (sec. 9.1) | Atributos previstos | Llega en | Motivo |
 |---|---|---|---|
-| **CuentaInstagram** | negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken | **(futuro, fase 6)** | OAuth de Instagram. El token se guarda cifrado. |
-| **Publicacion** | video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError | **(futuro, fase 6)** | Publicar ahora y programar. |
+| **CuentaInstagram** | negocio, idUsuarioInstagram, nombreUsuario, tokenCifrado, venceToken | **(futuro, fase 6; fuera del MVP desde el ADR 0026)** | OAuth de Instagram. El token se guarda cifrado. |
+| **Publicacion** | video, red, estado, fechaProgramada, fechaPublicada, idPublicacionExterna, enlace, motivoError | **(futuro, fase 6; fuera del MVP desde el ADR 0026)** | Publicar ahora y programar. |
 
 Cambios previstos en tablas que ya existen:
 

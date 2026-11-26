@@ -23,8 +23,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Producto del catálogo de un negocio (sección 7.2). Puede existir sin todas sus fotos, pero solo se usa en un
- * video cuando tiene las tres (RN-12).
+ * Producto del catálogo de un negocio (sección 7.2). Puede existir sin su foto, pero solo se usa en un video cuando
+ * la tiene (RN-12; desde el 2026-11-25, una sola foto: FOTO_1).
  */
 @Entity
 @Table(name = "producto")
@@ -92,12 +92,12 @@ public class Producto {
         return fotos.stream().filter(foto -> foto.getTipo() == tipo).findFirst();
     }
 
-    /** RN-12 (2026-11-25): un producto con su foto principal ya puede usarse en un video; las otras dos son opcionales. */
+    /** RN-12 (2026-11-25): un producto con su foto ya puede usarse en un video. */
     public boolean estaCompleto() {
         return foto(TipoFoto.FOTO_1).isPresent();
     }
 
-    /** Las fotos en orden (1 a 3), como las ve la IA. */
+    /** Las fotos del producto (desde el 2026-11-25, solo una), como las ve la IA. */
     public List<FotoProducto> fotosEnOrden() {
         return fotos.stream().sorted(java.util.Comparator.comparing(FotoProducto::getTipo)).toList();
     }
@@ -106,7 +106,7 @@ public class Producto {
         this.enCatalogo = false;
     }
 
-    /** Puede usarse en un video: activo y con su foto principal (RN-12, RN-13). */
+    /** Puede usarse en un video: activo y con su foto (RN-12, RN-13). */
     public boolean disponibleParaVideo() {
         return estado == EstadoProducto.ACTIVO && estaCompleto();
     }

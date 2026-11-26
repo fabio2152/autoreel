@@ -17,11 +17,15 @@ const ESTILO_TIPO: Record<Notificacion['tipo'], string> = {
   PAGO_VENCIDO: 'bg-red-600',
   SUGERENCIA_SUSPENSION: 'bg-red-800',
   INTEGRACION_CON_ERROR: 'bg-violet-600',
+  SOLICITUD_CONTRASENA: 'bg-sky-600',
 }
 
 const ES_DE_PAGO: Notificacion['tipo'][] = ['PAGO_POR_VENCER', 'PAGO_HOY', 'PAGO_VENCIDO']
 
-/** RF-09: campana con las notificaciones sin leer; las de pago llevan al botón "Registrar pago". */
+/**
+ * RF-09: campana con las notificaciones sin leer; las de pago llevan al botón "Registrar pago" y la solicitud de
+ * contraseña, al detalle del negocio, donde está "Reiniciar contraseña".
+ */
 export function CampanaNotificaciones() {
   const clienteConsultas = useQueryClient()
   const navegar = useNavigate()
@@ -106,7 +110,11 @@ export function CampanaNotificaciones() {
                         </button>
                       )}
                       <button type="button" onClick={() => irA(notificacion)} className="text-stone-600 hover:underline">
-                        {notificacion.tipo === 'INTEGRACION_CON_ERROR' ? 'Ver integraciones' : 'Ver negocio'}
+                        {notificacion.tipo === 'INTEGRACION_CON_ERROR'
+                          ? 'Ver integraciones'
+                          : notificacion.tipo === 'SOLICITUD_CONTRASENA'
+                            ? 'Ir a reiniciar contraseña'
+                            : 'Ver negocio'}
                       </button>
                       {!notificacion.leida && (
                         <button type="button" onClick={() => leida.mutate(notificacion.id)} className="text-stone-500 hover:underline">

@@ -6,6 +6,7 @@ import com.autoreel.compartido.error.ExcepcionDeNegocio;
 import com.autoreel.compartido.seguridad.CookieDeSesion;
 import com.autoreel.compartido.seguridad.ServicioJwt;
 import com.autoreel.compartido.seguridad.UsuarioAutenticado;
+import com.autoreel.facturacion.aplicacion.ServicioNotificaciones;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,11 +25,14 @@ public class AuthController {
     private final ServicioAutenticacion servicio;
     private final ServicioJwt servicioJwt;
     private final CookieDeSesion cookieDeSesion;
+    private final ServicioNotificaciones notificaciones;
 
-    public AuthController(ServicioAutenticacion servicio, ServicioJwt servicioJwt, CookieDeSesion cookieDeSesion) {
+    public AuthController(ServicioAutenticacion servicio, ServicioJwt servicioJwt, CookieDeSesion cookieDeSesion,
+            ServicioNotificaciones notificaciones) {
         this.servicio = servicio;
         this.servicioJwt = servicioJwt;
         this.cookieDeSesion = cookieDeSesion;
+        this.notificaciones = notificaciones;
     }
 
     @PostMapping("/login")
@@ -56,6 +60,22 @@ public class AuthController {
         // La versión de sesión cambió: la cookie anterior ya no sirve y se entrega una nueva.
         cookieDeSesion.escribir(respuesta, servicioJwt.emitir(usuario));
         return Sesion.de(usuario);
+    }
+
+    /**
+     * "¿Olvidaste tu contraseña?" en Ajustes: le avisa al administrador, que le envía una contraseña temporal con
+     * "Reiniciar contraseña". Una por día; si ya pidió hoy, responde igual.
+     */
+    @PostMapping("/solicitar-reinicio")
+    public ResponseEntity<Void> solicitarReinicio(@AuthenticationPrincipal UsuarioAutenticado actual,
+            @Valid @RequestBody SolicitudReinicioContrasena solicitud) {
+        if (actual.comoAdministrador()) {
+            throw new ExcepcionDeNegocio(HttpStatus.FORBIDDEN, "ACCION_NO_PERMITIDA_COMO_ADMINISTRADOR",
+                    "Mientras ves el negocio como administrador no puedes pedir una contraseña temporal. Usa \"Reiniciar contraseña\" en el panel.");
+        }
+        notificaciones.solicitudDeContrasena(actual.negocioId(), actual.correo(), solicitud.contacto(),
+                solicitud.mensaje());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/yo")

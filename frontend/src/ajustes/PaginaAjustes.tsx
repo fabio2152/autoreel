@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { cambiarContrasena, type Sesion } from '../api/auth'
+import { cambiarContrasena, solicitarReinicioContrasena, type Sesion } from '../api/auth'
 import {
   actualizarPerfil,
   CLAVE_CONFIGURACION,
@@ -15,6 +15,7 @@ import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Campo } from '../componentes/Campo'
 import { Cargando } from '../componentes/Cargando'
+import { Modal } from '../componentes/Modal'
 import {
   borradorDesde,
   cambiosDeMarca,
@@ -24,7 +25,7 @@ import {
 } from '../onboarding/formularioPerfil'
 import { SeccionFotoLocal, SeccionMarca, SeccionPreguntas, type CambioDeBorrador } from '../onboarding/SeccionesPerfil'
 
-/** RF-17 y RF-15: el negocio edita su perfil y su contraseña. Instagram llega en la fase 6. */
+/** RF-17 y RF-15: el negocio edita su perfil y su contraseña, o pide una temporal si la olvidó. */
 export function PaginaAjustes() {
   const configuracion = useQuery({ queryKey: CLAVE_CONFIGURACION, queryFn: obtenerConfiguracion })
   const perfil = useQuery({
@@ -53,11 +54,11 @@ export function PaginaAjustes() {
             el panel.
           </p>
         ) : (
-          <FormularioContrasena />
+          <>
+            <FormularioContrasena />
+            <OlvideMiContrasena correo={sesion?.correo ?? ''} />
+          </>
         )}
-      </Seccion>
-      <Seccion titulo="Instagram">
-        <p className="text-sm text-stone-600">Podrás conectar tu cuenta profesional de Instagram muy pronto.</p>
       </Seccion>
       <Boton variante="secundario" className="w-full" onClick={() => salir.mutate()} cargando={salir.isPending}>
         Cerrar sesión
@@ -201,5 +202,96 @@ function FormularioContrasena() {
         Cambiar contraseña
       </Boton>
     </form>
+  )
+}
+
+const estiloTexto =
+  'block w-full rounded-lg border-0 bg-white px-3 py-2 text-base text-stone-900 ring-1 ring-inset ring-stone-300 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-marca-600 sm:text-sm'
+
+const MENSAJE_INICIAL = 'Olvidé mi contraseña. ¿Me envías una temporal, por favor?'
+
+/** Va fuera del formulario de contraseña: le avisa al administrador, que le envía una contraseña temporal. */
+function OlvideMiContrasena({ correo }: { correo: string }) {
+  const [abierto, setAbierto] = useState(false)
+  const [contacto, setContacto] = useState('')
+  const [mensaje, setMensaje] = useState(MENSAJE_INICIAL)
+  const solicitar = useMutation({
+    mutationFn: () => solicitarReinicioContrasena({ contacto: contacto.trim() || undefined, mensaje }),
+  })
+
+  const cerrar = () => {
+    setAbierto(false)
+    solicitar.reset()
+    setContacto('')
+    setMensaje(MENSAJE_INICIAL)
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className="text-sm font-medium text-marca-700 hover:underline"
+      >
+        ¿Olvidaste tu contraseña?
+      </button>
+      <Modal titulo="¿Olvidaste tu contraseña?" abierto={abierto} onCerrar={cerrar}>
+        {solicitar.isSuccess ? (
+          <div className="space-y-4">
+            <Aviso tipo="exito">Le avisamos al administrador; te enviará una contraseña temporal.</Aviso>
+            <Boton className="w-full" onClick={cerrar}>
+              Entendido
+            </Boton>
+          </div>
+        ) : (
+          <form
+            onSubmit={(evento) => {
+              evento.preventDefault()
+              solicitar.mutate()
+            }}
+            className="space-y-4"
+          >
+            <p className="text-sm text-stone-600">
+              Le avisaremos al administrador para que te envíe una contraseña temporal. Con ella entras y creas una
+              nueva.
+            </p>
+            <Campo etiqueta="Tu correo" type="email" value={correo} readOnly disabled />
+            <Campo
+              etiqueta="WhatsApp (opcional)"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={20}
+              value={contacto}
+              onChange={(e) => setContacto(e.target.value)}
+              ayuda="Si lo escribes, el administrador puede enviarte la contraseña por ahí."
+            />
+            <div>
+              <label htmlFor="mensaje-reinicio" className="mb-1 block text-sm font-medium text-stone-700">
+                Mensaje
+              </label>
+              <textarea
+                id="mensaje-reinicio"
+                rows={3}
+                maxLength={200}
+                required
+                value={mensaje}
+                onChange={(e) => setMensaje(e.target.value)}
+                className={estiloTexto}
+              />
+            </div>
+            {solicitar.error && <Aviso tipo="error">{solicitar.error.message}</Aviso>}
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Boton type="button" variante="secundario" onClick={cerrar}>
+                Cancelar
+              </Boton>
+              <Boton type="submit" cargando={solicitar.isPending}>
+                Avisar al administrador
+              </Boton>
+            </div>
+          </form>
+        )}
+      </Modal>
+    </>
   )
 }

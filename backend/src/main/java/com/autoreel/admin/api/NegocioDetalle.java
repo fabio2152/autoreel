@@ -29,9 +29,12 @@ public record NegocioDetalle(Long id, String nombre, String nicho, String nombre
             LocalDate proximaFechaPago, int diaPago, int diasAviso, EstadoPago estadoPago) {
     }
 
-    /** @param beneficioHasta fin del beneficio que da este plan, o vacío si es el de la suscripción. */
+    /**
+     * @param beneficioUsosOtorgados  usos del beneficio que da este plan, o vacío si es el de la suscripción.
+     * @param beneficioUsosRestantes  usos que le quedan a ese beneficio, o vacío si es el de la suscripción.
+     */
     public record PlanEfectivo(Long planId, String plan, String modeloTexto, String modeloVideo, int videosPorDia,
-            int regeneracionesPorVideo, Instant beneficioHasta) {
+            int regeneracionesPorVideo, Integer beneficioUsosOtorgados, Integer beneficioUsosRestantes) {
     }
 
     /** @param delMes videos generados en el mes de Lima en curso. */

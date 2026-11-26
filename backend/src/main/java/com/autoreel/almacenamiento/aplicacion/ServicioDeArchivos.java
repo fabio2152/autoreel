@@ -69,10 +69,13 @@ public class ServicioDeArchivos {
     public SubidaFirmada firmarSubida(Long negocioId, PropositoArchivo proposito, String tipoContenido, long tamano) {
         String tipo = tipoContenido == null ? "" : tipoContenido.trim().toLowerCase(Locale.ROOT);
         if (!proposito.admite(tipo)) {
-            throw proposito == PropositoArchivo.LOGO
-                    ? new ExcepcionDeNegocio("LOGO_DEBE_SER_PNG", "El logo debe ser una imagen PNG.")
-                    : new ExcepcionDeNegocio("TIPO_NO_PERMITIDO",
-                            "Ese tipo de archivo no se admite. Sube una foto JPG, PNG o WebP.");
+            throw switch (proposito) {
+                case LOGO -> new ExcepcionDeNegocio("LOGO_DEBE_SER_PNG", "El logo debe ser una imagen PNG.");
+                case COMPROBANTE_PAGO -> new ExcepcionDeNegocio("TIPO_NO_PERMITIDO",
+                        "El comprobante debe ser una imagen JPG, PNG o WebP.");
+                default -> new ExcepcionDeNegocio("TIPO_NO_PERMITIDO",
+                        "Ese tipo de archivo no se admite. Sube una foto JPG, PNG o WebP.");
+            };
         }
         if (tamano <= 0) {
             throw new ExcepcionDeNegocio("ARCHIVO_VACIO", "El archivo está vacío.");

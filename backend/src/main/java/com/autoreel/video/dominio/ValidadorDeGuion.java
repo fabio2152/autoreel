@@ -50,7 +50,7 @@ public final class ValidadorDeGuion {
     /** Igual a la columna {@code video.idea}. */
     public static final int MAXIMO_CARACTERES_IDEA = 400;
 
-    /** @param fotosDisponibles números de las fotos del producto (1 a 3) que la IA puede usar. */
+    /** @param fotosDisponibles números de las fotos del producto que la IA puede usar (desde el 2026-11-25, solo la 1). */
     public static List<String> validar(GuionPropuesto guion, DatosDelGuion datos, PaqueteNicho paquete,
             Set<Integer> fotosDisponibles) {
         List<String> errores = new ArrayList<>();

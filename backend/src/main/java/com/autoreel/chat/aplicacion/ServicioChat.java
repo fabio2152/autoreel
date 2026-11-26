@@ -134,7 +134,7 @@ public class ServicioChat {
             Producto producto = catalogo.paraVideo(conversacion.getNegocio().getId(), solicitud.productoId())
                     .filter(Producto::isEnCatalogo)
                     .orElseThrow(() -> new ExcepcionDeNegocio("PRODUCTO_NO_DISPONIBLE",
-                            "Ese producto no está disponible: necesita estar activo y tener su foto principal."));
+                            "Ese producto no está disponible: necesita estar activo y tener su foto."));
             conversacion.decirUsuario(producto.getNombre(), ahora);
             aceptar(conversacion, guion, paso, producto.getId(), ahora);
         } else if (solicitud.productoNuevo() != null) {

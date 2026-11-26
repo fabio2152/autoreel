@@ -20,7 +20,8 @@ import com.sun.net.httpserver.HttpServer;
  * Servidor HTTP que responde como la API de interacciones de Gemini (Gemini Omni Flash). Las respuestas de crear y
  * consultar se programan en orden; sin respuestas programadas, crear devuelve una interacción terminada con el video
  * (4 segundos de tokens de video a 720p) y consultar también. El guion (generateContent, con la misma clave de AI
- * Studio) responde {@link #GUION} u otro programado con {@link #guionResponde}; cualquier otra ruta responde 404.
+ * Studio) responde {@link #GUION} u otro programado con {@link #guionResponde}, o 503 con {@link #guionFalla}; cualquier
+ * otra ruta responde 404.
  */
 public final class ServidorOmniSimulado implements AutoCloseable {
 
@@ -42,7 +43,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
             {"estructura":"HISTORIA","creatividad":"AMBIENTE",
              "idea":"La cámara revela la torta en la vitrina y termina en la porción servida.",
              "planos":[
-              {"orden":1,"foto":2,"toma":"The camera cranes up and reveals the cake inside a bakery display case.",
+              {"orden":1,"foto":1,"toma":"The camera cranes up and reveals the cake inside a bakery display case.",
                "descripcionToma":"La cámara revela la torta en la vitrina","texto":"Un antojo de fresas frescas"},
               {"orden":2,"foto":1,"toma":"The slice lifts toward the camera on a marble table by a window.",
                "descripcionToma":"La porción se acerca en una mesa junto a la ventana",
@@ -57,6 +58,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
     private final List<Peticion> peticiones = new CopyOnWriteArrayList<>();
     private final AtomicInteger interacciones = new AtomicInteger();
     private volatile String guion = GUION;
+    private volatile boolean guionFalla;
 
     public ServidorOmniSimulado() {
         try {
@@ -109,6 +111,17 @@ public final class ServidorOmniSimulado implements AutoCloseable {
     /** El guion que responde generateContent hasta el siguiente {@link #reiniciar}. */
     public void guionResponde(String guion) {
         this.guion = guion;
+        this.guionFalla = false;
+    }
+
+    /** generateContent responde 503 (AI Studio no disponible) hasta el siguiente {@link #guionResponde}. */
+    public void guionFalla() {
+        this.guionFalla = true;
+    }
+
+    /** Las llamadas al modelo de texto (el guion y la corrección de tomas). */
+    public List<Peticion> pedidosDeTexto() {
+        return peticiones.stream().filter(p -> p.ruta().endsWith(":generateContent")).toList();
     }
 
     public void consultaResponde(int estado, String cuerpo) {
@@ -129,6 +142,7 @@ public final class ServidorOmniSimulado implements AutoCloseable {
         consultas.clear();
         peticiones.clear();
         guion = GUION;
+        guionFalla = false;
     }
 
     private void atender(HttpExchange intercambio) throws IOException {
@@ -149,7 +163,8 @@ public final class ServidorOmniSimulado implements AutoCloseable {
             respuesta = programada != null ? programada
                     : new Respuesta(200, terminada(ruta.substring(ruta.lastIndexOf('/') + 1)));
         } else if (metodo.equals("POST") && ruta.endsWith(":generateContent")) {
-            respuesta = new Respuesta(200, ServidorGeminiSimulado.cuerpoConTexto(guion));
+            respuesta = guionFalla ? new Respuesta(503, "{\"error\":{\"code\":503}}")
+                    : new Respuesta(200, ServidorGeminiSimulado.cuerpoConTexto(guion));
         } else {
             respuesta = new Respuesta(404, "{\"error\":{\"code\":\"not_found\",\"message\":\"sin ruta\"}}");
         }

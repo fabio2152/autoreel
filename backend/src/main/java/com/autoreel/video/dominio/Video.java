@@ -71,6 +71,10 @@ public class Video {
     @JoinColumn(name = "modelo_video_usado_id", updatable = false)
     private ModeloIA modeloVideoUsado;
 
+    /** El beneficio que dio el plan del video (RN-50), para descontar y devolver su uso; vacío si es el del plan. */
+    @Column(updatable = false)
+    private Long beneficioId;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, updatable = false)
     private Map<String, Object> opcionesProduccion;
@@ -158,13 +162,16 @@ public class Video {
     protected Video() {
     }
 
-    public Video(Long negocioId, Long conversacionId, Long productoId, String tipoVideo, Plan plan, Instant ahora) {
+    /** @param beneficioId el beneficio que da el plan, o vacío si es el de la suscripción. */
+    public Video(Long negocioId, Long conversacionId, Long productoId, String tipoVideo, Plan plan, Long beneficioId,
+            Instant ahora) {
         this.negocioId = negocioId;
         this.conversacionId = conversacionId;
         this.productoId = productoId;
         this.tipoVideo = tipoVideo;
         this.estado = EstadoVideo.GUION_PENDIENTE;
         this.planAplicado = plan;
+        this.beneficioId = beneficioId;
         this.modeloTextoUsado = plan.getModeloTexto();
         this.modeloVideoUsado = plan.getModeloVideo();
         this.opcionesProduccion = Map.copyOf(plan.getOpcionesProduccionPermitidas());
@@ -313,12 +320,10 @@ public class Video {
     }
 
     /**
-     * RN-28: pedir otro clip para un plano. Es la única forma de regenerar (botón o cambio de foto en la revisión).
-     *
-     * @param conservarClipAnterior false si cambió la foto: el clip anterior ya no corresponde.
-     * @return la clave del clip descartado, para borrarlo; vacía si se conserva.
+     * RN-28: pedir otro clip para un plano ("Regenerar plano", dentro de la edición del plano en la revisión). El clip
+     * anterior se conserva hasta que llegue el nuevo.
      */
-    public String regenerarPlano(int orden, int regeneracionesPorVideo, boolean conservarClipAnterior, Instant ahora) {
+    public void regenerarPlano(int orden, int regeneracionesPorVideo, Instant ahora) {
         exigirEstado(EstadoVideo.LISTO);
         if (regeneracionesUsadas >= regeneracionesPorVideo) {
             throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "SIN_REGENERACIONES",
@@ -327,12 +332,11 @@ public class Video {
         }
         Plano plano = planoConFoto(orden);
         regeneracionesUsadas++;
-        String descartado = plano.regenerar(conservarClipAnterior);
+        plano.regenerar();
         this.avisoRevision = null;
         this.generacionIniciadaEn = ahora;
         this.estado = EstadoVideo.GENERANDO;
         this.fechaActualizacion = ahora;
-        return descartado;
     }
 
     /** Una regeneración que no produjo clip no se cobra (decisión del usuario) y se avisa en la revisión. */
@@ -480,6 +484,10 @@ public class Video {
 
     public Plan getPlanAplicado() {
         return planAplicado;
+    }
+
+    public Long getBeneficioId() {
+        return beneficioId;
     }
 
     public ModeloIA getModeloTextoUsado() {

@@ -11,7 +11,7 @@ import com.autoreel.catalogo.dominio.TipoFoto;
  * @param texto           respuesta libre (se agrupa con los mensajes de los próximos 4 s).
  * @param opcion          botón elegido.
  * @param productoId      producto del catálogo.
- * @param productoNuevo   producto subido en el chat, con su foto principal (y hasta dos más).
+ * @param productoNuevo   producto subido en el chat, con su foto (una sola, en {@code FOTO_1}).
  * @param omitir          "No" en una pregunta opcional.
  */
 public record SolicitudMensaje(String paso, String texto, String opcion, Long productoId,

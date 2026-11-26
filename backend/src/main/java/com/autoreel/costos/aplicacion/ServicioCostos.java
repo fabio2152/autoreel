@@ -3,17 +3,22 @@ package com.autoreel.costos.aplicacion;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.autoreel.costos.dominio.ConceptoCosto;
 import com.autoreel.costos.dominio.RegistroCosto;
+import com.autoreel.costos.infraestructura.CostoRegistrado;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
 import com.autoreel.costos.infraestructura.SumaDeCosto;
 import com.autoreel.ia.dominio.ModeloIA;
@@ -41,6 +46,14 @@ public class ServicioCostos {
     }
 
     public record CostosDelMes(YearMonth mes, Costo total, List<CostoDeNegocio> negocios) {
+    }
+
+    /** @param serie costo acumulado al cierre de cada día de {@link CostosDiarios#dias()}, en US$. */
+    public record SerieDeNegocio(Long negocioId, String nombre, List<BigDecimal> serie) {
+    }
+
+    /** @param dias días del mes con datos (1, 2, ...): el mes en curso llega hasta hoy. */
+    public record CostosDiarios(YearMonth mes, List<Integer> dias, List<SerieDeNegocio> negocios) {
     }
 
     private final RegistroCostoRepositorio registros;
@@ -95,6 +108,35 @@ public class ServicioCostos {
         return new CostosDelMes(mes, total, filas);
     }
 
+    /**
+     * RF-07: costo acumulado de cada negocio día a día en el mes, para el gráfico del admin. Suma todos los conceptos,
+     * así que el último valor de cada serie es el total de la tabla de {@link #delMes}. Los días son de Lima y el mes en
+     * curso se corta en hoy.
+     */
+    @Transactional(readOnly = true)
+    public CostosDiarios diarioDelMes(YearMonth mes) {
+        LocalDate hoy = LocalDate.now(reloj);
+        YearMonth actual = YearMonth.from(hoy);
+        int ultimoDia = mes.isAfter(actual) ? 0 : mes.equals(actual) ? hoy.getDayOfMonth() : mes.lengthOfMonth();
+        Map<Long, BigDecimal[]> porDia = new LinkedHashMap<>();
+        for (CostoRegistrado registro : registros.listarEntre(inicio(mes), inicio(mes.plusMonths(1)))) {
+            int dia = registro.fechaHora().atZone(reloj.getZone()).getDayOfMonth();
+            if (dia > ultimoDia) {
+                continue;
+            }
+            BigDecimal[] costos = porDia.computeIfAbsent(registro.negocioId(), id -> ceros(ultimoDia));
+            costos[dia - 1] = costos[dia - 1].add(registro.costoUsd());
+        }
+        Map<Long, String> nombres = negocios.findAllById(porDia.keySet()).stream()
+                .collect(Collectors.toMap(Negocio::getId, Negocio::getNombre));
+        List<SerieDeNegocio> series = porDia.entrySet().stream()
+                .map(entrada -> new SerieDeNegocio(entrada.getKey(), nombres.getOrDefault(entrada.getKey(), "—"),
+                        acumular(entrada.getValue())))
+                .sorted(Comparator.comparing((SerieDeNegocio serie) -> serie.serie().getLast()).reversed())
+                .toList();
+        return new CostosDiarios(mes, IntStream.rangeClosed(1, ultimoDia).boxed().toList(), series);
+    }
+
     /** RF-07 y V32: costo estimado de IA del negocio en el mes. */
     @Transactional(readOnly = true)
     public Costo deNegocio(Long negocioId, YearMonth mes) {
@@ -104,6 +146,22 @@ public class ServicioCostos {
     private Instant inicio(YearMonth mes) {
         ZoneId zona = reloj.getZone();
         return mes.atDay(1).atStartOfDay(zona).toInstant();
+    }
+
+    private static BigDecimal[] ceros(int dias) {
+        BigDecimal[] costos = new BigDecimal[dias];
+        Arrays.fill(costos, BigDecimal.ZERO);
+        return costos;
+    }
+
+    private static List<BigDecimal> acumular(BigDecimal[] porDia) {
+        List<BigDecimal> serie = new ArrayList<>(porDia.length);
+        BigDecimal acumulado = BigDecimal.ZERO;
+        for (BigDecimal costo : porDia) {
+            acumulado = acumulado.add(costo);
+            serie.add(acumulado);
+        }
+        return serie;
     }
 
     private static Costo sumar(List<SumaDeCosto> sumas) {

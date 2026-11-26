@@ -10,9 +10,7 @@ import {
   NOMBRE_FOTO,
   obtenerProducto,
   reactivarProducto,
-  TIPOS_FOTO,
   type Producto,
-  type TipoFoto,
 } from '../api/catalogo'
 import { CLAVE_CONFIGURACION, obtenerConfiguracion } from '../api/negocio'
 import { Aviso } from '../componentes/Aviso'
@@ -54,13 +52,9 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? '')
   // Las temporadas no se piden en el MVP (2026-11-06): se conservan las que ya tenía el producto.
   const elegidas = producto?.temporadas ?? []
-  const [fotos, setFotos] = useState<Partial<Record<TipoFoto, string>>>(() =>
-    Object.fromEntries(TIPOS_FOTO.flatMap((tipo) => {
-      const foto = producto && fotoDe(producto, tipo)
-      return foto ? [[tipo, foto.clave]] : []
-    })),
-  )
-  const [subiendo, setSubiendo] = useState(0)
+  const guardada = producto ? fotoDe(producto) : undefined
+  const [foto, setFoto] = useState<string | null>(guardada?.clave ?? null)
+  const [subiendo, setSubiendo] = useState(false)
 
   const alTerminar = () => {
     clienteConsultas.invalidateQueries({ queryKey: CLAVE_PRODUCTOS })
@@ -69,7 +63,7 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
 
   const guardar = useMutation({
     mutationFn: () => {
-      const solicitud = { nombre, descripcion, temporadas: elegidas, fotos }
+      const solicitud = { nombre, descripcion, temporadas: elegidas, fotos: foto ? { FOTO_1: foto } : {} }
       return producto ? actualizarProducto(producto.id, solicitud) : crearProducto(solicitud)
     },
     onSuccess: alTerminar,
@@ -84,8 +78,6 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
     evento.preventDefault()
     guardar.mutate()
   }
-
-  const sinFotoPrincipal = !fotos.FOTO_1
 
   return (
     <form onSubmit={enviar} className="mx-auto max-w-xl space-y-6 pb-24">
@@ -133,34 +125,23 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
 
       <section className="space-y-5">
         <div>
-          <h2 className="font-semibold">Fotos</h2>
+          <h2 className="font-semibold">Foto</h2>
           <p className="text-sm text-stone-600">
-            La foto principal es necesaria para usar el producto en un video. Con 2 o 3 fotos distintas, la IA tiene
-            más ideas para tu Reel.
-            {sinFotoPrincipal && ' Te falta la foto principal.'}
+            Una sola foto, la mejor que tengas: la IA crea todas las tomas de tu Reel a partir de ella. Sin foto no
+            puedes usar el producto en un video.
+            {!foto && ' Te falta la foto.'}
           </p>
         </div>
-        {TIPOS_FOTO.map((tipo) => (
-          <SubidorDeImagen
-            key={tipo}
-            proposito="FOTO_PRODUCTO"
-            etiqueta={NOMBRE_FOTO[tipo]}
-            actual={
-              producto && fotos[tipo] === fotoDe(producto, tipo)?.clave ? fotoDe(producto, tipo)?.url : null
-            }
-            deshabilitado={guardar.isPending}
-            guia={<GuiaDeFoto tipo={tipo} />}
-            onSubiendo={(activo) => setSubiendo((n) => n + (activo ? 1 : -1))}
-            onSubida={(imagen) => setFotos((actual) => ({ ...actual, [tipo]: imagen.clave }))}
-            onQuitar={() =>
-              setFotos((actual) => {
-                const resto = { ...actual }
-                delete resto[tipo]
-                return resto
-              })
-            }
-          />
-        ))}
+        <SubidorDeImagen
+          proposito="FOTO_PRODUCTO"
+          etiqueta={NOMBRE_FOTO}
+          actual={guardada && foto === guardada.clave ? guardada.url : null}
+          deshabilitado={guardar.isPending}
+          guia={<GuiaDeFoto />}
+          onSubiendo={setSubiendo}
+          onSubida={(imagen) => setFoto(imagen.clave)}
+          onQuitar={() => setFoto(null)}
+        />
       </section>
 
       <div className="fixed inset-x-0 bottom-16 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0">
@@ -174,8 +155,8 @@ function FormularioProducto({ producto }: { producto: Producto | null }) {
                 {producto.estado === 'ACTIVO' ? 'Archivar' : 'Reactivar'}
               </Boton>
             )}
-            <Boton type="submit" className="flex-1" cargando={guardar.isPending} disabled={subiendo > 0}>
-              {subiendo > 0 ? 'Subiendo fotos…' : 'Guardar'}
+            <Boton type="submit" className="flex-1" cargando={guardar.isPending} disabled={subiendo}>
+              {subiendo ? 'Subiendo la foto…' : 'Guardar'}
             </Boton>
           </div>
         </div>

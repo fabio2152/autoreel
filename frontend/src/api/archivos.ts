@@ -1,6 +1,9 @@
 import { ErrorApi, pedir } from './cliente'
 
-export type PropositoArchivo = 'LOGO' | 'FOTO_PRODUCTO' | 'FOTO_LOCAL'
+export type PropositoArchivo = 'LOGO' | 'FOTO_PRODUCTO' | 'FOTO_LOCAL' | 'COMPROBANTE_PAGO'
+
+/** Donde el negocio pide la URL firmada; el panel usa la suya (por ejemplo, la del comprobante de un pago). */
+export const URL_FIRMA_DEL_NEGOCIO = '/api/archivos/url-subida'
 
 interface SubidaFirmada {
   clave: string
@@ -9,8 +12,8 @@ interface SubidaFirmada {
   cabeceras: Record<string, string>
 }
 
-const pedirSubida = (proposito: PropositoArchivo, archivo: Blob) =>
-  pedir<SubidaFirmada>('/api/archivos/url-subida', 'POST', {
+const pedirSubida = (urlDeFirma: string, proposito: PropositoArchivo, archivo: Blob) =>
+  pedir<SubidaFirmada>(urlDeFirma, 'POST', {
     proposito,
     tipoContenido: archivo.type,
     tamano: archivo.size,
@@ -36,16 +39,17 @@ function enviar(subida: SubidaFirmada, archivo: Blob, alProgresar?: (porcentaje:
 }
 
 /**
- * Sube un archivo y devuelve su clave temporal. El backend lo verifica cuando el perfil o el producto lo usan.
- * Si la subida falla (red o URL vencida), pide una URL nueva y reintenta una vez.
+ * Sube un archivo y devuelve su clave temporal. El backend lo verifica cuando el perfil, el producto o el pago lo
+ * usan. Si la subida falla (red o URL vencida), pide una URL nueva y reintenta una vez.
  */
 export async function subirArchivo(
   proposito: PropositoArchivo,
   archivo: Blob,
   alProgresar?: (porcentaje: number) => void,
+  urlDeFirma: string = URL_FIRMA_DEL_NEGOCIO,
 ): Promise<string> {
   for (let intento = 0; intento < 2; intento++) {
-    const subida = await pedirSubida(proposito, archivo)
+    const subida = await pedirSubida(urlDeFirma, proposito, archivo)
     const estado = await enviar(subida, archivo, alProgresar)
     if (estado >= 200 && estado < 300) return subida.clave
   }

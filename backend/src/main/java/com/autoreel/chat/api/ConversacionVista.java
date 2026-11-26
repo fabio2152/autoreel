@@ -16,7 +16,7 @@ import com.autoreel.nicho.dominio.Opcion;
  * @param procesarEnMs        milisegundos hasta que se cierre la respuesta agrupada; vacío si no hay mensajes
  *                            pendientes. El frontend llama a {@code procesar} cuando llega a cero.
  * @param productos           carrusel, solo en el paso de producto (V11: activos, en el catálogo y completos).
- * @param productosIncompletos productos del catálogo que no aparecen por faltarles fotos.
+ * @param productosIncompletos productos del catálogo que no aparecen por faltarles la foto.
  * @param resumen             respuestas legibles al terminar.
  * @param videoId             el video que nació al terminar la conversación; vacío mientras está en curso.
  */

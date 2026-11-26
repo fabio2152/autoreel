@@ -35,6 +35,12 @@ public interface PaqueteNicho {
     /** Instrucciones base para el modelo de texto, con marcadores {así} que se reemplazan (sección 8.1). */
     String instruccionesGuion();
 
+    /**
+     * Instrucciones para reescribir la toma de un plano con las correcciones del negocio, con los marcadores
+     * {toma}, {descripcionToma} y {correcciones}.
+     */
+    String instruccionesCorreccion();
+
     /** La tipografía (TTF) de los textos del video para un estilo (sección 7.4, P-05). */
     byte[] tipografia(String estilo);
 

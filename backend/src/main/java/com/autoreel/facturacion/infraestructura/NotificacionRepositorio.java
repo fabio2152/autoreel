@@ -33,11 +33,12 @@ public interface NotificacionRepositorio extends JpaRepository<NotificacionAdmin
     @Query("update NotificacionAdmin n set n.leida = true where n.leida = false")
     int marcarTodasLeidas();
 
-    /** Al registrar un pago, sus avisos de pago dejan de estar pendientes. */
+    /** Al registrar un pago, sus avisos de pago dejan de estar pendientes (la solicitud de contraseña, no). */
     @Modifying
     @Query("""
             update NotificacionAdmin n set n.leida = true
             where n.negocioId = :negocioId and n.periodo <= :periodo and n.leida = false
-              and n.tipo <> com.autoreel.facturacion.dominio.TipoNotificacion.INTEGRACION_CON_ERROR""")
+              and n.tipo not in (com.autoreel.facturacion.dominio.TipoNotificacion.INTEGRACION_CON_ERROR,
+                                 com.autoreel.facturacion.dominio.TipoNotificacion.SOLICITUD_CONTRASENA)""")
     int marcarLeidasDePago(Long negocioId, LocalDate periodo);
 }
