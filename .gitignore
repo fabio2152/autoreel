@@ -6,6 +6,8 @@
 .env
 .env.*
 !.env.example
+# Variables del servidor de AWS: solo se versiona deploy/autoreel.env.example.
+/deploy/autoreel.env
 *.pem
 *.key
 # Credenciales de Google Cloud (cuenta de servicio de Veo)

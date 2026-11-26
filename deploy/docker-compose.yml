@@ -1,0 +1,24 @@
+# AutoReel en la instancia EC2 (/opt/autoreel). Lo copia deploy/publicar.sh.
+#
+# Un solo contenedor: el backend, que también sirve el frontend compilado. El Application Load Balancer termina el
+# HTTPS (certificado de ACM) y envía HTTP al puerto 8080 de la instancia; su grupo de destino revisa
+# GET /actuator/health. El grupo de seguridad de la instancia solo debe aceptar el 8080 desde el del balanceador.
+#
+# Las variables no secretas están en autoreel.env (se crea una vez en el servidor a partir de
+# autoreel.env.example); los secretos los lee el backend de AWS Secrets Manager con el rol de la instancia.
+name: autoreel
+
+services:
+  backend:
+    image: autoreel-backend:latest
+    env_file: autoreel.env
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    # Deja terminar una composición de FFmpeg en curso al reemplazar el contenedor.
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"

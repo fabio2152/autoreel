@@ -1,0 +1,16 @@
+# Perfil de AWS (SPRING_PROFILES_ACTIVE=aws): EC2 con Docker detrás de un Application Load Balancer, RDS, S3 y
+# Secrets Manager. Ver docs/despliegue-aws.md.
+# DB_USER, DB_PASSWORD, JWT_SECRET, ADMIN_EMAIL y ADMIN_PASSWORD llegan del secreto autoreel/app
+# (SECRETOS_DE_ARRANQUE, SecretosDeArranque). Las credenciales de IA las lee SecretosDeAws de Secrets Manager, así que
+# aquí no se usan autoreel.secretos, autoreel.secretos-en-archivo ni autoreel.archivo-secretos-panel.
+spring:
+  datasource:
+    hikari:
+      # Una sola instancia y un RDS pequeño: 3 tareas programadas más las peticiones web.
+      maximum-pool-size: 8
+      minimum-idle: 2
+
+server:
+  # El balanceador termina el HTTPS y envía X-Forwarded-Proto/For: Spring ve la petición como https. Tomcat confía en
+  # esos encabezados solo si vienen de una IP privada (la del balanceador dentro de la VPC).
+  forward-headers-strategy: native

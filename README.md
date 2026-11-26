@@ -4,7 +4,7 @@ Plataforma web para que negocios pequeños, sin conocimientos de marketing, cree
 
 El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la plataforma crea cada negocio, le asigna un plan y una fecha de pago, y le entrega su acceso.
 
-> **Estado:** fases 1 a 5 y 7 terminadas: el negocio crea, revisa y descarga su video, y el administrador gestiona negocios, pagos, planes, integraciones de IA, beneficios y costos. La publicación en Instagram (fase 6) y el despliegue en AWS (fase 8) están pendientes. Ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado:** fases 1 a 5 y 7 terminadas: el negocio crea, revisa y descarga su video, y el administrador gestiona negocios, pagos, planes, integraciones de IA, beneficios y costos. La publicación en Instagram (fase 6) está fuera del MVP y el despliegue en AWS (fase 8) está en curso. Ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tecnologías
 
@@ -82,6 +82,16 @@ cd frontend && npm run lint && npm run build
 ```
 
 Las pruebas no necesitan `GEMINI_API_KEY` ni `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO`: los adaptadores de Google AI Studio (Gemini y Gemini Omni Flash) y de Google Cloud (Gemini y Veo) se prueban contra servidores simulados. Sí necesitan FFmpeg: la prueba de composición arma un video real y lo revisa con `ffprobe` (usa `FFMPEG_PATH` y `FFPROBE_PATH` si están definidos; si no, los del PATH). En total son 272 pruebas en el backend.
+
+## Despliegue
+
+AutoReel se despliega en AWS (`us-east-1`) como **un solo contenedor Docker** que sirve la API y el frontend compilado, en una EC2 detrás de un Application Load Balancer con HTTPS, con RDS PostgreSQL, un bucket S3 privado y los secretos en AWS Secrets Manager.
+
+```bash
+bash deploy/publicar.sh <ip-de-la-instancia> <clave-ssh.pem>   # desde Git Bash, con Docker Desktop
+```
+
+El script construye la imagen (`backend/Dockerfile`), la copia por SSH y la levanta con `docker compose`. Las variables no secretas van en el servidor, en `/opt/autoreel/autoreel.env` (ver `deploy/autoreel.env.example`); nunca se suben al repositorio. La guía completa (recursos, permisos, DNS, vuelta atrás, apagado y costos) está en `docs/despliegue-aws.md`.
 
 ## Documentación
 

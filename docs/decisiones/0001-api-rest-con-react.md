@@ -2,6 +2,7 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-03
+- **Modificada por:** ADR 0027 (en AWS, el backend sirve el frontend; sin CloudFront).
 
 ## Contexto
 
@@ -19,7 +20,7 @@ Se separa el sistema en dos aplicaciones dentro del mismo repositorio:
 Ambas aplicaciones comparten **un solo origen**:
 
 - **En desarrollo:** el proxy de Vite (`vite.config.ts`) envía `/api` a `http://localhost:8080`.
-- **En producción (futuro, fase 8):** CloudFront sirve el frontend desde S3 y dirige `/api/*` al backend.
+- **En producción (futuro, fase 8):** CloudFront sirve el frontend desde S3 y dirige `/api/*` al backend. *Cambio del 2026-11-25 (ADR 0027):* en AWS, un Application Load Balancer envía todo al backend, que sirve el frontend compilado (`ConfiguracionFrontend`); no hay CloudFront.
 
 Al compartir origen no se necesita CORS, y la cookie de sesión funciona (ver ADR 0007).
 

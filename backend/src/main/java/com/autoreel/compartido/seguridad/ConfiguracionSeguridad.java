@@ -5,6 +5,7 @@ import com.autoreel.negocio.infraestructura.NegocioRepositorio;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -52,6 +53,8 @@ public class ConfiguracionSeguridad {
                         .requestMatchers("/api/auth/solicitar-reinicio").hasRole("NEGOCIO")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasRole("NEGOCIO")
+                        // El frontend compilado y las rutas de React Router (ConfiguracionFrontend): públicos.
+                        .requestMatchers(HttpMethod.GET, "/**").permitAll()
                         .anyRequest().denyAll());
         return http.build();
     }

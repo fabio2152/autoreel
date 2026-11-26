@@ -2,6 +2,34 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Fase 8: despliegue en AWS] - Sin publicar (2026-11-25)
+
+Rama `fase-8-despliegue`. Despliegue mínimo para la demostración en vivo del 2026-11-26: solo los servicios de AWS necesarios (ADR 0027). Guía en `docs/despliegue-aws.md`.
+
+### Agregado
+
+- **Imagen Docker** (`backend/Dockerfile` y `/.dockerignore`, con la raíz del repositorio como contexto), en tres etapas: Node 24 compila el frontend, Temurin 21 compila el jar, y la imagen final (`debian:trixie-slim`) lleva OpenJDK 21 JRE, FFmpeg 7.1 y `fontconfig`, con un usuario sin root, `-XX:MaxRAMPercentage=60` y `HEALTHCHECK` en `/actuator/health`. Nunca entran `.env`, `credenciales/`, `docs/` ni `deploy/`.
+- **El backend sirve el frontend** (`ConfiguracionFrontend`): la carpeta de `SPRING_WEB_RESOURCES_STATIC_LOCATIONS` (en la imagen, `/app/static`), con `/assets/**` en caché un año, lo demás sin caché, e `index.html` para las rutas de React Router. `/api/**`, `/actuator/**` y las rutas con extensión siguen respondiendo 404 con el error JSON.
+- **Secretos de IA en AWS Secrets Manager** (`SecretosDeAws`, perfil `aws`): lee con un minuto de caché, guarda con `PutSecretValue` (o `CreateSecret`) y borra sin recuperación. Errores nuevos: 409 `CREDENCIAL_BORRANDOSE` (se pega una clave recién borrada) y 502 `SECRETOS_NO_DISPONIBLES` (sin permisos o sin red).
+- **Secretos de arranque** (`SecretosDeArranque`, registrado en `META-INF/spring.factories`): la variable `SECRETOS_DE_ARRANQUE` lista secretos JSON (en AWS, `autoreel/app` con `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`) que se cargan como propiedades antes de arrancar. Si uno no se puede leer, el backend no arranca. Sin la variable, no hace nada.
+- **Perfil `aws`** (`application-aws.yml`): pool de 8 conexiones y `server.forward-headers-strategy: native` detrás del balanceador.
+- **Scripts de `deploy/`:** `preparar-servidor.sh` (Docker, compose y swap en Ubuntu 24.04), `docker-compose.yml` (un contenedor en el 8080), `autoreel.env.example` (variables no secretas) y `publicar.sh` (construye la imagen en la PC, la copia por `scp`, guarda la anterior como `autoreel-backend:anterior` y espera a que el backend esté sano).
+- Dependencia `software.amazon.awssdk:secretsmanager`.
+- Pruebas: `SecretosDeAwsTest`, `SecretosDeArranqueTest` y `FrontendIntegracionTest`.
+- **ADR 0027** y `docs/despliegue-aws.md` reescrita: arquitectura, recursos, secretos, IAM, red, DNS en Namecheap, publicación, vuelta atrás, apagado y costos (unos US$ 0,10 por hora). Los recursos se crearon el 2026-11-25 con la AWS CLI; los comandos y los ids están en su sección 7.
+
+### Cambiado
+
+- **Arquitectura de AWS** (ADR 0027): en `us-east-1`, una EC2 `t3.medium` con Docker detrás de un Application Load Balancer con certificado de ACM para `autoreel.sapps.lat`, RDS PostgreSQL 17 `db.t4g.micro` privada, un bucket S3 privado y Secrets Manager. Reemplaza a CloudFront con el frontend en S3 (especificación, sección 11.4). Sin ECR, NAT, Caddy ni CloudWatch Logs.
+- `ConfiguracionSeguridad`: `GET /**` es público después de las reglas de `/api/**` (el frontend compilado).
+- `FiltroJwtCookie` solo procesa `/api/**`: los archivos del frontend no consultan la base de datos.
+- `SecretosDeConfiguracion` solo fuera del perfil `aws` (`@Profile("!aws")`).
+- `.gitignore` excluye `/deploy/autoreel.env`.
+
+### Pendiente
+
+- Recorrer el guion de demostración (sección 20) en `https://autoreel.sapps.lat` e integrar la rama con un pull request.
+
 ## [Edición con correcciones, una foto y mejoras del admin] - 2026-11-25
 
 Pedidos del usuario al revisar los videos y el panel. Decisiones en el ADR 0026. Migraciones `V14` a `V19`.

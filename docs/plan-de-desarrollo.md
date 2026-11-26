@@ -1,6 +1,6 @@
 # AutoReel — Plan de desarrollo
 
-> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Después de la pausa se hicieron los proveedores de Google, la fase 7, la revisión del flujo del negocio, "Reintentar" y, el 2026-11-12, la mejora de la calidad del video (sección 9, ADR 0021). Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
+> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Después de la pausa se hicieron los proveedores de Google, la fase 7, la revisión del flujo del negocio, "Reintentar" y, el 2026-11-12, la mejora de la calidad del video (sección 9, ADR 0021). *Actualización del 2026-11-25:* la **fase 8 (despliegue en AWS) está en curso** en la rama `fase-8-despliegue`, para la demostración del 2026-11-26 (ADR 0027, sección 9.3). Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
 
 ## 1. Cómo se trabaja
 
@@ -25,7 +25,7 @@
 | 5 Generación | `fase-5-generacion` | Adaptador de video (Veo en Google Cloud), tabla de tareas y `@Scheduled`, `FfmpegComponedor`, respaldo, revisión, consumo diario, biblioteca de música | V22–V27 |
 | 6 Publicación | `fase-6-publicacion` | OAuth de Instagram, `InstagramPublicador`, publicar ahora y programar | V28–V31 |
 | 7 Facturación | `fase-7-facturacion` | Pagos, tarea diaria de estados, notificaciones, gestión de planes, cambio de plan, integraciones (con claves pegadas en el panel), beneficios, costos y entrar como el negocio. **Completa (PR #8), adelantada a la 6** | V32, V34–V41 |
-| 8 Despliegue | `fase-8-despliegue` | AWS: S3, RDS, EC2 o Beanstalk con FFmpeg, CloudFront, Secrets Manager | Guion de demostración (sec. 20) |
+| 8 Despliegue | `fase-8-despliegue` | AWS: S3, RDS, EC2 o Beanstalk con FFmpeg, CloudFront, Secrets Manager. *Desde el 2026-11-25 (ADR 0027):* una EC2 con Docker detrás de un Application Load Balancer, RDS, S3 y Secrets Manager; el backend sirve el frontend, sin CloudFront. **En curso** | Guion de demostración (sec. 20) |
 | 9 Opcional | `fase-9-opcional` | Rekognition (RN-15) | — |
 
 Las fases 1 a 5 son el corazón del MVP: con ellas, una pastelería ya puede crear y descargar su video (sección 19).
@@ -40,7 +40,7 @@ flowchart LR
     F4 --> F5["5 Generación<br/>(completa)"]:::hecha
     F5 --> F6["6 Publicación<br/>(en pausa)"]:::siguiente
     F6 --> F7["7 Facturación<br/>(completa)"]:::hecha
-    F7 --> F8["8 Despliegue AWS"]
+    F7 --> F8["8 Despliegue AWS<br/>(en curso)"]:::siguiente
     F8 --> F9["9 Opcional"]
     FUT["Trabajo futuro<br/>fechas especiales, temporadas, RF-31"]:::futuro
     F9 -.-> FUT
@@ -632,14 +632,27 @@ Al revisar el panel de administración en local, el usuario pidió terminar pago
 - **V39:** ya lo cubría `GeneracionIntegracionTest`.
 
 **Pendientes:**
-- En AWS, `AlmacenDeSecretos` debe escribir en Secrets Manager (fase 8).
+- En AWS, `AlmacenDeSecretos` debe escribir en Secrets Manager (fase 8). *Hecho en la fase 8:* `SecretosDeAws`.
 - El precio de referencia de los planes sigue vacío (P-04).
 
-### 9.3 Fases 8 y 9 (pendientes)
+### 9.3 Fases 8 y 9
 
-| Fase | Qué falta | Notas de lo ya hecho |
+**Fase 8 Despliegue: en curso** (rama `fase-8-despliegue`, desde el 2026-11-25). Fabio decidió un despliegue mínimo para la demostración en vivo del 2026-11-26, con "solo los servicios de AWS que sean necesarios", encendido un par de horas (ADR 0027, guía en `docs/despliegue-aws.md`).
+
+| Pieza | Estado |
+|---|---|
+| Imagen Docker (`backend/Dockerfile`, `/.dockerignore`): Node compila el frontend, el JDK el jar, y la imagen final lleva OpenJDK 21 y FFmpeg 7.1 en Debian trixie | Hecha |
+| El backend sirve el frontend (`ConfiguracionFrontend`, `GET /**` público, `FiltroJwtCookie` solo en `/api`) | Hecha, con `FrontendIntegracionTest` |
+| Secretos en Secrets Manager: `SecretosDeAws` (IA, lectura y escritura desde el panel) y `SecretosDeArranque` (`autoreel/app`) | Hechos, con `SecretosDeAwsTest` y `SecretosDeArranqueTest` |
+| Perfil `aws` (`application-aws.yml`) y scripts de `deploy/` (`preparar-servidor.sh`, `docker-compose.yml`, `autoreel.env.example`, `publicar.sh`) | Hechos |
+| Recursos de AWS en `us-east-1`: ALB con ACM, EC2 `t3.medium`, RDS `db.t4g.micro`, S3, Secrets Manager, IAM y grupos de seguridad; DNS en Namecheap | Pendiente: se crean con la AWS CLI y sus comandos se agregan a `docs/despliegue-aws.md`, sección 7 |
+| Guion de demostración (sección 20) en `https://autoreel.sapps.lat` | Pendiente |
+| Pull request a `main` después de `mvnw verify`, `npm run lint` y `npm run build` | Pendiente |
+
+Fuera de la fase 8 por decisión de Fabio: CloudFront, ECR, NAT, CloudWatch Logs y varias instancias.
+
+| Fase | Qué falta | Notas |
 |---|---|---|
-| **8 Despliegue** | AWS: S3 (con la regla de expiración de `subidas/`), RDS, EC2 o Beanstalk con FFmpeg en la imagen Docker, CloudFront con `/api/*` al backend, Secrets Manager en lugar de `SecretosDeConfiguracion` (lectura y escritura, ADR 0018), y el guion de demostración (sección 20). | Todo se configura con variables de entorno; el almacenamiento y los secretos están detrás de puertos. |
 | **9 Opcional** | Detección de rostros con Rekognition (RN-15). | — |
 
 ### 9.4 Pendientes que no son de una fase
@@ -650,7 +663,7 @@ Al revisar el panel de administración en local, el usuario pidió terminar pago
   - "Probar conexión" de Veo solo verifica la cuenta de servicio, no el identificador ni la región del modelo.
   - Si un negocio marca solo "Otros" en "¿Cómo te piden?", el cierre del video queda sin llamado.
   - La ruta por defecto del archivo de claves es relativa (`../credenciales/...`): solo coincide con la raíz si el backend arranca desde `backend/`.
-  - En AWS con varias instancias: la tarea diaria corre en todas, y un clip síncrono de Omni puede tardar más que el reclamo de 5 minutos. Además, falta decidir qué hacen `borrar` y `origen` de `AlmacenDeSecretos` con Secrets Manager. Ver `despliegue-aws.md`.
+  - En AWS con varias instancias: la tarea diaria corre en todas, y un clip síncrono de Omni puede tardar más que el reclamo de 5 minutos. Ver `despliegue-aws.md`. *Desde la fase 8 (ADR 0027):* hay una sola instancia, y `SecretosDeAws` define `borrar` (elimina el secreto sin recuperación) y `origen` (`PANEL` o `NINGUNO`).
   - `plano.uso_respaldo`, `motivo_respaldo` y `EstadoPlano.RESPALDO` quedan solo para videos viejos (ADR 0020). Lo mismo `video.guion_de_respaldo` y `video.motivo_respaldo`, que la entidad ya no mapea (ADR 0021).
 - **P-02:** fuente de la música con licencia comercial (hoy, tres pistas de relleno).
 - **P-04:** precio del plan Lite. **P-01:** nombre y dominio definitivos.

@@ -705,6 +705,8 @@ Genera el guion en formato JSON. El costo por guion es de unos pocos centavos. M
 - **CloudWatch:** los registros.
 - **Rekognition (S):** detección de rostros en las fotos.
 
+*Cambio del 2026-11-25 (ADR 0027):* para la demostración se usa solo lo necesario, en `us-east-1`. Un **Application Load Balancer** con certificado de ACM (`autoreel.sapps.lat`) reemplaza a CloudFront y envía todo a **una EC2 con Docker**, donde el **backend sirve también el frontend compilado**: no hay S3 para el frontend. Las credenciales van en **Secrets Manager** (no Parameter Store). No se usan CloudWatch Logs, ECR ni NAT. Detalle en `docs/despliegue-aws.md`.
+
 ### 11.5 Integraciones administrables
 
 Cada modelo de IA es un registro de la tabla `ModeloIA`, que el administrador ve en **Ajustes → Integraciones**. El código tiene un **adaptador por proveedor** (`GEMINI` para texto, `VEO` para video), y cada adaptador lee de su registro el identificador exacto del modelo y sus parámetros. Por eso:
@@ -724,7 +726,7 @@ Al generar un video, una **fábrica de proveedores** obtiene el plan efectivo de
 
 1. **Experiencia de usuario:** el chat, el carrusel de productos, el storyboard editable y el aviso de "tu video está listo" necesitan una interfaz interactiva que Thymeleaf no resuelve bien.
 2. **Crecimiento:** la misma API servirá mañana a una aplicación móvil, sin rehacer el backend.
-3. **Despliegue:** el frontend se sirve como archivos estáticos desde S3 y CloudFront, que es barato y escala solo; el backend escala por separado.
+3. **Despliegue:** el frontend se sirve como archivos estáticos desde S3 y CloudFront, que es barato y escala solo; el backend escala por separado. *Cambio del 2026-11-25 (ADR 0027):* en el despliegue de la demostración, el mismo backend sirve los archivos estáticos detrás de un balanceador.
 4. **Producto real:** es la arquitectura habitual de un SaaS, y facilita incorporar desarrolladores.
 
 ### 12.2 Backend: monolito modular
