@@ -12,7 +12,6 @@ import static com.autoreel.video.dominio.Guiones.valido;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.Set;
 
 import com.autoreel.nicho.dominio.Texto;
 import org.junit.jupiter.api.Test;
@@ -71,8 +70,8 @@ class ValidadorDeGuionTest {
                 new GuionPropuesto.PlanoPropuesto(2, 3, null, null, "Torta Tres Leches"),
                 plano(3, "Cada porción con fresas")), CIERRE, DESCRIPCION, HASHTAGS);
 
-        // El producto solo tiene la foto principal: la foto 3 no existe.
-        assertThat(ValidadorDeGuion.validar(sinToma, datos(), PAQUETE, Set.of(1))).containsExactly(
+        // El producto tiene una sola foto: la foto 3 no existe.
+        assertThat(ValidadorDeGuion.validar(sinToma, datos(), PAQUETE, FOTOS)).containsExactly(
                 "El plano 2 usa la foto 3, que no existe; las fotos son [1].",
                 "Falta la toma de cámara del plano 2.",
                 "Falta la descripción en español de la toma del plano 2.");

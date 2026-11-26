@@ -2,6 +2,33 @@
 
 Cambios de AutoReel por fase. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Edición con correcciones, una foto y mejoras del admin] - 2026-11-25
+
+Pedidos del usuario al revisar los videos y el panel. Decisiones en el ADR 0026. Migraciones `V14` a `V19`.
+
+### Agregado
+
+- **Correcciones de un momento** (`V14`: `plano.correcciones` y `plano.correcciones_aplicadas`). "Editar texto y correcciones" tiene, además del texto en pantalla, el campo "¿Qué no quieres que aparezca?" (hasta 300 caracteres; por ejemplo, "que no tenga hojas de menta"). Antes de regenerar el plano, Gemini reescribe la toma una sola vez con las correcciones y la foto (`CorrectorDeTomas`, prompt `nichos/pasteleria/correccion-toma.md`; costo `GUION`, unos US$ 0,01). Si no lo logra, responde 503 `CORRECCION_NO_DISPONIBLE` y no se gasta la regeneración. Las correcciones guardadas en el storyboard se aplican al crear el video. La toma nueva no nombra lo que se quiere quitar (Veo dibuja lo que lee, aunque sea "no flowers"): Gemini lo devuelve aparte en inglés y se suma al prompt negativo de Veo (`V19`: `plano.negativos_correccion`). Errores nuevos: `CORRECCIONES_MUY_LARGAS`.
+- `POST /api/videos/{id}/planos/{orden}/regenerar` acepta un cuerpo opcional `{texto}`: el texto editado en la misma edición se aplica junto con la regeneración.
+- **Gráfico de costos por día** en la página Costos del admin: una línea por negocio con su costo acumulado en el mes, entre las cifras y la tabla (`GET /api/admin/costos/diario?mes=AAAA-MM`, `GraficoCostos.tsx` con SVG propio). Con más de 6 negocios, los más baratos se juntan en "Otros".
+- **Comprobante de pago** (`V17`: `pago.comprobante_clave`). "Registrar pago" acepta una imagen opcional de hasta 5 MB (la captura de Yape o Plin, o la foto del voucher), con su enlace "Ver comprobante" en el historial. Endpoint nuevo `POST /api/admin/negocios/{id}/pagos/url-subida-comprobante` y propósito de archivo `COMPROBANTE_PAGO`.
+- **"¿Olvidaste tu contraseña?" en Ajustes** (`V18`). Abre una ventana con el correo, un WhatsApp opcional y un mensaje; al enviarla crea la notificación `SOLICITUD_CONTRASENA` en la campana del administrador (una por negocio y por día), con el botón "Ir a reiniciar contraseña". Endpoint nuevo `POST /api/auth/solicitar-reinicio`.
+- Pruebas: correcciones con reescritura simulada (`GeneracionIntegracionTest`), uso y devolución de los usos de un beneficio, serie diaria de costos, pago con comprobante, solicitud de contraseña y rechazo de una segunda foto.
+
+### Cambiado
+
+- **Una sola foto por producto** (`V15`): `FOTO_1`, "Foto del producto". Si un producto no tenía `FOTO_1`, su foto de menor número pasa a serlo; las demás filas se borran (sus objetos en el almacenamiento se conservan) y los planos anteriores conservan su foto. Una `FOTO_2` o `FOTO_3` en la API responde 400 `SOLICITUD_INVALIDA`. Los mensajes dicen "la foto" ("Falta la foto", "Para usar el producto en tu video necesitamos su foto.") y `guion.md` y `plantilla.json` hablan de una sola foto.
+- **Beneficios por cantidad de usos** (`V16`), en lugar de un rango de fechas: el administrador otorga de 1 a 30 usos (`SolicitudBeneficio {planId, usos, motivo}`). Cada video creado con el beneficio y aprobado gasta un uso; si falla y se devuelve el video del día, vuelve el uso. Estados `VIGENTE`, `AGOTADO` y `TERMINADO`. Un video del beneficio no se aprueba si ya no le quedan usos (409 `BENEFICIO_AGOTADO`) o si el administrador lo terminó (409 `BENEFICIO_TERMINADO`). `NegocioDetalle.planEfectivo` y `NegocioResumen` traen los usos restantes. Los beneficios por fechas anteriores quedan terminados en el historial.
+- **Storyboard:** el texto de la publicación va justo debajo del video cuando está listo o aprobado. "Regenerar plano (te quedan N)" solo aparece dentro de la edición, después de guardar; en la revisión, guardar no recompone y "Listo" aplica el texto nuevo.
+- Las notificaciones `SOLICITUD_CONTRASENA` no se marcan leídas al registrar un pago.
+
+### Quitado
+
+- El cambio de foto de un plano (`foto` en `PUT /api/videos/{id}/planos/{orden}`, `FOTO_NO_DISPONIBLE`, `fotosDelProducto` en `VideoVista`, `Plano.cambiarFoto`).
+- La Foto 2 y la Foto 3 de los productos.
+- Los códigos `BENEFICIO_MUY_LARGO`, `BENEFICIO_FECHAS_INVALIDAS` y `BENEFICIO_CRUZADO` (reemplazados por `BENEFICIO_VIGENTE`), el estado `PROGRAMADO` de los beneficios y los checks `beneficio_rango_ck` y `beneficio_maximo_ck`.
+- **Instagram en el MVP:** la sección Instagram de Ajustes y los textos "Muy pronto podrás publicarlo en Instagram". RF-27, RF-28 y `/api/instagram/**` quedan como trabajo futuro.
+
 ## [Un solo movimiento con pala y chat más simple] - 2026-11-25
 
 ### Cambiado

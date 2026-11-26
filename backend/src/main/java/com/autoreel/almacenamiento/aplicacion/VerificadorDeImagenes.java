@@ -54,13 +54,13 @@ public class VerificadorDeImagenes {
         try (ImageInputStream entrada = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {
             Iterator<ImageReader> lectores = ImageIO.getImageReaders(entrada);
             if (!lectores.hasNext()) {
-                throw invalido();
+                throw invalido(proposito);
             }
             ImageReader lector = lectores.next();
             try {
                 String tipoReal = TIPO_POR_FORMATO.get(lector.getFormatName().toLowerCase(Locale.ROOT));
                 if (tipoReal == null || !tipoReal.equals(tipoDeclarado) || !proposito.admite(tipoReal)) {
-                    throw proposito == PropositoArchivo.LOGO ? logoNoPng() : invalido();
+                    throw proposito == PropositoArchivo.LOGO ? logoNoPng() : invalido(proposito);
                 }
                 if (esAnimada(contenido, tipoReal)) {
                     throw new ExcepcionDeNegocio("IMAGEN_ANIMADA", "Las imágenes animadas no se admiten. Sube una foto fija.");
@@ -83,7 +83,7 @@ public class VerificadorDeImagenes {
             if (e instanceof ExcepcionDeNegocio negocio) {
                 throw negocio;
             }
-            throw invalido();
+            throw invalido(proposito);
         }
     }
 
@@ -191,9 +191,10 @@ public class VerificadorDeImagenes {
         return false;
     }
 
-    private static ExcepcionDeNegocio invalido() {
-        return new ExcepcionDeNegocio("ARCHIVO_INVALIDO",
-                "El archivo no es una imagen válida o no coincide con su tipo. Sube una foto JPG, PNG o WebP.");
+    private static ExcepcionDeNegocio invalido(PropositoArchivo proposito) {
+        return new ExcepcionDeNegocio("ARCHIVO_INVALIDO", proposito == PropositoArchivo.COMPROBANTE_PAGO
+                ? "El comprobante no es una imagen válida o no coincide con su tipo. Sube una imagen JPG, PNG o WebP."
+                : "El archivo no es una imagen válida o no coincide con su tipo. Sube una foto JPG, PNG o WebP.");
     }
 
     private static ExcepcionDeNegocio logoNoPng() {

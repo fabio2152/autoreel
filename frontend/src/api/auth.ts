@@ -43,6 +43,11 @@ export function cambiarContrasena(datos: {
   return pedir<Sesion>('/api/auth/cambiar-contrasena', 'POST', datos)
 }
 
+/** "¿Olvidaste tu contraseña?": le avisa al administrador, que le envía una temporal. Una por día. */
+export function solicitarReinicioContrasena(datos: { contacto?: string; mensaje: string }): Promise<void> {
+  return pedir<void>('/api/auth/solicitar-reinicio', 'POST', datos)
+}
+
 /** El administrador que entró como un negocio vuelve a su panel. */
 export function volverAlPanel(): Promise<Sesion> {
   return pedir<Sesion>('/api/auth/volver-al-panel', 'POST')

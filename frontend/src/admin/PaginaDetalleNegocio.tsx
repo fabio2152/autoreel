@@ -11,6 +11,7 @@ import {
   reiniciarContrasena,
   suspenderNegocio,
   terminarBeneficio,
+  type Beneficio,
   type ContrasenaTemporal,
   type NegocioDetalle,
 } from '../api/admin'
@@ -147,9 +148,9 @@ export function PaginaDetalleNegocio() {
         >
           <Dato nombre="Plan">
             {data.suscripcion.plan}
-            {data.planEfectivo.beneficioHasta && (
+            {data.planEfectivo.beneficioUsosRestantes !== null && (
               <span className="block text-xs font-normal text-emerald-700">
-                Hoy usa {data.planEfectivo.plan} por un beneficio hasta {formatearFechaHora(data.planEfectivo.beneficioHasta)}
+                Hoy usa {data.planEfectivo.plan} por un beneficio: {textoUsosRestantes(data.planEfectivo.beneficioUsosRestantes)}
               </span>
             )}
           </Dato>
@@ -300,6 +301,16 @@ function PagosDelNegocio({ negocioId }: { negocioId: number }) {
                 </p>
                 {pago.nota && <p className="text-stone-500">{pago.nota}</p>}
               </div>
+              {pago.comprobanteUrl && (
+                <a
+                  href={pago.comprobanteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 font-semibold text-marca-700 hover:underline"
+                >
+                  Ver comprobante
+                </a>
+              )}
             </li>
           ))}
         </ul>
@@ -309,12 +320,26 @@ function PagosDelNegocio({ negocioId }: { negocioId: number }) {
 }
 
 const ESTADO_BENEFICIO = {
-  PROGRAMADO: { texto: 'Programado', estilo: 'bg-sky-50 text-sky-800' },
   VIGENTE: { texto: 'Vigente', estilo: 'bg-emerald-50 text-emerald-800' },
+  AGOTADO: { texto: 'Agotado', estilo: 'bg-amber-50 text-amber-800' },
   TERMINADO: { texto: 'Terminado', estilo: 'bg-stone-100 text-stone-600' },
 }
 
-/** RF-12: beneficios temporales del negocio. */
+/** "le queda 1 uso" o "le quedan N usos". */
+function textoUsosRestantes(restantes: number): string {
+  return restantes === 1 ? 'le queda 1 uso' : `le quedan ${restantes} usos`
+}
+
+/** "3 de 5 usos" (usados de otorgados) o, en un beneficio por fechas anterior, su período. */
+function textoUsos(beneficio: Beneficio): string {
+  if (beneficio.desde && beneficio.hasta) {
+    return `Por fechas: ${formatearFechaHora(beneficio.desde)} → ${formatearFechaHora(beneficio.hasta)}`
+  }
+  const usos = `${beneficio.usosConsumidos} de ${beneficio.usosOtorgados} ${beneficio.usosOtorgados === 1 ? 'uso' : 'usos'}`
+  return `${usos} · otorgado el ${formatearFechaHora(beneficio.fechaCreacion)}`
+}
+
+/** RF-12: beneficios del negocio, por cantidad de usos. */
 function BeneficiosDelNegocio({ negocioId, onOtorgar }: { negocioId: number; onOtorgar: () => void }) {
   const clienteConsultas = useQueryClient()
   const beneficios = useQuery({
@@ -339,7 +364,7 @@ function BeneficiosDelNegocio({ negocioId, onOtorgar }: { negocioId: number; onO
       )}
       {beneficios.data?.length === 0 && (
         <p className="text-sm text-stone-500">
-          Sin beneficios. Un beneficio da otro plan por un tiempo, como cortesía o por un inconveniente.
+          Sin beneficios. Un beneficio da otro plan durante algunos videos, como cortesía o por un inconveniente.
         </p>
       )}
       <ul className="divide-y divide-stone-100 text-sm">
@@ -352,9 +377,7 @@ function BeneficiosDelNegocio({ negocioId, onOtorgar }: { negocioId: number; onO
                   {ESTADO_BENEFICIO[beneficio.estado].texto}
                 </span>
               </p>
-              <p className="text-stone-500">
-                {formatearFechaHora(beneficio.desde)} → {formatearFechaHora(beneficio.hasta)}
-              </p>
+              <p className="text-stone-500">{textoUsos(beneficio)}</p>
               <p className="text-stone-500">{beneficio.motivo}</p>
             </div>
             {beneficio.estado !== 'TERMINADO' && (
@@ -362,7 +385,7 @@ function BeneficiosDelNegocio({ negocioId, onOtorgar }: { negocioId: number; onO
                 variante="texto"
                 cargando={terminar.isPending && terminar.variables === beneficio.id}
                 onClick={() => {
-                  if (window.confirm('¿Terminar este beneficio ahora? El negocio vuelve a su plan.')) terminar.mutate(beneficio.id)
+                  if (window.confirm('¿Terminar este beneficio ahora? El negocio vuelve a su plan y pierde los usos que le quedan.')) terminar.mutate(beneficio.id)
                 }}
               >
                 Terminar
@@ -422,7 +445,7 @@ function CatalogoDelNegocio({ negocioId }: { negocioId: number }) {
             <div className="p-2 text-xs">
               <p className="font-medium text-stone-800">{producto.nombre}</p>
               <p className="text-stone-500">
-                {producto.estado === 'ARCHIVADO' ? 'Archivado' : producto.completo ? 'Listo' : 'Faltan fotos'}
+                {producto.estado === 'ARCHIVADO' ? 'Archivado' : producto.completo ? 'Listo' : 'Falta la foto'}
               </p>
             </div>
           </li>

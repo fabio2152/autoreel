@@ -1,16 +1,10 @@
 import { pedir } from './cliente'
 
-/** Foto 1 obligatoria; Foto 2 y Foto 3 opcionales, de cualquier ángulo (2026-11-25). La IA elige cuál usa en cada toma. */
-export type TipoFoto = 'FOTO_1' | 'FOTO_2' | 'FOTO_3'
+/** Una sola foto por producto (2026-11-25): la IA trabaja mejor con una sola, y cada toma del video empieza en ella. */
+export type TipoFoto = 'FOTO_1'
 export type EstadoProducto = 'ACTIVO' | 'ARCHIVADO'
 
-export const TIPOS_FOTO: TipoFoto[] = ['FOTO_1', 'FOTO_2', 'FOTO_3']
-
-export const NOMBRE_FOTO: Record<TipoFoto, string> = {
-  FOTO_1: 'Foto principal',
-  FOTO_2: 'Foto 2 (opcional)',
-  FOTO_3: 'Foto 3 (opcional)',
-}
+export const NOMBRE_FOTO = 'Foto del producto'
 
 export interface FotoProducto {
   tipo: TipoFoto
@@ -27,14 +21,14 @@ export interface Producto {
   descripcion: string
   temporadas: string[]
   estado: EstadoProducto
-  /** Tiene su foto principal y puede usarse en un video (RN-12). */
+  /** Tiene su foto y puede usarse en un video (RN-12). */
   completo: boolean
   fotos: FotoProducto[]
   fechaCreacion: string
   avisos: string[]
 }
 
-/** Cada foto lleva su clave: la guardada, una subida nueva o ninguna (el producto queda incompleto). */
+/** La foto va en FOTO_1 con su clave: la guardada, una subida nueva o ninguna (el producto queda incompleto). */
 export interface SolicitudProducto {
   nombre: string
   descripcion: string
@@ -57,4 +51,4 @@ export const archivarProducto = (id: number) => pedir<Producto>(`/api/productos/
 
 export const reactivarProducto = (id: number) => pedir<Producto>(`/api/productos/${id}/reactivar`, 'POST')
 
-export const fotoDe = (producto: Producto, tipo: TipoFoto) => producto.fotos.find((foto) => foto.tipo === tipo)
+export const fotoDe = (producto: Producto) => producto.fotos.find((foto) => foto.tipo === 'FOTO_1')

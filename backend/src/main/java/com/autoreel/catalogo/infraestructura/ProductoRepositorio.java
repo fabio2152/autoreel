@@ -27,7 +27,7 @@ public interface ProductoRepositorio extends JpaRepository<Producto, Long> {
             """)
     Optional<Producto> buscarDeNegocio(Long id, Long negocioId);
 
-    /** Productos activos del catálogo para el carrusel del chat; quien llama filtra los que tienen su foto principal. */
+    /** Productos activos del catálogo para el carrusel del chat; quien llama filtra los que tienen su foto. */
     @Query("""
             select distinct p from Producto p left join fetch p.fotos
             where p.negocio.id = :negocioId and p.enCatalogo = true

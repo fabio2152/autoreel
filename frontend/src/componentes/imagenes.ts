@@ -23,19 +23,30 @@ async function abrir(archivo: Blob): Promise<ImageBitmap> {
   }
 }
 
+interface OpcionesNormalizacion {
+  /** Acepta cualquier imagen que el navegador sepa abrir (por ejemplo, GIF o BMP), no solo JPG, PNG o WebP. */
+  cualquierImagen?: boolean
+  megabytesMaximos?: number
+}
+
 /**
- * Foto de producto o del local: aplica la orientación de la cámara, reduce el lado mayor a 2560 px (nunca la
- * amplía), la exporta como JPEG y, al redibujarla, le quita los metadatos (incluida la ubicación GPS). Desde el
- * 2026-11-25 no hay medidas mínimas: solo se revisan el tipo de archivo y el peso.
+ * Foto de producto o del local (o comprobante de pago): aplica la orientación de la cámara, reduce el lado mayor a
+ * 2560 px (nunca la amplía), la exporta como JPEG y, al redibujarla, le quita los metadatos (incluida la ubicación
+ * GPS). Desde el 2026-11-25 no hay medidas mínimas: solo se revisan el tipo de archivo y el peso.
  */
-export async function normalizarFoto(archivo: File): Promise<{ foto: Blob; horizontal: boolean }> {
+export async function normalizarFoto(
+  archivo: File,
+  { cualquierImagen = false, megabytesMaximos = 10 }: OpcionesNormalizacion = {},
+): Promise<{ foto: Blob; horizontal: boolean }> {
   if (esHeic(archivo)) {
     throw new ErrorDeImagen(
       'Las fotos HEIC del iPhone no se pueden usar todavía. En Ajustes > Cámara > Formatos elige "Más compatible", o comparte la foto como JPG.',
     )
   }
-  if (!TIPOS_FOTO_ADMITIDOS.includes(archivo.type)) {
-    throw new ErrorDeImagen('Ese archivo no es una foto. Sube una imagen JPG, PNG o WebP.')
+  if (cualquierImagen ? !archivo.type.startsWith('image/') : !TIPOS_FOTO_ADMITIDOS.includes(archivo.type)) {
+    throw new ErrorDeImagen(
+      cualquierImagen ? 'Ese archivo no es una imagen.' : 'Ese archivo no es una foto. Sube una imagen JPG, PNG o WebP.',
+    )
   }
   const imagen = await abrir(archivo)
   const mayor = Math.max(imagen.width, imagen.height)
@@ -54,7 +65,9 @@ export async function normalizarFoto(archivo: File): Promise<{ foto: Blob; horiz
   imagen.close()
   const foto = await new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, 'image/jpeg', CALIDAD_JPEG))
   if (!foto) throw new ErrorDeImagen('Tu navegador no pudo procesar la foto.')
-  if (foto.size > 10 * MB) throw new ErrorDeImagen('La foto pesa más de 10 MB. Prueba con otra.')
+  if (foto.size > megabytesMaximos * MB) {
+    throw new ErrorDeImagen(`${cualquierImagen ? 'La imagen' : 'La foto'} pesa más de ${megabytesMaximos} MB. Prueba con otra.`)
+  }
   return { foto, horizontal: ancho > alto }
 }
 

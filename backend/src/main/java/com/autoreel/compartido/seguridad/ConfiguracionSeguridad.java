@@ -47,6 +47,9 @@ public class ConfiguracionSeguridad {
                         .requestMatchers("/api/auth/yo", "/api/auth/cambiar-contrasena").authenticated()
                         // Solo para el administrador que entró como un negocio (lo verifica el controlador).
                         .requestMatchers("/api/auth/volver-al-panel").hasRole("NEGOCIO")
+                        // El negocio con sesión pide una contraseña temporal; el administrador que entró como el
+                        // negocio no (lo verifica el controlador).
+                        .requestMatchers("/api/auth/solicitar-reinicio").hasRole("NEGOCIO")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasRole("NEGOCIO")
                         .anyRequest().denyAll());

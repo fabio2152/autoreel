@@ -17,7 +17,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 /**
- * Pago recibido y registrado por el administrador (RF-08). {@code periodoCubierto} es la fecha de pago que salda.
+ * Pago recibido y registrado por el administrador (RF-08). {@code periodoCubierto} es la fecha de pago que salda;
+ * {@code comprobanteClave}, la imagen del comprobante en el almacenamiento, si el administrador la adjuntó.
  */
 @Entity
 @Table(name = "pago")
@@ -47,6 +48,9 @@ public class Pago {
     @Column(updatable = false)
     private String nota;
 
+    @Column(updatable = false)
+    private String comprobanteClave;
+
     @Column(nullable = false, updatable = false)
     private Long registradoPor;
 
@@ -57,13 +61,14 @@ public class Pago {
     }
 
     public Pago(Suscripcion suscripcion, LocalDate fechaPago, BigDecimal monto, MedioPago medio,
-            LocalDate periodoCubierto, String nota, Long registradoPor, Instant fechaRegistro) {
+            LocalDate periodoCubierto, String nota, String comprobanteClave, Long registradoPor, Instant fechaRegistro) {
         this.suscripcion = suscripcion;
         this.fechaPago = fechaPago;
         this.monto = monto;
         this.medio = medio;
         this.periodoCubierto = periodoCubierto;
         this.nota = nota;
+        this.comprobanteClave = comprobanteClave;
         this.registradoPor = registradoPor;
         this.fechaRegistro = fechaRegistro;
     }
@@ -90,6 +95,10 @@ public class Pago {
 
     public String getNota() {
         return nota;
+    }
+
+    public String getComprobanteClave() {
+        return comprobanteClave;
     }
 
     public Instant getFechaRegistro() {

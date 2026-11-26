@@ -15,6 +15,8 @@ export interface NegocioResumen {
   plan: string
   modeloVideo: string
   conBeneficio: boolean
+  /** Usos que le quedan al beneficio vigente; null sin beneficio. */
+  beneficioUsosRestantes: number | null
   proximaFechaPago: string
   estadoPago: EstadoPago
   /** Videos generados en el mes de Lima en curso. */
@@ -56,7 +58,9 @@ export interface NegocioDetalle {
     modeloVideo: string
     videosPorDia: number
     regeneracionesPorVideo: number
-    beneficioHasta: string | null
+    /** Usos del beneficio que da este plan; null si es el de la suscripción. */
+    beneficioUsosOtorgados: number | null
+    beneficioUsosRestantes: number | null
   }
   /** Costo estimado de IA del mes en curso, en dólares. */
   costoDelMes: Costo
@@ -129,6 +133,14 @@ export interface CostosDelMes {
   negocios: { negocioId: number; nombre: string; costo: Costo }[]
 }
 
+export interface CostosDiarios {
+  mes: string
+  /** Días del mes con datos (1, 2, ...): el mes en curso llega hasta hoy. */
+  dias: number[]
+  /** Del más caro al más barato; `serie` es el costo acumulado al cierre de cada día, con todos los conceptos. */
+  negocios: { negocioId: number; nombre: string; serie: number[] }[]
+}
+
 export type MedioPago = 'TRANSFERENCIA' | 'YAPE' | 'PLIN' | 'EFECTIVO' | 'OTRO'
 
 export interface Pago {
@@ -138,18 +150,28 @@ export interface Pago {
   medio: MedioPago
   periodoCubierto: string
   nota: string | null
+  /** URL temporal de la imagen del comprobante, si el administrador la adjuntó. */
+  comprobanteUrl: string | null
   fechaRegistro: string
 }
 
+/** Máximo de usos de un beneficio (RN-51). */
+export const USOS_MAXIMOS_BENEFICIO = 30
+
+/** RF-12: otro plan durante una cantidad de videos aprobados (usos). */
 export interface Beneficio {
   id: number
   planId: number
   plan: string
   modeloVideo: string
-  desde: string
-  hasta: string
+  usosOtorgados: number
+  usosConsumidos: number
+  fechaCreacion: string
+  /** Solo en los beneficios por fechas, anteriores al 2026-11-25. */
+  desde: string | null
+  hasta: string | null
   motivo: string
-  estado: 'PROGRAMADO' | 'VIGENTE' | 'TERMINADO'
+  estado: 'VIGENTE' | 'AGOTADO' | 'TERMINADO'
 }
 
 export type TipoNotificacion =
@@ -158,6 +180,7 @@ export type TipoNotificacion =
   | 'PAGO_VENCIDO'
   | 'SUGERENCIA_SUSPENSION'
   | 'INTEGRACION_CON_ERROR'
+  | 'SOLICITUD_CONTRASENA'
 
 export interface Notificacion {
   id: number
@@ -275,14 +298,24 @@ export const listarPagos = (id: number) => pedir<Pago[]>(`/api/admin/negocios/${
 
 export const registrarPago = (
   id: number,
-  datos: { fechaPago: string; monto: number | null; medio: MedioPago | null; nota: string },
+  datos: {
+    fechaPago: string
+    monto: number | null
+    medio: MedioPago | null
+    nota: string
+    /** Clave temporal del comprobante ya subido, o null si no se adjuntó. */
+    comprobanteClave: string | null
+  },
 ) => pedir<{ pago: Pago; proximaFechaPago: string }>(`/api/admin/negocios/${id}/pagos`, 'POST', datos)
+
+/** Dónde pide el panel la URL firmada para subir el comprobante de un pago (JPG, PNG o WebP de hasta 5 MB). */
+export const urlFirmaComprobante = (id: number) => `/api/admin/negocios/${id}/pagos/url-subida-comprobante`
 
 export const listarBeneficios = (id: number) => pedir<Beneficio[]>(`/api/admin/negocios/${id}/beneficios`)
 
 export const otorgarBeneficio = (
   id: number,
-  datos: { planId: number | null; desde: string; hasta: string; motivo: string },
+  datos: { planId: number | null; usos: number | null; motivo: string },
 ) => pedir<Beneficio>(`/api/admin/negocios/${id}/beneficios`, 'POST', datos)
 
 export const terminarBeneficio = (id: number, beneficioId: number) =>
@@ -298,6 +331,9 @@ export const marcarNotificacionLeida = (id: number) => pedir<void>(`/api/admin/n
 export const marcarNotificacionesLeidas = () => pedir<void>('/api/admin/notificaciones/leidas', 'POST')
 
 export const obtenerCostos = (mes: string) => pedir<CostosDelMes>(`/api/admin/costos?mes=${encodeURIComponent(mes)}`)
+
+export const obtenerCostosDiarios = (mes: string) =>
+  pedir<CostosDiarios>(`/api/admin/costos/diario?mes=${encodeURIComponent(mes)}`)
 
 export const obtenerIntegraciones = () => pedir<Integraciones>('/api/admin/integraciones')
 

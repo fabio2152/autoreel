@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NOMBRE_FOTO, TIPOS_FOTO, type TipoFoto } from '../api/catalogo'
+import { NOMBRE_FOTO, type TipoFoto } from '../api/catalogo'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
 import { Campo } from '../componentes/Campo'
@@ -23,14 +23,14 @@ interface Props {
 }
 
 /**
- * "Subir uno nuevo hoy" (sección 7.3): nombre, descripción y hasta tres fotos (la principal es obligatoria). Al final, el usuario decide de forma
- * explícita si lo guarda en su catálogo o lo usa solo en este video (RN-14).
+ * "Subir uno nuevo hoy" (sección 7.3): nombre, descripción y su foto (una sola, obligatoria). Al final, el usuario decide
+ * de forma explícita si lo guarda en su catálogo o lo usa solo en este video (RN-14).
  */
 export function HojaProductoNuevo({ abierto, enviando, error, onCerrar, onUsar }: Props) {
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
-  const [fotos, setFotos] = useState<Partial<Record<TipoFoto, string>>>({})
-  const [subiendo, setSubiendo] = useState(0)
+  const [foto, setFoto] = useState<string | null>(null)
+  const [subiendo, setSubiendo] = useState(false)
   const [faltante, setFaltante] = useState<string | null>(null)
 
   const usar = (guardarEnCatalogo: boolean) => {
@@ -38,15 +38,15 @@ export function HojaProductoNuevo({ abierto, enviando, error, onCerrar, onUsar }
       setFaltante('Escribe el nombre y la descripción del producto.')
       return
     }
-    if (!fotos.FOTO_1) {
-      setFaltante('Sube al menos la foto principal del producto.')
+    if (!foto) {
+      setFaltante('Sube la foto del producto.')
       return
     }
     setFaltante(null)
-    onUsar({ nombre, descripcion, fotos, guardarEnCatalogo })
+    onUsar({ nombre, descripcion, fotos: { FOTO_1: foto }, guardarEnCatalogo })
   }
 
-  const ocupado = enviando || subiendo > 0
+  const ocupado = enviando || subiendo
 
   return (
     <Modal titulo="Subir un producto nuevo" abierto={abierto} onCerrar={onCerrar}>
@@ -66,17 +66,15 @@ export function HojaProductoNuevo({ abierto, enviando, error, onCerrar, onUsar }
             className="block w-full rounded-lg border-0 bg-white px-3 py-2 text-base ring-1 ring-inset ring-stone-300 focus:ring-2 focus:ring-marca-600 sm:text-sm"
           />
         </div>
-        {TIPOS_FOTO.map((tipo) => (
-          <SubidorDeImagen
-            key={tipo}
-            proposito="FOTO_PRODUCTO"
-            etiqueta={NOMBRE_FOTO[tipo]}
-            guia={<GuiaDeFoto tipo={tipo} />}
-            deshabilitado={enviando}
-            onSubiendo={(activo) => setSubiendo((n) => n + (activo ? 1 : -1))}
-            onSubida={(imagen) => setFotos((actual) => ({ ...actual, [tipo]: imagen.clave }))}
-          />
-        ))}
+        <SubidorDeImagen
+          proposito="FOTO_PRODUCTO"
+          etiqueta={NOMBRE_FOTO}
+          guia={<GuiaDeFoto />}
+          deshabilitado={enviando}
+          onSubiendo={setSubiendo}
+          onSubida={(imagen) => setFoto(imagen.clave)}
+          onQuitar={() => setFoto(null)}
+        />
         {(faltante || error) && <Aviso tipo="error">{faltante ?? error}</Aviso>}
         <div className="space-y-2 border-t border-stone-200 pt-4">
           <p className="text-sm font-medium text-stone-700">¿Lo guardo en tu catálogo?</p>

@@ -51,6 +51,7 @@ public class PaquetePasteleria implements PaqueteNicho {
     private final Movimientos movimientos;
     private final Vocabulario vocabulario;
     private final String instruccionesGuion;
+    private final String instruccionesCorreccion;
     private final List<PistaDelNicho> pistas;
     /** Las tipografías se leen una vez: FFmpeg las necesita como archivo, y en el JAR no hay ruta de archivo. */
     private final Map<String, byte[]> tipografias = new HashMap<>();
@@ -65,6 +66,7 @@ public class PaquetePasteleria implements PaqueteNicho {
         this.movimientos = leer(json, "movimientos.json", Movimientos.class);
         this.vocabulario = leer(json, "vocabulario.json", Vocabulario.class);
         this.instruccionesGuion = leerTexto("guion.md");
+        this.instruccionesCorreccion = leerTexto("correccion-toma.md");
         this.pistas = List.copyOf(leer(json, "musica.json", ArchivoMusica.class).pistas());
         plantillaVideo.tipografias().forEach((estilo, archivo) ->
                 tipografias.put(estilo, leerBytes("fuentes/" + archivo)));
@@ -96,6 +98,11 @@ public class PaquetePasteleria implements PaqueteNicho {
     @Override
     public String instruccionesGuion() {
         return instruccionesGuion;
+    }
+
+    @Override
+    public String instruccionesCorreccion() {
+        return instruccionesCorreccion;
     }
 
     @Override
@@ -148,6 +155,10 @@ public class PaquetePasteleria implements PaqueteNicho {
             }
         }
         exigir(!instruccionesGuion.isBlank(), "faltan las instrucciones del guion");
+        for (String marcador : List.of("{toma}", "{descripcionToma}", "{correcciones}")) {
+            exigir(instruccionesCorreccion.contains(marcador),
+                    "a las instrucciones de corrección de tomas les falta " + marcador);
+        }
     }
 
     private void validarMovimientos() {

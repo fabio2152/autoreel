@@ -42,9 +42,3 @@ export function formatearMes(mes: string): string {
   const [anio, numero] = mes.split('-').map(Number)
   return new Date(anio, numero - 1, 1).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
 }
-
-/** Valor para un <input type="datetime-local"> en la hora del navegador. */
-export function aEntradaLocal(fecha: Date): string {
-  const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
-}

@@ -2,6 +2,7 @@ package com.autoreel.video;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,7 +21,9 @@ import com.autoreel.PruebaDeIntegracion;
 import com.autoreel.costos.dominio.ConceptoCosto;
 import com.autoreel.costos.dominio.RegistroCosto;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
+import com.autoreel.facturacion.dominio.Plan;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
+import com.autoreel.ia.infraestructura.ModeloIARepositorio;
 import com.autoreel.ia.infraestructura.ServidorOmniSimulado;
 import com.autoreel.ia.infraestructura.ServidorVeoSimulado;
 import com.autoreel.nicho.dominio.Movimientos;
@@ -57,6 +61,14 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
     private static final ServidorOmniSimulado AI_STUDIO = new ServidorOmniSimulado();
     /** Google Cloud simulado: entrega el token y los clips de Veo. */
     private static final ServidorVeoSimulado VEO = new ServidorVeoSimulado();
+    /** Lo que responde el modelo de texto al reescribir una toma con las correcciones del negocio. */
+    private static final String TOMA_CORREGIDA = """
+            {"toma":"The slice is lifted once on a cake server and carried toward the camera over a bare plate.",
+             "descripcionToma":"La porción se acerca sobre una pala, sin hojas de menta",
+             "negativos":"  mint leaves,   mint sprigs, green herbs "}""";
+
+    /** El prompt negativo de un clip con esas correcciones: los del nicho más los de la corrección, en una línea. */
+    private static final String NEGATIVOS_CORREGIDOS = ", mint leaves, mint sprigs, green herbs";
     @DynamicPropertySource
     static void google(DynamicPropertyRegistry propiedades) {
         propiedades.add("autoreel.ia.gemini.url", AI_STUDIO::url);
@@ -142,6 +154,9 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     @Autowired
     private PlatformTransactionManager transacciones;
+
+    @Autowired
+    private ModeloIARepositorio modelos;
 
     @BeforeEach
     void reiniciar() {
@@ -300,13 +315,127 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         regenerar(negocio, id, 2)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("SIN_REGENERACIONES"));
-        // Cambiar la foto también es regenerar.
-        editar(negocio, id, 2, Map.of("foto", Map.of("tipo", "FOTO_2")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.codigo").value("SIN_REGENERACIONES"));
         editar(negocio, id, 1, Map.of("texto", "Editar sigue siendo gratis"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(3));
+    }
+
+    /**
+     * Correcciones de un plano (2026-11-25): guardarlas no recompone ni gasta nada; al regenerar, el modelo de texto
+     * reescribe la toma una sola vez (se cobra como GUION) y el clip nuevo sale con la toma corregida.
+     */
+    @Test
+    void lasCorreccionesReescribenLaTomaUnaVezAlRegenerar() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = videoListo(negocio);
+        int creaciones = VEO.creacionesRecibidas().size();
+
+        editar(negocio, id, 2, Map.of("correcciones", "  Que no tenga\nhojas de menta  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.planos[1].correcciones").value("Que no tenga hojas de menta"))
+                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(0));
+        editar(negocio, id, 2, Map.of("correcciones", "x".repeat(301)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("CORRECCIONES_MUY_LARGAS"));
+        editar(negocio, id, 2, Map.of("correcciones", "Sin hojas \uD83C\uDF43"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("CARACTER_NO_PERMITIDO"));
+        editar(negocio, id, 3, Map.of("correcciones", "Sin hojas"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
+
+        AI_STUDIO.guionResponde(TOMA_CORREGIDA);
+        regenerarConTexto(negocio, id, 2, "Recién salida para ti")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("GENERANDO"))
+                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(1))
+                .andExpect(jsonPath("$.planos[1].texto").value("Recién salida para ti"))
+                .andExpect(jsonPath("$.planos[1].movimiento.descripcion")
+                        .value("La porción se acerca sobre una pala, sin hojas de menta"));
+        // El modelo de texto recibió la toma actual, las correcciones, las reglas del nicho y la foto.
+        assertThat(AI_STUDIO.pedidosDeTexto()).hasSize(2);
+        String pedido = AI_STUDIO.pedidosDeTexto().getLast().cuerpo();
+        assertThat(pedido).contains("The slice lifts toward the camera on a marble table by a window.",
+                "Que no tenga hojas de menta", "pala para tortas", "inlineData");
+        generacion.procesar(id);
+        assertThat(VEO.creacionesRecibidas()).hasSize(creaciones + 1);
+        JsonNode clipCorregido = json.readTree(VEO.creacionesRecibidas().getLast().cuerpo());
+        assertThat(clipCorregido.at("/instances/0/prompt").asString()).contains("over a bare plate");
+        assertThat(clipCorregido.at("/parameters/negativePrompt").asString())
+                .isEqualTo(paquete.movimientos().negativos("AMBIENTE") + NEGATIVOS_CORREGIDOS);
+        generacion.procesar(id);
+        composicion.procesar(id);
+        assertThat(componedor.ultima.planos().get(1).texto()).isEqualTo("Recién salida para ti");
+        assertThat(costos.findByVideoIdOrderById(id)).filteredOn(costo -> costo.getConcepto() == ConceptoCosto.GUION)
+                .hasSize(2);
+
+        // Ya se aplicaron: otra regeneración no vuelve a llamar al modelo de texto.
+        regenerar(negocio, id, 2).andExpect(status().isOk());
+        assertThat(AI_STUDIO.pedidosDeTexto()).hasSize(2);
+    }
+
+    @Test
+    void siNoSePuedenAplicarLasCorreccionesNoSeGastaLaRegeneracion() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = videoListo(negocio);
+        int creaciones = VEO.creacionesRecibidas().size();
+        editar(negocio, id, 1, Map.of("correcciones", "Que no tenga hojas de menta")).andExpect(status().isOk());
+
+        AI_STUDIO.guionFalla();
+        regenerar(negocio, id, 1)
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.codigo").value("CORRECCION_NO_DISPONIBLE"));
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(0));
+        assertThat(VEO.creacionesRecibidas()).hasSize(creaciones);
+        // Una respuesta que no sirve se cobra (RN-32), pero tampoco gasta la regeneración.
+        AI_STUDIO.guionResponde("{\"toma\":\"\"}");
+        regenerar(negocio, id, 1)
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.codigo").value("CORRECCION_NO_DISPONIBLE"));
+        assertThat(costos.findByVideoIdOrderById(id)).filteredOn(costo -> costo.getConcepto() == ConceptoCosto.GUION)
+                .hasSize(2);
+
+        AI_STUDIO.guionResponde(TOMA_CORREGIDA);
+        regenerar(negocio, id, 1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.generacion.regeneracionesUsadas").value(1));
+    }
+
+    /** Las correcciones guardadas en el storyboard se aplican una vez, antes de pedir el primer clip. */
+    @Test
+    void lasCorreccionesDelStoryboardSeAplicanEnLaPrimeraGeneracion() throws Exception {
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long id = storyboard(negocio);
+        editar(negocio, id, 2, Map.of("correcciones", "Que no tenga hojas de menta"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                .andExpect(jsonPath("$.planos[1].correcciones").value("Que no tenga hojas de menta"));
+        AI_STUDIO.guionResponde(TOMA_CORREGIDA);
+        aprobar(negocio, id).andExpect(status().isOk());
+
+        generacion.procesar(id);
+        generacion.procesar(id);
+        composicion.procesar(id);
+
+        assertThat(AI_STUDIO.pedidosDeTexto()).as("el guion y una corrección").hasSize(2);
+        assertThat(VEO.creacionesRecibidas()).hasSize(2);
+        JsonNode clipCorregido = json.readTree(VEO.creacionesRecibidas().get(1).cuerpo());
+        assertThat(clipCorregido.at("/instances/0/prompt").asString()).contains("over a bare plate");
+        assertThat(clipCorregido.at("/parameters/negativePrompt").asString())
+                .isEqualTo(paquete.movimientos().negativos("AMBIENTE") + NEGATIVOS_CORREGIDOS);
+        JsonNode clipSinCorregir = json.readTree(VEO.creacionesRecibidas().getFirst().cuerpo());
+        assertThat(clipSinCorregir.at("/instances/0/prompt").asString()).doesNotContain("over a bare plate");
+        assertThat(clipSinCorregir.at("/parameters/negativePrompt").asString())
+                .isEqualTo(paquete.movimientos().negativos("AMBIENTE"));
+        mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.planos[1].movimiento.descripcion")
+                        .value("La porción se acerca sobre una pala, sin hojas de menta"));
+        regenerar(negocio, id, 2).andExpect(status().isOk());
+        assertThat(AI_STUDIO.pedidosDeTexto()).hasSize(2);
     }
 
     @Test
@@ -370,7 +499,7 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.generacion.videosHoy.usados").value(1));
     }
 
-    /** Sin respaldo sin IA (2026-11-06): sin el modelo de video no se crea el video ni se cambian fotos. */
+    /** Sin respaldo sin IA (2026-11-06): sin el modelo de video no se crea el video ni se regenera un plano. */
     @Test
     void sinCredencialNoSeCreaElVideoNiSeRegeneraPeroSePuedenEditarTextos() throws Exception {
         Cookie negocio = sesionNegocioConOnboarding(correoUnico());
@@ -388,9 +517,11 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
         regenerar(negocio, listo, 1)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("IA_NO_DISPONIBLE"));
-        editar(negocio, listo, 1, Map.of("foto", Map.of("tipo", "FOTO_1")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.codigo").value("IA_NO_DISPONIBLE"));
+        // Las correcciones se guardan sin IA: se aplican al regenerar.
+        editar(negocio, listo, 1, Map.of("correcciones", "Que no tenga hojas de menta"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("LISTO"))
+                .andExpect(jsonPath("$.planos[0].correcciones").value("Que no tenga hojas de menta"));
         editar(negocio, listo, 1, Map.of("texto", "Solo cambio el texto"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("COMPONIENDO"));
@@ -460,6 +591,165 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * V40 (beneficio por usos, 2026-11-25): los videos creados mientras el beneficio tiene usos usan su plan, y cada
+     * uno gasta un uso al aprobarse. Gastados los usos, el negocio vuelve al plan Lite, y un video que se creó con el
+     * beneficio pero llega tarde a aprobarse ya no se puede aprobar.
+     */
+    @Test
+    void v40LosVideosAprobadosGastanLosUsosDelBeneficioYLuegoVuelveAlPlanLite() throws Exception {
+        Cookie admin = sesionAdmin();
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long negocioId = negocioId(negocio);
+        String nombrePlan = "Pro " + System.nanoTime() % 100000;
+        Long planPro = crearPlanDeBeneficio(admin, nombrePlan);
+        try {
+            otorgarBeneficio(admin, negocioId, planPro, 2);
+            long primero = storyboard(negocio);
+            long segundo = storyboard(negocio);
+            long tercero = storyboard(negocio);
+            mvc.perform(get("/api/videos/" + tercero).cookie(negocio))
+                    .andExpect(jsonPath("$.plan.nombre").value(nombrePlan));
+
+            aprobar(negocio, primero).andExpect(status().isOk());
+            mvc.perform(get("/api/admin/negocios/" + negocioId).cookie(admin))
+                    .andExpect(jsonPath("$.planEfectivo.plan").value(nombrePlan))
+                    .andExpect(jsonPath("$.planEfectivo.beneficioUsosRestantes").value(1));
+            aprobar(negocio, segundo).andExpect(status().isOk());
+
+            aprobar(negocio, tercero)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("BENEFICIO_AGOTADO"));
+            mvc.perform(get("/api/videos/" + tercero).cookie(negocio))
+                    .andExpect(jsonPath("$.estado").value("STORYBOARD"))
+                    .andExpect(jsonPath("$.generacion.videosHoy.usados").value(2));
+            mvc.perform(get("/api/admin/negocios/" + negocioId).cookie(admin))
+                    .andExpect(jsonPath("$.planEfectivo.plan").value("Lite"))
+                    .andExpect(jsonPath("$.planEfectivo.modeloVideo").value("Veo 3.1 Lite"));
+            mvc.perform(get("/api/admin/negocios/" + negocioId + "/beneficios").cookie(admin))
+                    .andExpect(jsonPath("$[0].estado").value("AGOTADO"))
+                    .andExpect(jsonPath("$[0].usosConsumidos").value(2));
+
+            long cuarto = storyboard(negocio);
+            mvc.perform(get("/api/videos/" + cuarto).cookie(negocio))
+                    .andExpect(jsonPath("$.plan.nombre").value("Lite"));
+        } finally {
+            desactivarPlan(admin, planPro, nombrePlan);
+        }
+    }
+
+    /** Un video creado con un beneficio que el administrador terminó no se aprueba, aunque le quedaran usos. */
+    @Test
+    void unVideoDeUnBeneficioTerminadoNoSeApruebaYLoDiceAsi() throws Exception {
+        Cookie admin = sesionAdmin();
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long negocioId = negocioId(negocio);
+        String nombrePlan = "Pro " + System.nanoTime() % 100000;
+        Long planPro = crearPlanDeBeneficio(admin, nombrePlan);
+        try {
+            otorgarBeneficio(admin, negocioId, planPro, 3);
+            long id = storyboard(negocio);
+            long beneficioId = vista(mvc.perform(get("/api/admin/negocios/" + negocioId + "/beneficios")
+                    .cookie(admin))).get(0).get("id").asLong();
+            mvc.perform(delete("/api/admin/negocios/" + negocioId + "/beneficios/" + beneficioId).with(csrf())
+                    .cookie(admin)).andExpect(status().isNoContent());
+
+            aprobar(negocio, id)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("BENEFICIO_TERMINADO"));
+        } finally {
+            desactivarPlan(admin, planPro, nombrePlan);
+        }
+    }
+
+    /** RN-27 con beneficio: el video que falla al generarse devuelve el video del día y el uso del beneficio. */
+    @Test
+    void unVideoDelBeneficioQueFallaDevuelveSuUso() throws Exception {
+        Cookie admin = sesionAdmin();
+        Cookie negocio = sesionNegocioConOnboarding(correoUnico());
+        long negocioId = negocioId(negocio);
+        String nombrePlan = "Pro " + System.nanoTime() % 100000;
+        Long planPro = crearPlanDeBeneficio(admin, nombrePlan);
+        try {
+            otorgarBeneficio(admin, negocioId, planPro, 1);
+            long id = storyboard(negocio);
+            aprobar(negocio, id).andExpect(status().isOk());
+            mvc.perform(get("/api/admin/negocios/" + negocioId).cookie(admin))
+                    .andExpect(jsonPath("$.planEfectivo.plan").value("Lite"));
+
+            // El primer plano falla en sus dos intentos: el video pasa a ERROR (como en V24).
+            generacion.procesar(id);
+            VEO.consultaFallida();
+            generacion.procesar(id);
+            generacion.procesar(id);
+            VEO.consultaFallida();
+            generacion.procesar(id);
+            generacion.procesar(id);
+            mvc.perform(get("/api/videos/" + id).cookie(negocio))
+                    .andExpect(jsonPath("$.estado").value("ERROR"))
+                    .andExpect(jsonPath("$.generacion.videosHoy.usados").value(0));
+            mvc.perform(get("/api/admin/negocios/" + negocioId).cookie(admin))
+                    .andExpect(jsonPath("$.planEfectivo.plan").value(nombrePlan))
+                    .andExpect(jsonPath("$.planEfectivo.beneficioUsosRestantes").value(1));
+            mvc.perform(get("/api/admin/negocios/" + negocioId + "/beneficios").cookie(admin))
+                    .andExpect(jsonPath("$[0].estado").value("VIGENTE"))
+                    .andExpect(jsonPath("$[0].usosConsumidos").value(0));
+
+            // Reintentar vuelve a gastar el uso.
+            mvc.perform(post("/api/videos/" + id + "/reintentar").with(csrf()).cookie(negocio))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("GENERANDO"));
+            mvc.perform(get("/api/admin/negocios/" + negocioId + "/beneficios").cookie(admin))
+                    .andExpect(jsonPath("$[0].estado").value("AGOTADO"))
+                    .andExpect(jsonPath("$[0].usosConsumidos").value(1));
+        } finally {
+            desactivarPlan(admin, planPro, nombrePlan);
+        }
+    }
+
+    private long negocioId(Cookie negocio) throws Exception {
+        return vista(mvc.perform(get("/api/auth/yo").cookie(negocio))).get("negocioId").asLong();
+    }
+
+    /** Plan Pro de prueba: Veo 3.1 Fast y el mismo modelo de texto del plan Lite (el de AI Studio simulado). */
+    private Long crearPlanDeBeneficio(Cookie admin, String nombre) throws Exception {
+        return vista(mvc.perform(post("/api/admin/planes").with(csrf()).cookie(admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(planDeBeneficio(nombre, true))))).get("id").asLong();
+    }
+
+    private void desactivarPlan(Cookie admin, Long planId, String nombre) throws Exception {
+        mvc.perform(put("/api/admin/planes/" + planId).with(csrf()).cookie(admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(planDeBeneficio(nombre, false))));
+    }
+
+    private Map<String, Object> planDeBeneficio(String nombre, boolean activo) {
+        Plan lite = planes.listarConModelos().stream().filter(plan -> plan.getNombre().equals("Lite")).findFirst()
+                .orElseThrow();
+        Long veoFast = modelos.findAll().stream()
+                .filter(modelo -> modelo.getIdentificadorModelo().equals("veo-3.1-fast-generate-001")).findFirst()
+                .orElseThrow().getId();
+        Map<String, Object> plan = new HashMap<>();
+        plan.put("nombre", nombre);
+        plan.put("descripcion", "Plan de prueba");
+        plan.put("videosPorDia", 3);
+        plan.put("regeneracionesPorVideo", 3);
+        plan.put("modeloTextoId", lite.getModeloTexto().getId());
+        plan.put("modeloVideoId", veoFast);
+        plan.put("precioReferencial", new BigDecimal("99.00"));
+        plan.put("activo", activo);
+        return plan;
+    }
+
+    private void otorgarBeneficio(Cookie admin, long negocioId, Long planId, int usos) throws Exception {
+        mvc.perform(post("/api/admin/negocios/" + negocioId + "/beneficios").with(csrf()).cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("planId", planId, "usos", usos,
+                                "motivo", "Cortesía"))))
+                .andExpect(status().isCreated());
+    }
+
     private long videoListo(Cookie negocio) throws Exception {
         long id = storyboard(negocio);
         aprobar(negocio, id).andExpect(status().isOk());
@@ -482,6 +772,11 @@ class GeneracionIntegracionTest extends PruebaDeIntegracion {
 
     private ResultActions regenerar(Cookie cookie, long id, int orden) throws Exception {
         return mvc.perform(post("/api/videos/" + id + "/planos/" + orden + "/regenerar").with(csrf()).cookie(cookie));
+    }
+
+    private ResultActions regenerarConTexto(Cookie cookie, long id, int orden, String texto) throws Exception {
+        return mvc.perform(post("/api/videos/" + id + "/planos/" + orden + "/regenerar").with(csrf()).cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("texto", texto))));
     }
 
     private ResultActions editar(Cookie cookie, long id, int orden, Map<String, Object> cuerpo) throws Exception {

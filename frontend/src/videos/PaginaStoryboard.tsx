@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import type { TipoFoto } from '../api/catalogo'
 import { ErrorApi } from '../api/cliente'
 import {
   aprobarStoryboard,
@@ -13,6 +12,7 @@ import {
   descartarVideo,
   editarPlano,
   enlaceDeDescarga,
+  MAXIMO_CARACTERES_CORRECCIONES,
   obtenerVideo,
   regenerarPlano,
   type CambioDePlano,
@@ -25,14 +25,11 @@ import { Boton } from '../componentes/Boton'
 import { Cargando } from '../componentes/Cargando'
 import { ImagenRemota } from '../componentes/ImagenRemota'
 import { Modal } from '../componentes/Modal'
-import { SubidorDeImagen } from '../componentes/SubidorDeImagen'
 import { CLAVE_AVISOS } from './avisos'
 import { PantallaGenerando, Reproductor } from './Generacion'
 
 /** A partir de este tiempo esperando el guion, se avisa y se consulta con menos frecuencia. */
 const ESPERA_LARGA_MS = 60_000
-
-const NOMBRES_FOTO: Record<TipoFoto, string> = { FOTO_1: 'Foto 1', FOTO_2: 'Foto 2', FOTO_3: 'Foto 3' }
 
 /** Igual que ValidadorDeGuion.MAXIMO_CARACTERES_TEXTO del backend. */
 const MAXIMO_CARACTERES_TEXTO = 200
@@ -141,6 +138,8 @@ function Storyboard({ video }: { video: Video }) {
     onSuccess: (url) => window.location.assign(url),
   })
   const { videosHoy } = video.generacion
+  // Con el video listo, el texto de la publicación va justo debajo del video, antes de los momentos para editar.
+  const publicacionArriba = enRevision || video.estado === 'APROBADO'
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -149,10 +148,10 @@ function Storyboard({ video }: { video: Video }) {
         <h1 className="text-xl font-semibold text-stone-900">{video.producto.nombre}</h1>
         <p className="mt-1 text-sm text-stone-600">
           {enRevision
-            ? 'Tu video está listo. Míralo y, si quieres, cambia un texto o pide otra versión de un momento.'
+            ? 'Tu video está listo. Míralo y, si quieres, cambia un texto o corrige un momento y vuelve a generarlo.'
             : video.estado === 'APROBADO'
               ? 'Aprobaste tu video. Ya puedes descargarlo.'
-              : 'Revisa los momentos de tu video de 15 segundos. Puedes cambiar los textos y las fotos.'}
+              : 'Revisa los momentos de tu video de 15 segundos. Puedes cambiar los textos y decirnos qué no quieres que aparezca.'}
         </p>
       </header>
 
@@ -166,7 +165,8 @@ function Storyboard({ video }: { video: Video }) {
         </section>
       )}
 
-      {(enRevision || video.estado === 'APROBADO') && <Reproductor video={video} />}
+      {publicacionArriba && <Reproductor video={video} />}
+      {publicacionArriba && <TextoPublicacion video={video} />}
       {video.generacion.avisoRevision && enRevision && <Aviso tipo="error">{video.generacion.avisoRevision}</Aviso>}
       {video.estado === 'DESCARTADO' && <Aviso>Descartaste esta propuesta.</Aviso>}
       {video.estado === 'ERROR' && (
@@ -189,13 +189,7 @@ function Storyboard({ video }: { video: Video }) {
         )}
       </ol>
 
-      {video.descripcion && (
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
-          <h2 className="text-sm font-semibold text-stone-900">Texto de la publicación</h2>
-          <p className="mt-2 text-sm whitespace-pre-line text-stone-700">{video.descripcion}</p>
-          <p className="mt-2 text-sm font-medium text-marca-700">{video.hashtags.join(' ')}</p>
-        </section>
-      )}
+      {!publicacionArriba && <TextoPublicacion video={video} />}
 
       {video.estado === 'STORYBOARD' && (
         <div className="space-y-2 pb-4">
@@ -242,7 +236,6 @@ function Storyboard({ video }: { video: Video }) {
           <Boton className="w-full" cargando={descargar.isPending} onClick={() => descargar.mutate()}>
             Descargar
           </Boton>
-          <p className="text-center text-xs text-stone-500">Muy pronto podrás publicarlo en Instagram desde aquí.</p>
         </div>
       )}
       {video.estado === 'ERROR' && video.generacion.puedeReintentar && (
@@ -302,6 +295,18 @@ function Storyboard({ video }: { video: Video }) {
   )
 }
 
+/** La descripción y los hashtags que propuso la IA para la publicación. */
+function TextoPublicacion({ video }: { video: Video }) {
+  if (!video.descripcion) return null
+  return (
+    <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+      <h2 className="text-sm font-semibold text-stone-900">Texto de la publicación</h2>
+      <p className="mt-2 text-sm whitespace-pre-line text-stone-700">{video.descripcion}</p>
+      <p className="mt-2 text-sm font-medium text-marca-700">{video.hashtags.join(' ')}</p>
+    </section>
+  )
+}
+
 /** Guarda un cambio de un plano; cada llamada decide qué cerrar al terminar. */
 function useEditarPlano(video: Video, orden: number, onGuardado: (video: Video) => void) {
   return useMutation({
@@ -328,45 +333,70 @@ function TarjetaPlano({
   enRevision: boolean
   onGuardado: (video: Video) => void
 }) {
-  const regenerar = useMutation({ mutationFn: () => regenerarPlano(video.id, plano.orden), onSuccess: onGuardado })
+  const [edicion, setEdicion] = useState<{ texto: string; correcciones: string } | null>(null)
+  // En la revisión, después de guardar el formulario sigue abierto para regenerar el plano o terminar con "Listo".
+  const [guardado, setGuardado] = useState(false)
+  const guardar = useEditarPlano(video, plano.orden, onGuardado)
+  const terminar = useEditarPlano(video, plano.orden, onGuardado)
+  const regenerar = useMutation({
+    mutationFn: (texto?: string) => regenerarPlano(video.id, plano.orden, texto),
+    onSuccess: onGuardado,
+  })
   const restantes = video.plan.regeneracionesPorVideo - video.generacion.regeneracionesUsadas
-  const conIa = enRevision && video.generacion.iaDisponible
-  // En la revisión, una foto nueva crea un clip nuevo de IA: sin IA o sin regeneraciones, no se ofrece.
-  const sinFotoNueva = enRevision && (!video.generacion.iaDisponible || restantes <= 0)
-  const etiquetaRegenerar = 'Regenerar este plano' + (restantes > 0 ? ` (te quedan ${restantes})` : ' (ya no quedan)')
-  const [texto, setTexto] = useState<string | null>(null)
-  const [eligiendoFoto, setEligiendoFoto] = useState(false)
-  // Texto y foto se guardan por separado: el error o el éxito de uno no cierra ni borra el otro.
-  const guardarTexto = useEditarPlano(video, plano.orden, onGuardado)
-  const guardarFoto = useEditarPlano(video, plano.orden, onGuardado)
-  const elegirFoto = (cambio: CambioDePlano) =>
-    guardarFoto.mutate(cambio, { onSuccess: () => setEligiendoFoto(false) })
-  const palabras = contarPalabras(texto ?? plano.texto ?? '')
+  const puedeRegenerar = video.generacion.iaDisponible && restantes > 0
+  const palabras = contarPalabras(edicion?.texto ?? plano.texto ?? '')
   const excede = palabras > plano.maxPalabras
+  const textoCambio = edicion !== null && edicion.texto.trim() !== (plano.texto ?? '')
+  const correccionesCambiaron = edicion !== null && edicion.correcciones.trim() !== (plano.correcciones ?? '')
+  const ocupado = guardar.isPending || terminar.isPending || regenerar.isPending
+  const error = guardar.error ?? terminar.error ?? regenerar.error
+
+  const abrir = () => {
+    guardar.reset()
+    terminar.reset()
+    regenerar.reset()
+    setGuardado(false)
+    setEdicion({ texto: plano.texto ?? '', correcciones: plano.correcciones ?? '' })
+  }
+  const cerrar = () => {
+    setEdicion(null)
+    setGuardado(false)
+  }
+  const enviarFormulario = () => {
+    if (!edicion) return
+    if (!enRevision) {
+      // En el storyboard se guarda todo junto; las correcciones se aplican al crear el video.
+      guardar.mutate({ texto: edicion.texto, correcciones: edicion.correcciones }, { onSuccess: cerrar })
+      return
+    }
+    // En la revisión, guardar no recompone: el texto nuevo se aplica con "Listo" o con "Regenerar plano".
+    terminar.reset()
+    regenerar.reset()
+    if (correccionesCambiaron) {
+      guardar.mutate({ correcciones: edicion.correcciones }, { onSuccess: () => setGuardado(true) })
+    } else {
+      setGuardado(true)
+    }
+  }
+  const listo = () => {
+    if (edicion && textoCambio) {
+      // Un texto nuevo solo vuelve a armar el video, sin IA. Si el texto no se acepta, se puede volver a editar.
+      terminar.mutate({ texto: edicion.texto }, { onSuccess: cerrar, onError: () => setGuardado(false) })
+    } else {
+      cerrar()
+    }
+  }
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
       <div className="flex gap-4 p-4">
-        <div className="relative w-28 shrink-0">
+        <div className="w-28 shrink-0">
           <ImagenRemota
             consulta={claveVideo(video.id)}
             src={plano.foto.url}
             alt={`Foto del momento ${plano.orden}`}
             className="aspect-[9/16] w-full rounded-xl bg-stone-100 object-cover"
           />
-          {editable && !sinFotoNueva && (
-            <button
-              type="button"
-              onClick={() => {
-                guardarFoto.reset()
-                setEligiendoFoto(true)
-              }}
-              aria-label={'Cambiar foto del momento ' + plano.orden}
-              className={ENLACE_PEQUENO + ' w-full justify-center'}
-            >
-              Cambiar foto
-            </button>
-          )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <p className="text-xs font-medium tracking-wide text-stone-500 uppercase">
@@ -375,39 +405,27 @@ function TarjetaPlano({
           <p className="text-sm text-stone-600">
             <span className="font-medium text-stone-800">Toma:</span> {plano.movimiento.descripcion}
           </p>
-          {texto === null ? (
+          {edicion === null ? (
             <div>
               {plano.texto ? (
                 <p className="text-lg leading-snug font-semibold text-stone-900">{plano.texto}</p>
               ) : (
                 <p className="text-sm text-stone-500 italic">Sin texto en pantalla</p>
               )}
+              {plano.correcciones && (
+                <p className="mt-1 text-sm text-stone-600">
+                  <span className="font-medium text-stone-800">Correcciones:</span> {plano.correcciones}
+                </p>
+              )}
               {editable && (
                 <button
                   type="button"
-                  onClick={() => {
-                    guardarTexto.reset()
-                    setTexto(plano.texto ?? '')
-                  }}
-                  aria-label={'Editar texto del momento ' + plano.orden}
+                  onClick={abrir}
+                  aria-label={'Editar texto y correcciones del momento ' + plano.orden}
                   className={ENLACE_PEQUENO}
                 >
-                  {plano.texto ? 'Editar texto' : 'Agregar texto'}
+                  Editar texto y correcciones
                 </button>
-              )}
-              {conIa && (
-                <div className="mt-1">
-                  <button
-                    type="button"
-                    disabled={restantes <= 0 || regenerar.isPending}
-                    onClick={() => regenerar.mutate()}
-                    aria-label={`${etiquetaRegenerar}, momento ${plano.orden}`}
-                    className={ENLACE_PEQUENO + ' disabled:text-stone-400'}
-                  >
-                    {etiquetaRegenerar}
-                  </button>
-                  {regenerar.isError && <Aviso tipo="error">{mensajeDeError(regenerar.error)}</Aviso>}
-                </div>
               )}
             </div>
           ) : (
@@ -415,89 +433,105 @@ function TarjetaPlano({
               className="space-y-2"
               onSubmit={(evento) => {
                 evento.preventDefault()
-                guardarTexto.mutate({ texto }, { onSuccess: () => setTexto(null) })
+                enviarFormulario()
               }}
             >
-              <label className="sr-only" htmlFor={`texto-${plano.orden}`}>
-                Texto del momento {plano.orden}
+              <label className="block text-xs font-medium text-stone-700" htmlFor={`texto-${plano.orden}`}>
+                Texto en pantalla
               </label>
               <textarea
                 id={`texto-${plano.orden}`}
-                value={texto}
-                onChange={(evento) => setTexto(evento.target.value)}
+                value={edicion.texto}
+                onChange={(evento) => setEdicion({ ...edicion, texto: evento.target.value })}
                 rows={2}
                 maxLength={MAXIMO_CARACTERES_TEXTO}
-                className={CAMPO}
+                disabled={guardado}
+                className={CAMPO + ' disabled:bg-stone-50'}
               />
               <p className={`text-xs ${excede ? 'font-semibold text-red-700' : 'text-stone-500'}`} aria-live="polite">
                 {palabras} de {plano.maxPalabras} palabras
               </p>
-              {guardarTexto.isError && <Aviso tipo="error">{mensajeDeError(guardarTexto.error)}</Aviso>}
-              <div className="flex gap-2">
-                <Boton
-                  type="submit"
-                  className="flex-1"
-                  cargando={guardarTexto.isPending}
-                  disabled={excede || (plano.orden === 1 && !texto.trim())}
-                >
-                  Guardar
-                </Boton>
-                <Boton type="button" variante="secundario" className="flex-1" onClick={() => setTexto(null)}>
-                  Cancelar
-                </Boton>
-              </div>
+              <label className="block text-xs font-medium text-stone-700" htmlFor={`correcciones-${plano.orden}`}>
+                ¿Qué no quieres que aparezca?
+              </label>
+              <textarea
+                id={`correcciones-${plano.orden}`}
+                value={edicion.correcciones}
+                onChange={(evento) => setEdicion({ ...edicion, correcciones: evento.target.value })}
+                rows={2}
+                maxLength={MAXIMO_CARACTERES_CORRECCIONES}
+                disabled={guardado}
+                placeholder="Ej.: que no tenga hojas de menta"
+                className={CAMPO + ' disabled:bg-stone-50'}
+              />
+              <p className="text-xs text-stone-500">
+                {enRevision
+                  ? 'La IA ajustará la toma con tus correcciones cuando regeneres el plano.'
+                  : 'La IA ajustará la toma con tus correcciones al crear tu video.'}
+              </p>
+              {error && <Aviso tipo="error">{mensajeDeError(error)}</Aviso>}
+              {!guardado ? (
+                <div className="flex gap-2">
+                  <Boton
+                    type="submit"
+                    className="flex-1"
+                    cargando={guardar.isPending}
+                    disabled={excede || (plano.orden === 1 && !edicion.texto.trim())}
+                  >
+                    Guardar
+                  </Boton>
+                  <Boton type="button" variante="secundario" className="flex-1" disabled={ocupado} onClick={cerrar}>
+                    Cancelar
+                  </Boton>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {puedeRegenerar ? (
+                    <Boton
+                      type="button"
+                      className="w-full"
+                      cargando={regenerar.isPending}
+                      disabled={ocupado}
+                      onClick={() =>
+                        regenerar.mutate(textoCambio ? edicion.texto : undefined, {
+                          // Un texto rechazado (400) vuelve a dejar editar el formulario.
+                          onError: (e) => {
+                            if (e instanceof ErrorApi && e.estado === 400) setGuardado(false)
+                          },
+                        })
+                      }
+                    >
+                      Regenerar plano (te quedan {restantes})
+                    </Boton>
+                  ) : (
+                    <p className="text-xs text-stone-500">
+                      {video.generacion.iaDisponible
+                        ? 'Ya usaste las regeneraciones de este video.'
+                        : 'Por ahora no podemos crear clips con IA. Inténtalo en un rato.'}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Boton
+                      type="button"
+                      variante="secundario"
+                      className="flex-1"
+                      cargando={terminar.isPending}
+                      disabled={ocupado}
+                      onClick={listo}
+                    >
+                      Listo
+                    </Boton>
+                    {/* Descarta el texto que no se aplicó; las correcciones guardadas se quedan. */}
+                    <Boton type="button" variante="secundario" className="flex-1" disabled={ocupado} onClick={cerrar}>
+                      Cancelar
+                    </Boton>
+                  </div>
+                </div>
+              )}
             </form>
           )}
         </div>
       </div>
-
-      <Modal titulo={`Foto del momento ${plano.orden}`} abierto={eligiendoFoto} onCerrar={() => setEligiendoFoto(false)}>
-        <p className="text-sm text-stone-600">Elige otra foto de tu producto o sube una nueva solo para este video.</p>
-        {conIa && (
-          <p className="mt-2 text-xs text-stone-500">
-            Cambiar la foto crea un clip nuevo y usa 1 de tus regeneraciones (te quedan {restantes}).
-          </p>
-        )}
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {video.fotosDelProducto.map((foto) => {
-            const actual = plano.foto.tipo === foto.tipo
-            return (
-              <button
-                key={foto.tipo}
-                type="button"
-                disabled={guardarFoto.isPending || actual}
-                aria-pressed={actual}
-                onClick={() => foto.tipo && elegirFoto({ foto: { tipo: foto.tipo } })}
-                className={`overflow-hidden rounded-xl text-xs font-medium ring-2 ${
-                  actual ? 'ring-marca-600' : 'ring-transparent hover:ring-stone-300'
-                }`}
-              >
-                <ImagenRemota
-                  consulta={claveVideo(video.id)}
-                  src={foto.url}
-                  alt=""
-                  className="aspect-[9/16] w-full bg-stone-100 object-cover"
-                />
-                <span className="block py-1">{foto.tipo ? NOMBRES_FOTO[foto.tipo] : 'Otra'}</span>
-              </button>
-            )
-          })}
-        </div>
-        <div className="mt-5">
-          <SubidorDeImagen
-            proposito="FOTO_PRODUCTO"
-            etiqueta="Subir otra foto"
-            deshabilitado={guardarFoto.isPending}
-            guia={<p>Vertical, con buena luz. Solo se usará en este video.</p>}
-            onSubida={(imagen) => elegirFoto({ foto: { clave: imagen.clave } })}
-          />
-        </div>
-        {guardarFoto.isError && (
-          <div className="mt-3">
-            <Aviso tipo="error">{mensajeDeError(guardarFoto.error)}</Aviso>
-          </div>
-        )}
-      </Modal>
     </article>
   )
 }

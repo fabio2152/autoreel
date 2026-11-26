@@ -150,11 +150,9 @@ public abstract class PruebaDeIntegracion {
         return clave;
     }
 
+    /** La foto del producto (una sola desde el 2026-11-25), lista para crearlo completo. */
     protected Map<String, String> fotosCompletas(Cookie cookie) throws Exception {
-        return Map.of(
-                "FOTO_1", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "FOTO_2", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"),
-                "FOTO_3", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
+        return Map.of("FOTO_1", subir(cookie, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg"));
     }
 
     /** Negocio con contraseña propia y onboarding completo (RN-09), listo para crear videos. */

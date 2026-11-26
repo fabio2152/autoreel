@@ -35,7 +35,7 @@ public class Plano {
     @Column(nullable = false, updatable = false)
     private int orden;
 
-    /** Foto del producto que usa; vacía en el cierre o si el usuario subió otra en el storyboard. */
+    /** Foto del producto que usa; vacía en el cierre. */
     @Enumerated(EnumType.STRING)
     private TipoFoto tipoFoto;
 
@@ -55,6 +55,16 @@ public class Plano {
 
     /** Texto en pantalla; puede faltar en las tomas que no son el gancho. */
     private String texto;
+
+    /** Lo que el negocio no quiere ver en la toma, en sus palabras; la IA reescribe la toma con esto. */
+    private String correcciones;
+
+    /** Si la toma actual ya se reescribió con las correcciones guardadas. */
+    @Column(nullable = false)
+    private boolean correccionesAplicadas;
+
+    /** Lo que no debe aparecer según las correcciones, en inglés, para el prompt negativo del modelo de video. */
+    private String negativosCorreccion;
 
     private String precio;
 
@@ -131,9 +141,34 @@ public class Plano {
         this.texto = texto;
     }
 
-    public void cambiarFoto(TipoFoto tipoFoto, String claveFoto) {
-        this.tipoFoto = tipoFoto;
-        this.claveFoto = claveFoto;
+    /** Correcciones nuevas (o vacías para quitarlas): la toma se reescribirá con ellas antes del próximo clip. */
+    public void cambiarCorrecciones(String correcciones) {
+        if (java.util.Objects.equals(this.correcciones, correcciones)) {
+            return;
+        }
+        this.correcciones = correcciones;
+        this.correccionesAplicadas = false;
+        if (correcciones == null) {
+            // Sin correcciones no queda nada que evitar; la toma ya reescrita se conserva.
+            this.negativosCorreccion = null;
+        }
+    }
+
+    /** Si hay correcciones que la toma actual todavía no tiene en cuenta. */
+    public boolean correccionesPendientes() {
+        return correcciones != null && !correccionesAplicadas;
+    }
+
+    /**
+     * La IA reescribió la toma con las correcciones: el próximo clip usa la toma nueva y evita sus negativos.
+     *
+     * @param negativos lo que no debe aparecer, en inglés; vacío si la IA no devolvió nada.
+     */
+    public void aplicarCorrecciones(String toma, String descripcionToma, String negativos) {
+        this.toma = toma;
+        this.descripcionToma = descripcionToma;
+        this.negativosCorreccion = negativos;
+        this.correccionesAplicadas = true;
     }
 
     public void cambiarPrecio(String precio) {
@@ -158,23 +193,10 @@ public class Plano {
         this.enviadoEn = null;
     }
 
-    /**
-     * Pedir otro clip. El clip anterior se conserva hasta que llegue el nuevo, salvo que la foto haya cambiado
-     * (entonces ya no corresponde).
-     *
-     * @return la clave del clip descartado, para borrarlo; vacía si se conserva o no había.
-     */
-    String regenerar(boolean conservarClipAnterior) {
+    /** Pedir otro clip. El clip anterior se conserva hasta que llegue el nuevo: si el nuevo falla, sigue armado. */
+    void regenerar() {
         pendiente();
         this.regeneracionEnCurso = true;
-        if (conservarClipAnterior) {
-            return null;
-        }
-        String descartado = this.claveClip;
-        this.claveClip = null;
-        this.usoRespaldo = false;
-        this.motivoRespaldo = null;
-        return descartado;
     }
 
     /** Antes de llamar al proveedor: cuenta el intento, para no reenviar sin límite si algo se corta. */
@@ -281,6 +303,18 @@ public class Plano {
 
     public String getTexto() {
         return texto;
+    }
+
+    public String getCorrecciones() {
+        return correcciones;
+    }
+
+    public String getNegativosCorreccion() {
+        return negativosCorreccion;
+    }
+
+    public boolean isCorreccionesAplicadas() {
+        return correccionesAplicadas;
     }
 
     public String getPrecio() {

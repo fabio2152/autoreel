@@ -4,7 +4,6 @@ import java.time.Clock;
 
 import com.autoreel.chat.dominio.ConversacionCompletada;
 import com.autoreel.facturacion.aplicacion.ResolutorDePlanEfectivo;
-import com.autoreel.facturacion.dominio.Plan;
 import com.autoreel.video.dominio.Video;
 import com.autoreel.video.infraestructura.VideoRepositorio;
 import org.springframework.context.event.EventListener;
@@ -12,7 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Crea el video en GUION_PENDIENTE en la misma transacción en la que termina el chat, con el plan y los modelos
- * vigentes (RN-54). El guion lo escribe después el {@link ProcesadorDeGuiones}, sin hacer esperar al chat.
+ * vigentes (RN-54). Si el plan viene de un beneficio, el video lo recuerda: su uso se descuenta al aprobar el
+ * storyboard. El guion lo escribe después el {@link ProcesadorDeGuiones}, sin hacer esperar al chat.
  */
 @Component
 public class CreadorDeVideos {
@@ -34,9 +34,10 @@ public class CreadorDeVideos {
             throw new IllegalStateException("La conversación " + evento.conversacionId()
                     + " terminó sin producto o sin tipo de video");
         }
-        Plan plan = planes.de(evento.negocioId());
-        Video video = new Video(evento.negocioId(), evento.conversacionId(), productoId.longValue(), tipoVideo, plan,
-                reloj.instant());
+        ResolutorDePlanEfectivo.PlanEfectivo efectivo = planes.resolver(evento.negocioId());
+        Long beneficioId = efectivo.beneficio() == null ? null : efectivo.beneficio().getId();
+        Video video = new Video(evento.negocioId(), evento.conversacionId(), productoId.longValue(), tipoVideo,
+                efectivo.plan(), beneficioId, reloj.instant());
         if (evento.respuestas().get(RespuestasDelChat.TOMAS) instanceof String modoTomas) {
             video.pedirModoDeTomas(modoTomas);
         }

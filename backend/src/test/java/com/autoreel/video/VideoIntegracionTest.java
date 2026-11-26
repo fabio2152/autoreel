@@ -17,7 +17,6 @@ import java.util.Optional;
 
 import javax.sql.DataSource;
 
-import com.autoreel.Imagenes;
 import com.autoreel.PruebaDeIntegracion;
 import com.autoreel.costos.infraestructura.RegistroCostoRepositorio;
 import com.autoreel.ia.dominio.ProveedorDeSecretos;
@@ -57,7 +56,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
             {"estructura":"HISTORIA","creatividad":"AMBIENTE",
              "idea":"La cámara revela la torta en la vitrina y termina en la porción servida.",
              "planos":[
-              {"orden":1,"foto":2,"toma":"The camera cranes up and reveals the cake inside a bakery display case.",
+              {"orden":1,"foto":1,"toma":"The camera cranes up and reveals the cake inside a bakery display case.",
                "descripcionToma":"La cámara revela la torta en la vitrina","texto":"Un antojo de fresas frescas"},
               {"orden":2,"foto":1,"toma":"The slice lifts toward the camera on a marble table by a window.",
                "descripcionToma":"La porción se acerca en una mesa junto a la ventana",
@@ -70,11 +69,11 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
             {"estructura":"CLASICA","creatividad":"AMBIENTE",
              "idea":"La cámara descubre las fresas y termina en la porción servida.",
              "planos":[
-              {"orden":1,"foto":2,"toma":"Slow push-in on the strawberries.",
+              {"orden":1,"foto":1,"toma":"Slow push-in on the strawberries.",
                "descripcionToma":"Acercamiento a las fresas","texto":"Un antojo de fresas frescas"},
               {"orden":2,"foto":1,"toma":"Slow orbit around the whole cake.",
                "descripcionToma":"Órbita alrededor de la torta","texto":"Torta Tres Leches de casa"},
-              {"orden":3,"foto":3,"toma":"Gentle crane up over the slice.",
+              {"orden":3,"foto":1,"toma":"Gentle crane up over the slice.",
                "descripcionToma":"Grúa sobre la porción","texto":null}],
              "cierre":{"precio":null,"frase":"Hecha con cariño para ti","ubicacion":null},
              "descripcion":"Nuestra Torta Tres Leches lleva fresas frescas de Huaral. Te esperamos en Miraflores.",
@@ -164,7 +163,7 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.planos", hasSize(2)))
                 .andExpect(jsonPath("$.planos[0].nombre").value("Gancho"))
                 .andExpect(jsonPath("$.planos[0].segundos").value(6))
-                .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_2"))
+                .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_1"))
                 .andExpect(jsonPath("$.planos[0].foto.url").isString())
                 .andExpect(jsonPath("$.planos[0].movimiento.id").doesNotExist())
                 .andExpect(jsonPath("$.planos[0].movimiento.descripcion")
@@ -185,14 +184,14 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(jsonPath("$.cierre.colorPrimario").value("#be123c"))
                 .andExpect(jsonPath("$.cierre.logo").isString())
                 .andExpect(jsonPath("$.hashtags", hasSize(5)))
-                .andExpect(jsonPath("$.fotosDelProducto", hasSize(3)));
+                .andExpect(jsonPath("$.fotosDelProducto").doesNotExist());
 
         assertThat(GEMINI.peticiones()).hasSize(1);
         assertThat(GEMINI.peticiones().getFirst().clave()).isEqualTo(CLAVE);
         assertThat(GEMINI.peticiones().getFirst().cuerpo()).contains("Torta Tres Leches", "Fresas frescas de Huaral",
                 "#miraflores");
-        // La IA ve las tres fotos del producto, después del texto.
-        assertThat(GEMINI.peticiones().getFirst().cuerpo().split("\"inlineData\"", -1)).hasSize(4);
+        // La IA ve la foto del producto (una sola), después del texto.
+        assertThat(GEMINI.peticiones().getFirst().cuerpo().split("\"inlineData\"", -1)).hasSize(2);
         // RN-32: cada llamada registra su costo.
         Video listo = videos.findById(videoId).orElseThrow();
         assertThat(listo.getIntentosGuion()).isEqualTo(1);
@@ -434,15 +433,18 @@ class VideoIntegracionTest extends PruebaDeIntegracion {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planos[1].texto").doesNotExist());
 
-        // Cambiar la foto: otra del producto o una nueva.
-        editar(negocio, videoId, 1, Map.of("foto", Map.of("tipo", "FOTO_1")))
-                .andExpect(jsonPath("$.planos[0].foto.tipo").value("FOTO_1"));
-        String subida = subir(negocio, "FOTO_PRODUCTO", Imagenes.jpg(1080, 1920), "image/jpeg");
-        editar(negocio, videoId, 2, Map.of("foto", Map.of("clave", subida)))
+        // Las correcciones: lo que el negocio no quiere ver en la toma. La foto del plano ya no se cambia.
+        editar(negocio, videoId, 1, Map.of("correcciones", "Que no tenga hojas de menta"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planos[1].foto.tipo").doesNotExist())
-                .andExpect(jsonPath("$.planos[1].foto.url").isString());
-        editar(negocio, videoId, 2, Map.of("foto", Map.of("tipo", "FOTO_1", "clave", subida)))
+                .andExpect(jsonPath("$.planos[0].correcciones").value("Que no tenga hojas de menta"))
+                .andExpect(jsonPath("$.planos[0].texto").value("Tu antojo de hoy"));
+        editar(negocio, videoId, 1, Map.of("correcciones", "Que sea la mejor de Lima"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("PALABRA_PROHIBIDA"));
+        editar(negocio, videoId, 1, Map.of("correcciones", " "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.planos[0].correcciones").doesNotExist());
+        editar(negocio, videoId, 1, Map.of())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"));
 

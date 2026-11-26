@@ -11,7 +11,7 @@ interface Props {
   onSubirNuevo: () => void
 }
 
-/** RF-20: carrusel del catálogo (solo productos con su foto principal) o subir uno nuevo hoy. */
+/** RF-20: carrusel del catálogo (solo productos con su foto) o subir uno nuevo hoy. */
 export function SelectorDeProducto({ productos, incompletos, deshabilitado, onElegir, onSubirNuevo }: Props) {
   const [elegido, setElegido] = useState<ProductoCarrusel | null>(null)
 
@@ -45,8 +45,8 @@ export function SelectorDeProducto({ productos, incompletos, deshabilitado, onEl
       {incompletos > 0 && (
         <p className="text-xs text-stone-500">
           {incompletos === 1
-            ? '1 producto no aparece porque le faltan fotos.'
-            : `${incompletos} productos no aparecen porque les faltan fotos.`}{' '}
+            ? '1 producto no aparece porque le falta la foto.'
+            : `${incompletos} productos no aparecen porque les falta la foto.`}{' '}
           <Link to="/catalogo" className="font-semibold text-marca-700">
             Completar
           </Link>

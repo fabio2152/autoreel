@@ -2,15 +2,13 @@ package com.autoreel.video.aplicacion;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import com.autoreel.almacenamiento.aplicacion.ServicioDeArchivos;
 import com.autoreel.almacenamiento.dominio.AlmacenDeArchivos;
-import com.autoreel.almacenamiento.dominio.PropositoArchivo;
 import com.autoreel.catalogo.aplicacion.ServicioCatalogo;
-import com.autoreel.catalogo.dominio.FotoProducto;
 import com.autoreel.catalogo.dominio.Producto;
 import com.autoreel.catalogo.dominio.TipoFoto;
 import com.autoreel.compartido.error.ExcepcionDeNegocio;
@@ -37,13 +35,17 @@ import com.autoreel.video.infraestructura.VideoRepositorio;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Storyboard y lista de videos del negocio (RF-21, RF-22). Un video de otro negocio responde 404. */
 @Service
 public class ServicioVideos {
 
     private static final int MAXIMO_EN_LISTA = 50;
+    /** Igual a la columna {@code plano.correcciones}. */
+    public static final int MAXIMO_CARACTERES_CORRECCIONES = 300;
 
     private final VideoRepositorio videos;
     private final LectorDeDatosDelVideo lector;
@@ -55,12 +57,16 @@ public class ServicioVideos {
     private final BibliotecaMusical musica;
     private final FabricaDeProveedores proveedores;
     private final AlmacenDeArchivos almacen;
+    private final CorrectorDeTomas corrector;
     private final Clock reloj;
+    private final TransactionTemplate transaccion;
+    private final TransactionTemplate lectura;
 
     public ServicioVideos(VideoRepositorio videos, LectorDeDatosDelVideo lector, ServicioCatalogo catalogo,
             ServicioDeArchivos archivos, RegistroDeNichos nichos, NegocioRepositorio negocios,
             ServicioConsumo consumo, BibliotecaMusical musica, FabricaDeProveedores proveedores,
-            AlmacenDeArchivos almacen, Clock reloj) {
+            AlmacenDeArchivos almacen, CorrectorDeTomas corrector, Clock reloj,
+            PlatformTransactionManager transacciones) {
         this.videos = videos;
         this.lector = lector;
         this.catalogo = catalogo;
@@ -71,7 +77,11 @@ public class ServicioVideos {
         this.musica = musica;
         this.proveedores = proveedores;
         this.almacen = almacen;
+        this.corrector = corrector;
         this.reloj = reloj;
+        this.transaccion = new TransactionTemplate(transacciones);
+        this.lectura = new TransactionTemplate(transacciones);
+        this.lectura.setReadOnly(true);
     }
 
     /** "Mis videos": los más recientes primero. */
@@ -96,56 +106,45 @@ public class ServicioVideos {
     }
 
     /**
-     * Cambia el texto o la foto de un plano, o el precio o la frase del cierre, en el storyboard o en la revisión.
-     * V21: un texto por encima del límite se rechaza con el máximo. Los textos que escribe el usuario no pasan por la
-     * RN-22. En la revisión, un texto, un precio o una frase solo recomponen (RN-29, V25); una foto nueva regenera ese clip (8.4).
+     * Cambia el texto o las correcciones de una toma, o el precio o la frase del cierre, en el storyboard o en la
+     * revisión. V21: un texto por encima del límite se rechaza con el máximo. Los textos que escribe el usuario no pasan
+     * por la RN-22. En la revisión, un texto, un precio o una frase solo recomponen (RN-29, V25); las correcciones solo
+     * se guardan: se aplican al regenerar el plano o, en el storyboard, al crear el video.
      */
     @Transactional
     public VideoVista editarPlano(Long negocioId, Long videoId, int orden, SolicitudPlano solicitud) {
         Video video = editable(negocioId, videoId);
         boolean enRevision = video.getEstado() == EstadoVideo.LISTO;
-        // En la revisión, una foto nueva necesita un clip nuevo de IA: no hay respaldo sin IA.
-        boolean conIa = enRevision && solicitud.foto() != null;
-        if (conIa && !proveedores.videoDisponible(video.getModeloVideoUsado())) {
-            throw iaNoDisponible();
-        }
-        if (conIa && video.getRegeneracionesUsadas() >= video.getPlanAplicado().getRegeneracionesPorVideo()) {
-            throw sinRegeneraciones(video.getPlanAplicado());
-        }
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
         PlantillaVideo plantilla = datos.paquete().plantillaVideo();
         Plano plano = video.plano(orden).orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("Ese plano no existe."));
         if (plano.esCierre()) {
             editarCierre(plano, solicitud, plantilla, datos);
         } else {
-            int maxPalabras = plantilla.estructuraOPrimera(video.getEstructura()).maxPalabras();
             if (solicitud.precio() != null || solicitud.frase() != null
-                    || (solicitud.texto() == null && solicitud.foto() == null)) {
-                throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Envía el texto o la foto nueva del plano.");
+                    || (solicitud.texto() == null && solicitud.correcciones() == null)) {
+                throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Envía el texto o las correcciones del plano.");
             }
             if (solicitud.texto() != null) {
-                // Solo el gancho exige texto: las demás tomas pueden ir sin texto.
-                plano.cambiarTexto(orden > 1 && solicitud.texto().isBlank() ? null
-                        : textoValido(solicitud.texto(), maxPalabras, datos));
+                plano.cambiarTexto(textoDelPlano(video, orden, solicitud.texto(), datos));
             }
-            if (solicitud.foto() != null) {
-                cambiarFoto(negocioId, plano, solicitud.foto(), datos.producto());
+            if (solicitud.correcciones() != null) {
+                plano.cambiarCorrecciones(correccionesValidas(solicitud.correcciones(), datos));
             }
         }
-        if (enRevision) {
-            if (conIa) {
-                // El clip anterior se conserva hasta que llegue el nuevo: si el nuevo falla, el video sigue armado.
-                video.regenerarPlano(orden, video.getPlanAplicado().getRegeneracionesPorVideo(), true,
-                        reloj.instant());
-            } else {
-                video.recomponer(reloj.instant());
-            }
+        // Las correcciones no cambian nada visible hasta que se regenera el plano: no hace falta recomponer.
+        boolean cambioVisible = plano.esCierre() || solicitud.texto() != null;
+        if (enRevision && cambioVisible) {
+            video.recomponer(reloj.instant());
         }
         video.marcarActualizado(reloj.instant());
         return vista(video);
     }
 
-    /** RF-22, RN-26 (V22): aprobar el storyboard consume el video del día y empieza la generación. */
+    /**
+     * RF-22, RN-26 (V22): aprobar el storyboard consume el video del día (y el uso del beneficio, si el video se creó
+     * con uno) y empieza la generación.
+     */
     @Transactional
     public VideoVista aprobarStoryboard(Long negocioId, Long videoId) {
         Video video = conEstado(negocioId, videoId, EstadoVideo.STORYBOARD);
@@ -153,7 +152,7 @@ public class ServicioVideos {
         if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
             throw iaNoDisponible();
         }
-        java.time.LocalDate dia = consumo.consumir(negocioId, video.getPlanAplicado().getVideosPorDia());
+        java.time.LocalDate dia = consumo.consumir(video);
         LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
         Long pista = musica.elegir(datos.paquete().id(), datos.perfil().getEstilo(), video.getId())
                 .map(com.autoreel.video.dominio.PistaMusical::getId).orElse(null);
@@ -164,7 +163,7 @@ public class ServicioVideos {
     /**
      * Reintentar un video que terminó en ERROR. Si falló al escribir su guion, vuelve a esperarlo sin consumir el video
      * del día. Si falló al generarse (por ejemplo, si el proveedor de IA falló), como el video del día se devolvió
-     * (RN-27), el reintento lo vuelve a consumir.
+     * (RN-27), el reintento lo vuelve a consumir, junto con el uso del beneficio si el video se creó con uno.
      */
     @Transactional
     public VideoVista reintentar(Long negocioId, Long videoId) {
@@ -180,23 +179,60 @@ public class ServicioVideos {
         if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
             throw iaNoDisponible();
         }
-        java.time.LocalDate dia = consumo.consumir(negocioId, video.getPlanAplicado().getVideosPorDia());
+        java.time.LocalDate dia = consumo.consumir(video);
         video.reintentar(dia, reloj.instant());
         return vista(video);
     }
 
-    /** RF-24, RN-28 (V26): pedir otro clip para un plano; una regeneración que falla no se cobra. */
-    @Transactional
-    public VideoVista regenerar(Long negocioId, Long videoId, int orden) {
-        Video video = conEstado(negocioId, videoId, EstadoVideo.LISTO);
+    /**
+     * RF-24, RN-28 (V26): pedir otro clip para un plano, desde su edición en la revisión. Si el plano tiene correcciones
+     * que su toma todavía no tiene en cuenta, antes el modelo de texto la reescribe con ellas, fuera de toda
+     * transacción; si no lo logra, responde CORRECCION_NO_DISPONIBLE sin gastar la regeneración. Una regeneración cuyo
+     * clip falla tampoco se cobra.
+     *
+     * @param texto el texto en pantalla nuevo, si cambió en la misma edición; vacío si no.
+     */
+    public VideoVista regenerar(Long negocioId, Long videoId, int orden, String texto) {
+        // Todo se valida antes de llamar al modelo de texto: un pedido que no puede regenerar no se paga.
+        Optional<CorrectorDeTomas.Pedido> pedido = lectura.execute(estado -> {
+            Video video = videos.buscarDeNegocio(videoId, negocioId).orElseThrow(ServicioVideos::noEncontrado);
+            exigirRegenerable(video);
+            Plano plano = video.planoConFoto(orden);
+            LectorDeDatosDelVideo.DatosDelVideo datos = lector.leer(video);
+            if (texto != null) {
+                textoDelPlano(video, orden, texto, datos);
+            }
+            return plano.correccionesPendientes()
+                    ? Optional.of(CorrectorDeTomas.pedido(video, plano, datos.paquete()))
+                    : Optional.<CorrectorDeTomas.Pedido>empty();
+        });
+        Optional<CorrectorDeTomas.TomaCorregida> corregida = pedido.map(datos -> corrector.corregir(datos)
+                .orElseThrow(ServicioVideos::correccionNoDisponible));
+        return transaccion.execute(estado -> {
+            Video video = conEstado(negocioId, videoId, EstadoVideo.LISTO);
+            exigirRegenerable(video);
+            Plano plano = video.planoConFoto(orden);
+            if (texto != null) {
+                plano.cambiarTexto(textoDelPlano(video, orden, texto, lector.leer(video)));
+            }
+            // Si las correcciones cambiaron mientras tanto, se aplican al enviar el clip (ServicioGeneracion).
+            corregida.filter(toma -> Objects.equals(plano.getCorrecciones(), pedido.get().correcciones()))
+                    .ifPresent(toma -> plano.aplicarCorrecciones(toma.toma(), toma.descripcionToma(), toma.negativos()));
+            video.regenerarPlano(orden, video.getPlanAplicado().getRegeneracionesPorVideo(), reloj.instant());
+            return vista(video);
+        });
+    }
+
+    private void exigirRegenerable(Video video) {
+        if (video.getEstado() != EstadoVideo.LISTO) {
+            throw new ExcepcionDeNegocio(HttpStatus.CONFLICT, "VIDEO_NO_EDITABLE", "Este video ya no se puede cambiar.");
+        }
         if (!proveedores.videoDisponible(video.getModeloVideoUsado())) {
             throw iaNoDisponible();
         }
         if (video.getRegeneracionesUsadas() >= video.getPlanAplicado().getRegeneracionesPorVideo()) {
             throw sinRegeneraciones(video.getPlanAplicado());
         }
-        video.regenerarPlano(orden, video.getPlanAplicado().getRegeneracionesPorVideo(), true, reloj.instant());
-        return vista(video);
     }
 
     /** RF-24: el usuario aprueba su video (la publicación llega en la fase 6). */
@@ -234,28 +270,14 @@ public class ServicioVideos {
         return video;
     }
 
-    /** El clip que dejó de usarse se borra solo si el cambio se confirma. */
-    private void borrarAlConfirmar(String clave) {
-        if (clave == null) {
-            return;
-        }
-        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                new org.springframework.transaction.support.TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            almacen.eliminar(clave);
-                        } catch (RuntimeException e) {
-                            org.slf4j.LoggerFactory.getLogger(ServicioVideos.class)
-                                    .warn("No se pudo borrar el clip descartado {}", clave, e);
-                        }
-                    }
-                });
-    }
-
     private static ExcepcionDeNegocio iaNoDisponible() {
         return new ExcepcionDeNegocio(HttpStatus.CONFLICT, "IA_NO_DISPONIBLE",
                 "Por ahora no podemos crear clips con IA. Inténtalo en un rato; mientras tanto puedes editar los textos.");
+    }
+
+    private static ExcepcionDeNegocio correccionNoDisponible() {
+        return new ExcepcionDeNegocio(HttpStatus.SERVICE_UNAVAILABLE, "CORRECCION_NO_DISPONIBLE",
+                "No pudimos aplicar tus correcciones; inténtalo en un rato. No se usó ninguna regeneración.");
     }
 
     private static ExcepcionDeNegocio sinRegeneraciones(Plan plan) {
@@ -283,7 +305,7 @@ public class ServicioVideos {
     private void editarCierre(Plano plano, SolicitudPlano solicitud, PlantillaVideo plantilla,
             LectorDeDatosDelVideo.DatosDelVideo datos) {
         if ((solicitud.precio() == null && solicitud.frase() == null) || solicitud.texto() != null
-                || solicitud.foto() != null) {
+                || solicitud.correcciones() != null) {
             throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA",
                     "En el cierre solo se pueden cambiar el precio y la frase.");
         }
@@ -328,19 +350,28 @@ public class ServicioVideos {
         return limpio;
     }
 
-    private void cambiarFoto(Long negocioId, Plano plano, SolicitudPlano.FotoElegida foto, Producto producto) {
-        if ((foto.tipo() == null) == (foto.clave() == null)) {
-            throw new ExcepcionDeNegocio("SOLICITUD_INVALIDA", "Elige una foto del producto o sube una nueva.");
+    /** El texto de una toma: solo el gancho exige texto; en las demás, un texto vacío la deja sin texto. */
+    private String textoDelPlano(Video video, int orden, String texto, LectorDeDatosDelVideo.DatosDelVideo datos) {
+        if (orden > 1 && texto.isBlank()) {
+            return null;
         }
-        if (foto.tipo() != null) {
-            FotoProducto delProducto = producto.foto(foto.tipo()).orElseThrow(() -> new ExcepcionDeNegocio(
-                    "FOTO_NO_DISPONIBLE", "El producto ya no tiene esa foto. Elige otra o sube una nueva."));
-            plano.cambiarFoto(delProducto.getTipo(), delProducto.getClaveS3());
-            return;
+        int maxPalabras = datos.paquete().plantillaVideo().estructuraOPrimera(video.getEstructura()).maxPalabras();
+        return textoValido(texto, maxPalabras, datos);
+    }
+
+    /** Las correcciones en una línea (el usuario puede escribirlas con saltos de línea); vacías, se quitan. */
+    private static String correccionesValidas(String correcciones, LectorDeDatosDelVideo.DatosDelVideo datos) {
+        String limpio = correcciones.strip().replaceAll("\\s+", " ");
+        if (limpio.isEmpty()) {
+            return null;
         }
-        // Una foto nueva queda solo en este plano: no cambia el producto ni el catálogo.
-        String clave = archivos.confirmar(negocioId, PropositoArchivo.FOTO_PRODUCTO, foto.clave()).clave();
-        plano.cambiarFoto(null, clave);
+        if (limpio.length() > MAXIMO_CARACTERES_CORRECCIONES) {
+            throw new ExcepcionDeNegocio("CORRECCIONES_MUY_LARGAS",
+                    "Las correcciones admiten hasta " + MAXIMO_CARACTERES_CORRECCIONES + " caracteres.");
+        }
+        exigirDibujable(limpio);
+        exigirSinProhibidas(limpio, datos);
+        return limpio;
     }
 
     private static void exigirDibujable(String texto) {
@@ -374,7 +405,8 @@ public class ServicioVideos {
                     return new VideoVista.PlanoVista(plano.getOrden(), PlantillaVideo.nombreDelPlano(plano.getOrden()),
                             plano.getSegundos(),
                             new VideoVista.FotoVista(plano.getTipoFoto(), archivos.urlDeLectura(plano.getClaveFoto())),
-                            movimiento, plano.getTexto(), estructura.maxPalabras(), plano.getEstado(),
+                            movimiento, plano.getTexto(), plano.getCorrecciones(), estructura.maxPalabras(),
+                            plano.getEstado(),
                             plano.isUsoRespaldo());
                 })
                 .toList();
@@ -385,17 +417,13 @@ public class ServicioVideos {
                 plantilla.modoDeTomas(video.getModoTomas()).nombre(), estructura.nombre(),
                 paquete.movimientos().creatividad(video.getCreatividad()).map(c -> c.nombre()).orElse(null),
                 video.getIdea());
-        List<VideoVista.FotoVista> fotos = Arrays.stream(TipoFoto.values())
-                .flatMap(tipo -> producto.foto(tipo).stream())
-                .map(foto -> new VideoVista.FotoVista(foto.getTipo(), catalogo.urlDeFoto(foto)))
-                .toList();
         return new VideoVista(video.getId(), video.getEstado(), tipoVideo(paquete, video),
                 new VideoVista.ProductoDelVideo(producto.getId(), producto.getNombre()),
                 new VideoVista.PlanDelVideo(video.getPlanAplicado().getNombre(),
                         video.getPlanAplicado().getVideosPorDia(),
                         video.getPlanAplicado().getRegeneracionesPorVideo()),
                 concepto, planos, cierre,
-                video.getDescripcionPublicacion(), video.getHashtags(), ValidadorDeGuion.MAXIMO_PUBLICACION, fotos,
+                video.getDescripcionPublicacion(), video.getHashtags(), ValidadorDeGuion.MAXIMO_PUBLICACION,
                 video.getFechaCreacion(), video.inicioDelGuion(), generacion(video));
     }
 

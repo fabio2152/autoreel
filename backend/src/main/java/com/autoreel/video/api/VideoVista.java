@@ -13,14 +13,13 @@ import com.autoreel.video.dominio.EstadoVideo;
  *
  * @param concepto            lo que eligió la IA (estructura, creatividad e idea); vacío sin guion o en videos
  *                            anteriores al guion flexible.
- * @param fotosDelProducto    las fotos del producto, para cambiar la de un plano.
  * @param inicioDelGuion      desde cuándo se está escribiendo el guion (la creación o el último "Reintentar").
  * @param maximoPublicacion   caracteres de la descripción con sus hashtags (RN-24).
  * @param generacion          consumo, regeneraciones y video final.
  */
 public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, ProductoDelVideo producto,
         PlanDelVideo plan, ConceptoVista concepto, List<PlanoVista> planos, CierreVista cierre, String descripcion,
-        List<String> hashtags, int maximoPublicacion, List<FotoVista> fotosDelProducto, Instant fechaCreacion,
+        List<String> hashtags, int maximoPublicacion, Instant fechaCreacion,
         Instant inicioDelGuion, GeneracionVista generacion) {
 
     public record ProductoDelVideo(Long id, String nombre) {
@@ -39,14 +38,15 @@ public record VideoVista(Long id, EstadoVideo estado, String tipoVideo, Producto
     /**
      * Las tomas (1 a 4, según la estructura).
      *
+     * @param correcciones lo que el negocio no quiere ver en la toma; vacío si no escribió nada.
      * @param estado       el clip: vacío en el storyboard; PENDIENTE, GENERANDO, LISTO o RESPALDO después.
      * @param usoRespaldo  solo en videos creados antes del 2026-11-06: el plano usó el acercamiento de FFmpeg (ADR 0020).
      */
     public record PlanoVista(int orden, String nombre, int segundos, FotoVista foto, MovimientoVista movimiento,
-            String texto, int maxPalabras, EstadoPlano estado, boolean usoRespaldo) {
+            String texto, String correcciones, int maxPalabras, EstadoPlano estado, boolean usoRespaldo) {
     }
 
-    /** @param tipo vacío si el usuario subió una foto que no es del producto. */
+    /** @param tipo vacío en los planos de videos anteriores cuya foto no era del producto. */
     public record FotoVista(TipoFoto tipo, String url) {
     }
 

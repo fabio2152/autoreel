@@ -2,6 +2,7 @@ package com.autoreel.facturacion.api;
 
 import java.util.List;
 
+import com.autoreel.almacenamiento.aplicacion.ServicioDeArchivos.SubidaFirmada;
 import com.autoreel.compartido.seguridad.UsuarioAutenticado;
 import com.autoreel.facturacion.api.SuscripcionDtos.BeneficioVista;
 import com.autoreel.facturacion.api.SuscripcionDtos.PagoRegistrado;
@@ -9,8 +10,10 @@ import com.autoreel.facturacion.api.SuscripcionDtos.PagoVista;
 import com.autoreel.facturacion.api.SuscripcionDtos.SolicitudBeneficio;
 import com.autoreel.facturacion.api.SuscripcionDtos.SolicitudCambioPlan;
 import com.autoreel.facturacion.api.SuscripcionDtos.SolicitudPago;
+import com.autoreel.facturacion.api.SuscripcionDtos.SolicitudSubidaComprobante;
 import com.autoreel.facturacion.aplicacion.ServicioSuscripciones;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,6 +46,14 @@ public class SuscripcionController {
     public ResponseEntity<PagoRegistrado> registrarPago(@PathVariable Long negocioId,
             @Valid @RequestBody SolicitudPago solicitud, @AuthenticationPrincipal UsuarioAutenticado admin) {
         return ResponseEntity.status(HttpStatus.CREATED).body(servicio.registrarPago(negocioId, solicitud, admin.id()));
+    }
+
+    /** Firma la subida directa del comprobante a la carpeta de este negocio (sección 11.4). */
+    @PostMapping("/pagos/url-subida-comprobante")
+    public ResponseEntity<SubidaFirmada> urlDeSubidaComprobante(@PathVariable Long negocioId,
+            @Valid @RequestBody SolicitudSubidaComprobante solicitud) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(servicio.firmarSubidaComprobante(negocioId, solicitud.tipoContenido(), solicitud.tamano()));
     }
 
     @PutMapping("/plan")

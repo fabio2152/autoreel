@@ -73,13 +73,13 @@ public class ServicioGuion {
             "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo.";
     /** No se arregla reintentando: no se llama al modelo ni se ofrece "Reintentar". */
     public static final String MOTIVO_SIN_FOTOS =
-            "El producto de este video ya no existe o no tiene fotos. Crea otro video desde el inicio.";
+            "El producto de este video ya no existe o no tiene foto. Crea otro video desde el inicio.";
     /** Una falla nuestra (no del proveedor de IA): no se reintenta sola para no volver a pagar el guion. */
     public static final String MOTIVO_FALLA_INTERNA =
             "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo.";
 
     /**
-     * @param fotos claves de las fotos del producto, por número (1 a 3), en orden.
+     * @param fotos clave de la foto del producto, por número (desde el 2026-11-25, solo la 1).
      * @param modo  cómo pidió el negocio las tomas: limita las estructuras que puede elegir la IA.
      */
     private record Contexto(Long videoId, Long negocioId, ModeloIA modelo, PaqueteNicho paquete,
@@ -194,7 +194,7 @@ public class ServicioGuion {
         }
         List<Integer> fotos = contexto.numerosDeFotos();
         String esquema = InstruccionesDelGuion.esquema(contexto.paquete(), contexto.modo(), fotos, json);
-        // La IA ve las fotos del producto para elegir cuáles usa y escribir tomas que tengan sentido con ellas.
+        // La IA ve la foto del producto para escribir tomas que tengan sentido con ella.
         List<ImagenAdjunta> imagenes = contexto.fotos().values().stream()
                 .map(clave -> new ImagenAdjunta(preparador.paraLaIa(leerArchivo(clave)), "image/jpeg"))
                 .toList();
@@ -276,7 +276,7 @@ public class ServicioGuion {
             video.elegirConcepto(estructura.id(), guion.creatividad(), guion.idea());
             for (int orden = 1; orden <= estructura.tomas().size(); orden++) {
                 GuionPropuesto.PlanoPropuesto propuesto = guion.plano(orden);
-                // Si la foto elegida se borró mientras se escribía el guion, se usa la principal.
+                // Si la foto elegida ya no existe (por ejemplo, se cambió mientras se escribía el guion), se usa la del producto.
                 FotoProducto foto = TipoFoto.deNumero(propuesto.foto()).flatMap(producto.get()::foto)
                         .orElseGet(() -> producto.get().fotosEnOrden().getFirst());
                 video.agregarPlano(orden, estructura.segundos(orden), foto.getTipo(), foto.getClaveS3(),
@@ -323,7 +323,7 @@ public class ServicioGuion {
                 }));
     }
 
-    /** Los datos del guion; vacío si el producto del video ya no existe o no tiene fotos. */
+    /** Los datos del guion; vacío si el producto del video ya no existe o no tiene foto. */
     private Optional<Contexto> leer(Long videoId) {
         Video video = videos.buscarConModeloDeTexto(videoId).orElseThrow();
         Optional<Producto> producto = catalogo.elegidoParaVideo(video.getNegocioId(), video.getProductoId());

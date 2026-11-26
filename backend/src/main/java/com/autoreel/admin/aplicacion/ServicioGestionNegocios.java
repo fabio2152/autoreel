@@ -92,8 +92,8 @@ public class ServicioGestionNegocios {
         LocalDate hoy = LocalDate.now(reloj);
         Map<Long, Usuario> usuariosPorNegocio = usuarios.listarUsuariosDeNegocio().stream()
                 .collect(Collectors.toMap(usuario -> usuario.getNegocio().getId(), Function.identity()));
-        Map<Long, Plan> conBeneficio = beneficios.vigentes(reloj.instant()).stream()
-                .collect(Collectors.toMap(BeneficioTemporal::getNegocioId, BeneficioTemporal::getPlan,
+        Map<Long, BeneficioTemporal> conBeneficio = beneficios.vigentes().stream()
+                .collect(Collectors.toMap(BeneficioTemporal::getNegocioId, Function.identity(),
                         (primero, segundo) -> primero));
         String texto = busqueda == null ? "" : busqueda.trim().toLowerCase(Locale.ROOT);
         return suscripciones.listarConNegocioYPlan().stream()
@@ -148,7 +148,8 @@ public class ServicioGestionNegocios {
                         suscripcion.estadoPago(LocalDate.now(reloj))),
                 new NegocioDetalle.PlanEfectivo(plan.getId(), plan.getNombre(), plan.getModeloTexto().getNombre(),
                         plan.getModeloVideo().getNombre(), plan.getVideosPorDia(), plan.getRegeneracionesPorVideo(),
-                        efectivo.beneficio() == null ? null : efectivo.beneficio().getHasta()),
+                        efectivo.beneficio() == null ? null : efectivo.beneficio().getUsosOtorgados(),
+                        efectivo.beneficio() == null ? null : efectivo.beneficio().usosRestantes()),
                 costos.deNegocio(negocioId, costos.mesActual()),
                 perfiles.paraAdmin(negocioId),
                 new NegocioDetalle.Videos(consumo.delMes(negocioId),
@@ -182,12 +183,13 @@ public class ServicioGestionNegocios {
         usuarioDe(negocioId).getNegocio().reactivar();
     }
 
-    private NegocioResumen resumen(Suscripcion suscripcion, Usuario usuario, Plan beneficio, LocalDate hoy) {
+    private NegocioResumen resumen(Suscripcion suscripcion, Usuario usuario, BeneficioTemporal beneficio,
+            LocalDate hoy) {
         Negocio negocio = suscripcion.getNegocio();
-        Plan plan = beneficio != null ? beneficio : suscripcion.getPlan();
+        Plan plan = beneficio != null ? beneficio.getPlan() : suscripcion.getPlan();
         return new NegocioResumen(negocio.getId(), negocio.getNombre(), usuario == null ? null : usuario.getCorreo(),
                 negocio.getNicho(), plan.getNombre(), plan.getModeloVideo().getNombre(), beneficio != null,
-                suscripcion.getProximaFechaPago(),
+                beneficio == null ? null : beneficio.usosRestantes(), suscripcion.getProximaFechaPago(),
                 suscripcion.estadoPago(hoy), (int) consumo.delMes(negocio.getId()), negocio.getEstado(),
                 usuario == null ? null : usuario.getUltimoAcceso());
     }

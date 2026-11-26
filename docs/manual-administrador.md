@@ -2,7 +2,7 @@
 
 Guía de uso del **panel de administración de AutoReel** (`/admin`). Explica cómo crear negocios, entregarles su acceso, cobrarles, configurar la IA y darles soporte.
 
-> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). *Actualización del 2026-11-12:* con la **mejora de la calidad del video** (ADR 0021), **el guion tampoco tiene respaldo sin IA** (sección 18.2). *Actualización del 2026-11-25 (guion flexible, ADR 0022):* el plan Lite usa **Veo 3.1 Lite** en Google Cloud para los clips y hay dos modelos nuevos, **Veo 3.1 Fast** y **Veo 3.1** (secciones 15.1, 15.4, 16.1 y 19). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) y la **fase 8** (despliegue en AWS) están **pendientes** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
+> **Estado del documento:** al día con `main` al 2026-11-06. Cubre las fases **1** (base), **2** (perfil y catálogo), **4** (guion), **5** (generación), los **proveedores de Google** (PR #7: una sola clave de Google AI Studio para el guion y los clips), la **fase 7** (PR #8: notificaciones, pagos, planes, integraciones y claves, beneficios, costos y entrar como el negocio) y la **revisión del flujo del negocio** (PR #9: ya no hay respaldo sin IA para los clips). *Actualización del 2026-11-12:* con la **mejora de la calidad del video** (ADR 0021), **el guion tampoco tiene respaldo sin IA** (sección 18.2). *Actualización del 2026-11-25 (guion flexible, ADR 0022):* el plan Lite usa **Veo 3.1 Lite** en Google Cloud para los clips y hay dos modelos nuevos, **Veo 3.1 Fast** y **Veo 3.1** (secciones 15.1, 15.4, 16.1 y 19). *Actualización del 2026-11-25 (ADR 0026):* los **beneficios son por cantidad de usos** (sección 13), "Registrar pago" acepta el **comprobante** (sección 11), la página Costos tiene un **gráfico por día** (sección 14), la campana avisa cuando un negocio **olvidó su contraseña** (secciones 8 y 10) y cada producto tiene **una sola foto** (sección 7). La fase 3 (chat) no agregó funciones al panel. La **fase 6** (publicación en Instagram) quedó **fuera del MVP** y la **fase 8** (despliegue en AWS) está **pendiente** (sección 22). Se actualiza al terminar cada fase (sección 23 de la especificación). Las capturas de pantalla están pendientes.
 
 ---
 
@@ -43,18 +43,18 @@ Guía de uso del **panel de administración de AutoReel** (`/admin`). Explica c�
 | Ver la lista de negocios, buscar y filtrar por estado de pago; ver su plan, su modelo de video y sus videos del mes | Sección 4 | RF-02, RN-43 |
 | Crear un negocio con su plan, monto mensual y fecha del primer pago | Sección 5 | RF-03, RN-41 |
 | Ver el detalle de un negocio: datos, suscripción con el plan que rige hoy y sus modelos, pagos, beneficios, videos y costos, perfil y catálogo | Sección 7 | RF-05, RF-07 |
-| Reiniciar la contraseña de un negocio | Sección 8 | RF-04, RN-05 |
+| Reiniciar la contraseña de un negocio, también cuando lo pide desde su Ajustes | Sección 8 | RF-04, RN-05 |
 | Suspender y reactivar un negocio | Sección 9 | RF-06, RN-07 |
-| Recibir notificaciones de pago y de fallas de la IA (la campana) | Sección 10 | RF-09, RN-44, RN-45, RN-57 |
-| Registrar pagos (la fecha de pago avanza un mes) | Sección 11 | RF-08, RN-42 |
+| Recibir notificaciones de pago, de fallas de la IA y de contraseñas olvidadas (la campana) | Sección 10 | RF-09, RN-44, RN-45, RN-57 |
+| Registrar pagos (la fecha de pago avanza un mes), con la imagen del comprobante | Sección 11 | RF-08, RN-42 |
 | Cambiar el plan y el monto de un negocio | Sección 12 | RF-06, RN-49 |
-| Otorgar y terminar beneficios temporales | Sección 13 | RF-12, RN-50 a RN-53 |
-| Ver el costo estimado de IA por negocio y por mes | Secciones 14 y 7 | RF-07, RN-32 |
+| Otorgar y terminar beneficios por cantidad de usos | Sección 13 | RF-12, RN-50 a RN-53 |
+| Ver el costo estimado de IA por negocio y por mes, con su gráfico por día | Secciones 14 y 7 | RF-07, RN-32 |
 | Pegar las claves de los proveedores, probar la conexión, activar, desactivar, agregar y editar modelos de IA | Sección 15 | RF-11, RN-48, RN-55, RN-56 |
 | Crear y editar planes | Sección 16 | RF-10, RN-47 |
 | Entrar como el negocio para darle soporte | Sección 17 | RN-58 (ADR 0019) |
 | Indicar dónde está FFmpeg para componer los videos | Sección 19.4, con la variable de entorno `FFMPEG_PATH` | — |
-| Publicar los videos en Instagram (lo hace el negocio) | **Pendiente (fase 6)**, sección 22 | RF-27 a RF-29 |
+| Publicar los videos en Instagram (lo hace el negocio) | **Fuera del MVP** (ADR 0026), sección 22 | RF-27 a RF-29 |
 
 ### 1.2 La cuenta del administrador
 
@@ -134,7 +134,7 @@ En una computadora se ve como tabla:
 |---|---|
 | **Negocio** | Nombre (enlace al detalle) y, debajo, el correo del usuario. |
 | **Nicho** | "Pastelería", el único nicho del MVP. |
-| **Plan** | El plan que **rige hoy**: el de la suscripción o, si hay un [beneficio](#13-beneficios-temporales) vigente, el del beneficio, con la marca "(beneficio)" en verde. Debajo, en gris, su **modelo de video** (por ejemplo, "Gemini Omni Flash"). |
+| **Plan** | El plan que **rige hoy**: el de la suscripción o, si hay un [beneficio](#13-beneficios-temporales) vigente, el del beneficio, con la marca "(beneficio)" en verde (desde el 2026-11-25, "(beneficio, quedan *N* usos)"). Debajo, en gris, su **modelo de video** (por ejemplo, "Gemini Omni Flash"). |
 | **Próximo pago** | Fecha del próximo pago y su etiqueta de color (ver 4.3). |
 | **Videos del mes** | Videos que el negocio creó en el mes en curso (calendario de Lima). Cuenta cada propuesta aprobada con "Crear mi video" y no cuenta los videos devueltos porque fallaron (RN-27). Es el mismo número de **Videos este mes** del detalle. |
 | **Estado** | "Activo" en verde o "Suspendido" en rojo. |
@@ -316,7 +316,7 @@ flowchart TD
 
 | Dato | Significado |
 |---|---|
-| **Plan** | Plan de la suscripción. Si hay un beneficio vigente, debajo dice en verde "Hoy usa *plan* por un beneficio hasta *fecha y hora*" (sección 13). |
+| **Plan** | Plan de la suscripción. Si hay un beneficio vigente, debajo dice en verde "Hoy usa *plan* por un beneficio: le quedan *N* usos" (sección 13). |
 | **Modelo de video** | El modelo de video del plan que **rige hoy** (el del beneficio, si hay uno vigente). Por ejemplo, "Gemini Omni Flash". |
 | **Modelo de texto** | El modelo de texto del plan que rige hoy, el que escribe el guion. Por ejemplo, "Gemini". |
 | **Límites** | Videos por día y regeneraciones por video del plan que rige hoy, por ejemplo "1 video por día · 3 regeneraciones por video". |
@@ -325,9 +325,9 @@ flowchart TD
 | **Próximo pago** | Fecha y etiqueta de color, con las mismas reglas que en la lista. |
 | **Aviso de pago** | "5 días antes": días de aviso para el estado **Por vencer**. |
 
-**Tarjeta "Pagos":** el historial de pagos registrados, del más reciente al más antiguo (sección 11.3). Si no hay ninguno: "Todavía no hay pagos registrados."
+**Tarjeta "Pagos":** el historial de pagos registrados, del más reciente al más antiguo, con **Ver comprobante** en los que tienen imagen (sección 11.3). Si no hay ninguno: "Todavía no hay pagos registrados."
 
-**Tarjeta "Beneficios":** los beneficios del negocio, con el botón **Otorgar beneficio** (sección 13). Si no hay ninguno: "Sin beneficios. Un beneficio da otro plan por un tiempo, como cortesía o por un inconveniente."
+**Tarjeta "Beneficios":** los beneficios del negocio, con el botón **Otorgar beneficio** (sección 13). Si no hay ninguno: "Sin beneficios. Un beneficio da otro plan durante algunos videos, como cortesía o por un inconveniente."
 
 **Sección "Videos y costos"** (solo lectura, RF-05, RF-07):
 
@@ -372,22 +372,22 @@ Viene en el campo `perfil` de `GET /api/admin/negocios/{id}` (`NegocioDetalle.pe
 Se carga aparte, con `GET /api/admin/negocios/{id}/productos`, e incluye **todos** los productos del negocio: activos y archivados, del más reciente al más antiguo.
 
 - Cada producto se ve como una tarjeta con su primera foto, su nombre y una etiqueta de estado:
-  - **Listo:** activo y con sus tres fotos (entero, detalle y porción). Puede usarse en videos (RN-12).
-  - **Faltan fotos:** activo, pero sin alguna de sus tres fotos. No puede usarse en videos hasta que el negocio las complete.
+  - **Listo:** activo y con su foto. Puede usarse en videos (RN-12). Desde el 2026-11-25, cada producto tiene una sola foto.
+  - **Falta la foto:** activo, pero sin foto. No puede usarse en videos hasta que el negocio la suba.
   - **Archivado:** el negocio lo archivó. No se borra (RN-13) y no aparece al crear videos.
 - Si el negocio no tiene productos, aparece **"Todavía no registró productos."**
 - Desde aquí no puedes crear, editar ni archivar productos de un negocio.
 
 > **Las imágenes del perfil y del catálogo se leen con URLs firmadas que vencen en 1 hora** (el bucket es privado). Si una foto del catálogo no carga, la pantalla vuelve a pedir el catálogo una vez; el logo de la tarjeta Perfil no se renueva solo. Si una imagen sigue sin verse, recarga la página.
 
-El administrador nunca ve la contraseña ni el hash de un negocio (RN-39). Tampoco verá sus tokens de Instagram cuando existan (fase 6).
+El administrador nunca ve la contraseña ni el hash de un negocio (RN-39). Tampoco vería sus tokens de Instagram, si algún día se conecta (fase 6, fuera del MVP).
 
 ---
 
 ## 8. Reiniciar la contraseña de un negocio
 
 Regla RF-04 y RN-05. **Úsalo cuando:**
-- El cliente olvidó su contraseña. No existe la recuperación por correo en el MVP.
+- El cliente olvidó su contraseña. No existe la recuperación por correo en el MVP. Desde el 2026-11-25, si el cliente tiene la sesión abierta, te lo puede pedir desde **Ajustes → ¿Olvidaste tu contraseña?**: te llega a la campana un aviso **Solicitud de contraseña** con su correo, su WhatsApp (si lo escribió) y su mensaje, y el botón **Ir a reiniciar contraseña** te lleva a su detalle y marca el aviso como leído (sección 10). Reiniciar la contraseña no marca el aviso por sí solo.
 - La contraseña temporal venció antes de que el cliente entrara.
 - Se perdió el mensaje con la contraseña temporal.
 - La cuenta está bloqueada y el cliente no puede esperar 15 minutos.
@@ -440,7 +440,7 @@ Reglas RF-06 y RN-07. La suspensión es **manual**: el sistema nunca suspende so
 
 > *Captura pendiente: campana abierta con notificaciones de pago y de integración.*
 
-Reglas RF-09, RN-44, RN-45 y RN-57. La **campana** está en la barra superior del panel, junto a **Salir**. Si tienes notificaciones sin leer, muestra un círculo rojo con el número ("99+" si pasan de 99). El panel la actualiza cada minuto.
+Reglas RF-09, RN-44, RN-45, RN-57 y, desde el 2026-11-25, RF-04. La **campana** está en la barra superior del panel, junto a **Salir**. Si tienes notificaciones sin leer, muestra un círculo rojo con el número ("99+" si pasan de 99). El panel la actualiza cada minuto.
 
 ### 10.1 Qué notificaciones hay
 
@@ -450,7 +450,8 @@ Reglas RF-09, RN-44, RN-45 y RN-57. La **campana** está en la barra superior de
 | Pago hoy (`PAGO_HOY`) | Naranja | "El pago de … vence hoy." | El día de la fecha de pago. |
 | Pago vencido (`PAGO_VENCIDO`) | Rojo | "El pago de … está vencido." | Al día siguiente de la fecha de pago. |
 | Sugerencia de suspensión (`SUGERENCIA_SUSPENSION`) | Rojo oscuro | "El pago de … lleva 7 días vencido. Puedes suspenderlo desde su detalle." | A los 7 días de vencido, si el negocio no está suspendido (RN-45). |
-| Integración con error (`INTEGRACION_CON_ERROR`) | Violeta | "Gemini Omni Flash: la credencial no funciona. …" (o "el modelo está mal configurado.", "el proveedor no está disponible.") | Falla un proveedor de IA al escribir un guion o crear un clip (RN-57). |
+| Integración con error (`INTEGRACION_CON_ERROR`) | Violeta | "Gemini Omni Flash: la credencial no funciona. …" (o "el modelo está mal configurado.", "el proveedor no está disponible.") | Falla un proveedor de IA al escribir un guion, crear un clip o, desde el 2026-11-25, ajustar una toma con las correcciones del negocio (RN-57). |
+| Solicitud de contraseña (`SOLICITUD_CONTRASENA`) | Celeste | "Pastelería Dulce Encanto olvidó su contraseña y pide una temporal. Correo: … WhatsApp: … Mensaje: …" | Desde el 2026-11-25: el negocio tocó **¿Olvidaste tu contraseña?** en sus Ajustes. Como máximo una por negocio y por día. |
 
 **Cuándo y cuántas:**
 - Las de **pago** las crea una tarea diaria (`TareaDiariaDePagos`) a las **00:10 hora de Lima** y también cada vez que arranca el backend. Revisa el estado de pago de cada negocio con la fecha de hoy.
@@ -464,12 +465,13 @@ Reglas RF-09, RN-44, RN-45 y RN-57. La **campana** está en la barra superior de
    - **Registrar pago:** solo en las de pago (por vencer, hoy y vencido) que no has leído. Abre el detalle del negocio con la ventana **Registrar pago** ya abierta (sección 11).
    - **Ver negocio:** abre el detalle del negocio.
    - **Ver integraciones:** en las de integración, abre **Ajustes → Integraciones y claves** (sección 15).
+   - **Ir a reiniciar contraseña:** en las solicitudes de contraseña, abre el detalle del negocio, donde está **Reiniciar contraseña** (sección 8).
    - **Marcar leída:** la marca sin abrir nada.
 3. **Marcar todas como leídas**, arriba a la derecha del panel, marca todas de una vez.
 
 Abrir una notificación con cualquiera de sus enlaces también la marca como leída. Para cerrar el panel, pulsa fuera de él o la tecla `Esc`.
 
-**Registrar el pago atiende sus avisos.** Al registrar el pago de una fecha, todas las notificaciones de esa fecha del negocio (por vencer, hoy, vencido y la sugerencia) quedan como leídas.
+**Registrar el pago atiende sus avisos.** Al registrar el pago de una fecha, todas las notificaciones de esa fecha del negocio (por vencer, hoy, vencido y la sugerencia) quedan como leídas. Las de integración y las solicitudes de contraseña no cambian.
 
 > API: `GET /api/admin/notificaciones`, `POST /api/admin/notificaciones/{id}/leida` y la de marcar todas (ver `docs/api.md`).
 
@@ -493,8 +495,9 @@ Reglas RF-08 y RN-42. AutoReel no cobra: tú recibes el pago por tu canal (trans
 | **Monto (US$)** | Viene con el monto mensual de la suscripción; cámbialo si te pagó otro monto. | Mayor que cero, con hasta dos decimales. |
 | **Medio de pago** | **Transferencia**, **Yape**, **Plin**, **Efectivo** u **Otro**. | Obligatorio. |
 | **Nota (opcional)** | Por ejemplo, el número de operación. | Hasta 300 caracteres. |
+| **Comprobante (opcional)** | Desde el 2026-11-25: "La captura de Yape o Plin, o la foto del voucher. Una imagen de hasta 5 MB." Pulsa el recuadro y elige la imagen; puedes quitarla antes de registrar. | JPG, PNG o WebP; el navegador convierte a JPG otras imágenes que pueda abrir (una foto HEIC del iPhone no). Hasta **5 MB**. |
 
-4. Pulsa **Registrar pago**. La ventana se cierra, la tarjeta **Suscripción** muestra la nueva fecha y su color, y el pago aparece en la tarjeta **Pagos**. Para salir sin registrar, pulsa **Cancelar**.
+4. Pulsa **Registrar pago**. Mientras sube el comprobante, el botón dice "Subiendo el comprobante…" y no se puede pulsar. La ventana se cierra, la tarjeta **Suscripción** muestra la nueva fecha y su color, y el pago aparece en la tarjeta **Pagos**. Para salir sin registrar, pulsa **Cancelar**.
 
 ### 11.2 Cómo avanza la fecha de pago
 
@@ -511,12 +514,13 @@ La tarjeta **Pagos** del detalle lista cada pago con:
 - El monto y el medio, por ejemplo "US$ 49.00 · Yape".
 - "Pagó el *fecha del pago* · cubre el *fecha de pago cubierta*".
 - La nota, si la tiene.
+- **Ver comprobante**, si le adjuntaste uno: abre la imagen en una pestaña nueva. El enlace vence en una hora; si ya no abre, recarga la página.
 
 No hay pantalla para editar ni borrar un pago. **No modifiques la tabla `pago` a mano.**
 
-**Errores posibles:** "La fecha del pago no puede ser posterior a hoy." (`PAGO_FECHA_FUTURA`) y los de validación de los campos.
+**Errores posibles:** "La fecha del pago no puede ser posterior a hoy." (`PAGO_FECHA_FUTURA`), los de validación de los campos y, con comprobante, "El comprobante debe ser una imagen JPG, PNG o WebP.", "El archivo pesa más de 5 MB." o "El comprobante no es una imagen válida o no coincide con su tipo. Sube una imagen JPG, PNG o WebP."
 
-> API: `GET` y `POST /api/admin/negocios/{id}/pagos`.
+> API: `GET` y `POST /api/admin/negocios/{id}/pagos` y, para el comprobante, `POST /api/admin/negocios/{id}/pagos/url-subida-comprobante`.
 
 ---
 
@@ -544,7 +548,7 @@ Reglas RF-06 y RN-49.
 
 ## 13. Beneficios temporales
 
-Reglas RF-12 y RN-50 a RN-53. Un **beneficio** le da a un negocio **otro plan durante un tiempo**, por ejemplo como cortesía o para compensar un inconveniente.
+Reglas RF-12 y RN-50 a RN-53. Un **beneficio** le da a un negocio **otro plan durante algunos videos**, por ejemplo como cortesía o para compensar un inconveniente. *Cambio del 2026-11-25 (ADR 0026):* el beneficio ya no es por fechas sino por **cantidad de usos**: "5 videos con el plan Pro".
 
 ### 13.1 Otorgar un beneficio
 
@@ -554,39 +558,40 @@ Reglas RF-12 y RN-50 a RN-53. Un **beneficio** le da a un negocio **otro plan du
 | Campo | Qué poner | Regla |
 |---|---|---|
 | **Plan del beneficio** | Un plan **activo** distinto del plan del negocio. El selector muestra el nombre, los videos por día y el modelo de video. Si no hay otro plan activo, verás "No hay otro plan activo. Crea uno en Ajustes → Planes." | Obligatorio. |
-| **Desde** y **Hasta** | Fecha y hora de inicio y de fin, en tu hora local. Vienen con "ahora" y "mañana a esta hora". | El fin debe ser después del inicio y en el futuro. **Máximo 30 días.** |
+| **Cantidad de usos** | Cuántos videos podrá crear con ese plan. Viene con 5. "Cada video que el negocio crea con el beneficio y aprueba gasta un uso. De 1 a 30." | Obligatoria, **de 1 a 30**. |
 | **Motivo** | Por qué lo otorgas, por ejemplo "Cortesía por ser cliente antiguo". | Obligatorio, hasta 300 caracteres. |
 
 3. Pulsa **Otorgar beneficio** (o **Cancelar**).
 
 ### 13.2 Qué cambia y qué no
 
-- **Cambia** los modelos de IA, los videos por día y las regeneraciones: mientras está vigente, el negocio usa el plan del beneficio para sus videos nuevos (RN-50). En la lista y en el detalle, el plan aparece con "(beneficio)" y la tarjeta **Suscripción** dice "Hoy usa *plan* por un beneficio hasta …".
-- **No cambia** el monto mensual ni la fecha de pago (RN-53).
-- **Un solo beneficio a la vez** (RN-51): no se pueden cruzar las fechas de dos beneficios del mismo negocio.
-- **Al terminar, el negocio vuelve solo a su plan** (RN-52). No tienes que hacer nada.
-- Si la fecha **Desde** ya pasó, el beneficio empieza en el momento en que lo otorgas.
+- **Cambia** los modelos de IA, los videos por día y las regeneraciones: mientras está vigente, el negocio usa el plan del beneficio para sus videos nuevos (RN-50). En la lista el plan aparece con "(beneficio, quedan *N* usos)" y la tarjeta **Suscripción** dice "Hoy usa *plan* por un beneficio: le quedan *N* usos".
+- **Qué es un uso:** un video creado con el beneficio y aprobado con **Crear mi video**. Las propuestas que el negocio no aprueba no gastan usos. Si el video falla y se le devuelve el video del día, también vuelve el uso; si lo reintenta, lo gasta otra vez.
+- **No cambia** el monto mensual ni la fecha de pago (RN-53). Los videos por día del plan del beneficio siguen rigiendo: con 1 video por día, 5 usos son 5 días con video.
+- **No vence por fecha:** dura hasta que el negocio gaste sus usos o tú lo termines.
+- **Un solo beneficio vigente a la vez** (RN-51): para otorgar otro, termina antes el anterior.
+- **Al gastar sus usos, el negocio vuelve solo a su plan** (RN-52). No tienes que hacer nada.
+- **Propuestas creadas con el beneficio que todavía no se aprueban:** si el beneficio se agota o lo terminas, esas propuestas ya no se pueden aprobar; el negocio ve "Este video se creó con un beneficio que ya se usó por completo. Descártalo y crea otro con tu plan." (o "…que ya terminó…") y crea otro video con su plan.
 
 ### 13.3 La lista de beneficios
 
-La tarjeta **Beneficios** muestra los últimos 10, cada uno con su plan y su modelo de video, una etiqueta de estado, el período ("*desde* → *hasta*") y el motivo:
+La tarjeta **Beneficios** muestra los últimos 10, del más nuevo al más antiguo, cada uno con su plan y su modelo de video, una etiqueta de estado, sus usos ("3 de 5 usos · otorgado el *fecha y hora*") y el motivo. Los beneficios por fechas anteriores al 2026-11-25 muestran "Por fechas: *desde* → *hasta*" y quedaron como **Terminado**.
 
 | Etiqueta | Significado |
 |---|---|
-| **Programado** | Todavía no empieza. |
-| **Vigente** | Está en curso: el negocio usa ese plan. |
-| **Terminado** | Ya terminó (o lo terminaste). |
+| **Vigente** | Le quedan usos: el negocio usa ese plan. |
+| **Agotado** | El negocio ya gastó todos sus usos. |
+| **Terminado** | Lo terminaste (o es un beneficio por fechas anterior). |
 
-**Terminar antes de tiempo:** pulsa **Terminar** junto al beneficio y confirma "¿Terminar este beneficio ahora? El negocio vuelve a su plan." Un beneficio **Vigente** termina en ese momento y queda en la lista como **Terminado**; uno **Programado** se borra.
+**Terminar antes de tiempo:** pulsa **Terminar** junto al beneficio y confirma "¿Terminar este beneficio ahora? El negocio vuelve a su plan y pierde los usos que le quedan." Queda en la lista como **Terminado**.
 
 **Errores posibles:**
 
 | Mensaje | Qué hacer |
 |---|---|
-| "Un beneficio puede durar como máximo 30 días." | Acorta el período. |
-| "El fin del beneficio debe ser después del inicio." / "El beneficio ya habría terminado." | Corrige las fechas. |
+| "La cantidad de usos debe estar entre 1 y 30." | Corrige la cantidad. |
 | "El negocio ya tiene ese plan. Elige otro plan para el beneficio." | Elige otro plan. |
-| "El negocio ya tiene un beneficio en esas fechas. Termina el anterior o elige otras fechas." | Termina el beneficio anterior o cambia las fechas. |
+| "El negocio ya tiene un beneficio con usos. Termina el anterior antes de otorgar otro." | Termina el beneficio vigente y vuelve a otorgar. |
 
 > API: `GET` y `POST /api/admin/negocios/{id}/beneficios` y `DELETE /api/admin/negocios/{id}/beneficios/{idBeneficio}`.
 
@@ -600,7 +605,13 @@ Regla RF-07 y RN-32. Pulsa **Costos** en la barra superior (`/admin/costos`). La
 
 1. Elige el **Mes** arriba a la derecha. Viene con el mes en curso y no permite meses futuros.
 2. Arriba ves cuatro cifras del mes: **Total de *mes***, **Clips de video**, **Guiones** y **Videos con costo**.
-3. Debajo, una tabla con una fila por negocio que tuvo costos ese mes:
+3. Desde el 2026-11-25, debajo de las cifras, un **gráfico de líneas** con el costo **acumulado** de cada negocio, día por día, en el mes elegido (**Costo acumulado por negocio**):
+   - Una línea por negocio, cada una con su color, y arriba la leyenda con su nombre y su total del mes. El último punto de cada línea es el mismo total de la tabla.
+   - Pasa el puntero (o toca en el celular) sobre el gráfico para ver el costo de cada negocio ese día. Con el teclado, recórrelo con las flechas; `Esc` lo cierra.
+   - En el mes en curso, las líneas llegan hasta hoy.
+   - Con más de 6 negocios, los más baratos se juntan en una línea gris "Otros (*N* negocios)".
+   - Si el gráfico no carga, verás un aviso de error; la tabla sigue funcionando.
+4. Debajo, una tabla con una fila por negocio que tuvo costos ese mes:
 
 | Columna | Qué muestra |
 |---|---|
@@ -614,14 +625,14 @@ Regla RF-07 y RN-32. Pulsa **Costos** en la barra superior (`/admin/costos`). La
 - Al pie: "Son estimaciones con el costo de referencia de cada modelo (Ajustes → Integraciones); la factura real del proveedor puede variar un poco."
 
 **De dónde salen los números.** Cada llamada que el proveedor cobra guarda una fila en `registro_costo` (secciones 18.4 y 19.7):
-- **Guion:** cada respuesta de Gemini, aunque el guion no sirva, con el costo por guion del modelo (US$ 0.01 en la semilla).
+- **Guion:** cada respuesta de Gemini, aunque el guion no sirva, con el costo por guion del modelo (US$ 0.01 en la semilla). Desde el 2026-11-25 también cuenta como guion cada toma que Gemini ajusta con las correcciones de un negocio antes de regenerar un momento.
 - **Clip:** cada clip entregado, y también cada tarea enviada que se abandonó (por tiempo o porque el video pasó a error), porque el proveedor la cobra igual. Con Gemini Omni Flash, un clip de 4 s cuesta unos **US$ 0.28** (US$ 0.07 por segundo). Desde el 2026-11-25 (`V11`), con Veo 3.1 Lite, el del plan Lite, un clip de 4 s cuesta unos **US$ 0.20** (US$ 0.05 por segundo); los clips duran 4, 6 u 8 s según el momento del video (sección 19.7).
 
 El costo de cada modelo se edita en **Ajustes → Integraciones y claves** (sección 15.4). Cambiarlo no recalcula los costos ya registrados.
 
 El mismo costo del mes en curso se ve por negocio en su detalle (sección **Videos y costos**, sección 7), junto con el costo de cada video.
 
-> API: `GET /api/admin/costos?mes=AAAA-MM`.
+> API: `GET /api/admin/costos?mes=AAAA-MM` y, para el gráfico, `GET /api/admin/costos/diario?mes=AAAA-MM`.
 
 ---
 
@@ -852,7 +863,7 @@ Gemini usa la clave de **Google AI Studio** (secreto `autoreel/gemini`), la mism
 | El modelo de texto está inactivo, no es de texto, no cobra por solicitud o su adaptador no existe en el código (RN-56) | Igual | Sí (`CONFIGURACION_INVALIDA`) | No |
 | Gemini respondió 3 veces (o hasta cumplir 60 s) y ningún guion pasó las reglas RN-21 a RN-24 | `ERROR` con "No logramos escribir un guion que cumpla las reglas. Inténtalo de nuevo." El registro muestra "Guion inválido del video …" en nivel INFO | No | Sí, una vez por respuesta |
 | El backend se reinició (o falló) mientras escribía el guion | A los 3 minutos, la tarea vuelve a tomar el video y **llama a Gemini otra vez** | No | Las respuestas anteriores y las nuevas |
-| El producto ya no existe o no tiene fotos | `ERROR` definitivo (`video.error_definitivo = true`): no se llama a Gemini y no se ofrece **Reintentar** | No | No |
+| El producto ya no existe o no tiene foto | `ERROR` definitivo (`video.error_definitivo = true`): no se llama a Gemini y no se ofrece **Reintentar** | No | No |
 | Falla algo nuestro (no de Gemini) | `ERROR` con "Tuvimos un problema al preparar tu guion. Inténtalo de nuevo." No se reintenta solo. En el registro: "No se pudo escribir el guion del video" | No | Solo las respuestas anteriores |
 
 - **El video del día nunca se consume en esta etapa**: se consume al aprobar el storyboard.
@@ -1074,7 +1085,7 @@ Usa los mismos servicios de la aplicación (`ServicioGestionNegocios`, `Servicio
   - Logo PNG transparente de 512 × 512 px, generado en Java (círculo rosa con las letras "DE").
   - Colores `#be123c` y `#fde68a`, estilo **Casero**.
   - Especialidad: Tortas personalizadas, Postres individuales. Clientes: Familias, Celebraciones y cumpleaños. Lima, Miraflores. Pedidos por WhatsApp (`+51987654321`) y en la tienda. Horario: "Lunes a sábado de 9 a. m. a 8 p. m.". Qué lo diferencia: "Recetas caseras con fruta de temporada".
-- **Catálogo:** tres productos activos y **Listos**, cada uno con sus tres fotos (**9 imágenes de relleno** JPEG de 1080 × 1920 px, generadas en Java con un degradado, el nombre del producto, el tipo de foto y el texto "Imagen de ejemplo"): **Torta Tres Leches de Fresa**, **Cheesecake de Maracuyá** y **Alfajores de Maicena**.
+- **Catálogo:** tres productos activos y **Listos**, cada uno con su foto (desde el 2026-11-25, **3 imágenes de relleno** JPEG de 1080 × 1920 px, generadas en Java con un degradado, el nombre del producto, el texto "Foto del producto" y "Imagen de ejemplo"; antes eran tres fotos por producto): **Torta Tres Leches de Fresa**, **Cheesecake de Maracuyá** y **Alfajores de Maicena**.
 
 En el panel aparece en la lista de negocios como cualquier otro, y su detalle muestra el perfil y el catálogo.
 
@@ -1121,7 +1132,9 @@ Todas las respuestas de error de la API tienen la forma `{"codigo": "...", "mens
 | `PLAN_INVALIDO` | El plan elegido no existe o no está activo. | Crear negocio, cambiar plan, otorgar beneficio | Recarga la página y elige otro plan. |
 | `NICHO_INVALIDO` | El nicho elegido no existe. | Crear negocio | Recarga la página. |
 | `PAGO_FECHA_FUTURA` | La fecha del pago no puede ser posterior a hoy. | Registrar pago | Corrige la fecha. |
-| `BENEFICIO_MUY_LARGO`, `BENEFICIO_FECHAS_INVALIDAS`, `BENEFICIO_MISMO_PLAN`, `BENEFICIO_CRUZADO` | Ver la sección 13.3. | Otorgar beneficio | Corrige el plan o las fechas. |
+| `BENEFICIO_MISMO_PLAN`, `BENEFICIO_VIGENTE` y `DATOS_INVALIDOS` (usos fuera de 1 a 30) | Ver la sección 13.3. Hasta el 2026-11-25 también `BENEFICIO_MUY_LARGO`, `BENEFICIO_FECHAS_INVALIDAS` y `BENEFICIO_CRUZADO`. | Otorgar beneficio | Corrige el plan o los usos, o termina el beneficio vigente. |
+| `BENEFICIO_AGOTADO`, `BENEFICIO_TERMINADO` | Este video se creó con un beneficio que ya se usó por completo (o que ya terminó). Descártalo y crea otro con tu plan. | El negocio, al aprobar una propuesta | Explícale que cree otro video; usará su plan. |
+| `ARCHIVO_INVALIDO`, `TIPO_NO_PERMITIDO`, `ARCHIVO_DEMASIADO_GRANDE` | Ver la sección 11.3. | Registrar pago con comprobante | Sube otra imagen (JPG, PNG o WebP de hasta 5 MB). |
 | `PLAN_YA_EXISTE` | Ya existe un plan con ese nombre. | Crear o editar plan | Usa otro nombre. |
 | `MODELO_INVALIDO`, `MODELO_INACTIVO` | El modelo de texto debe ser un modelo de texto. / El modelo *X* está inactivo. Actívalo en Integraciones antes de asignarlo. | Crear o editar plan | Elige otro modelo o actívalo. |
 | `SIN_CREDENCIAL` | Configura la credencial *clave* antes de activar el modelo. | Activar un modelo | Pega la clave (sección 15.3). |
@@ -1129,7 +1142,7 @@ Todas las respuestas de error de la API tienen la forma `{"codigo": "...", "mens
 | `MODELO_YA_EXISTE` | Ya existe un modelo con ese adaptador e identificador. | Agregar o editar modelo | Edita el modelo que ya existe. |
 | `ADAPTADOR_INEXISTENTE` | El adaptador *X* no existe para … | Agregar o editar modelo | Elige un adaptador de la lista. |
 | `CREDENCIAL_INVALIDA` | La credencial parece un JSON pero no es válido. Pega el archivo completo de la cuenta de servicio. | Pegar una clave | Pega el JSON completo. |
-| `ACCION_NO_PERMITIDA_COMO_ADMINISTRADOR` | Mientras ves el negocio como administrador no puedes cambiar su contraseña. Usa "Reiniciar contraseña" en el panel. | Dentro de un negocio | Vuelve al panel y reinicia su contraseña. |
+| `ACCION_NO_PERMITIDA_COMO_ADMINISTRADOR` | Mientras ves el negocio como administrador no puedes cambiar su contraseña. Usa "Reiniciar contraseña" en el panel. (Desde el 2026-11-25, también "…no puedes pedir una contraseña temporal…".) | Dentro de un negocio | Vuelve al panel y reinicia su contraseña. Dentro de un negocio no aparece **¿Olvidaste tu contraseña?**. |
 | `NO_AUTENTICADO` | Tu sesión no está activa. Inicia sesión para continuar. | Cualquier pantalla | La sesión venció (8 horas) o se cerró: vuelve a entrar. |
 | `ACCESO_DENEGADO` | No tienes permiso para acceder a esta sección. | API | Un usuario intentó entrar a una sección que no le corresponde (o estás dentro de un negocio). |
 | `CSRF_INVALIDO` | Tu sesión de seguridad expiró. Recarga la página e inténtalo de nuevo. | Acciones que modifican datos | Recarga la página. |
@@ -1137,7 +1150,7 @@ Todas las respuestas de error de la API tienen la forma `{"codigo": "...", "mens
 | `NO_ENCONTRADO` | No encontramos ese negocio. (o ese plan, ese modelo, esa notificación) | Detalle y acciones | El dato no existe: vuelve a la lista. |
 | `ERROR_INTERNO` | Ocurrió un error inesperado. Inténtalo de nuevo en unos minutos. | Cualquier pantalla | Reintenta. Si persiste, revisa el registro del backend. |
 
-Los errores que ven los negocios al completar su perfil, subir imágenes o guardar productos (`PERFIL_INCOMPLETO`, `RESPUESTA_INVALIDA`, `FOTO_RESOLUCION_INSUFICIENTE`, `LOGO_DEBE_SER_PNG`, `PRODUCTO_NOMBRE_INVALIDO`, etc.) están explicados para el cliente en la sección 10 de `docs/manual-negocio.md`, y con su código en `docs/api.md`. Los de la propuesta del video (`TEXTO_MUY_LARGO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `VIDEO_NO_EDITABLE`, `VIDEOS_DEL_DIA_AGOTADOS`, `IA_NO_DISPONIBLE`, etc.) están en la sección 12.10 del mismo manual, y los de la revisión del video (`SIN_REGENERACIONES`, `IA_NO_DISPONIBLE`, `VIDEO_NO_DISPONIBLE`), en la sección 13.10. Sirven para orientar a un cliente que pide ayuda.
+Los errores que ven los negocios al completar su perfil, subir imágenes o guardar productos (`PERFIL_INCOMPLETO`, `RESPUESTA_INVALIDA`, `FOTO_RESOLUCION_INSUFICIENTE`, `LOGO_DEBE_SER_PNG`, `PRODUCTO_NOMBRE_INVALIDO`, etc.) están explicados para el cliente en la sección 10 de `docs/manual-negocio.md`, y con su código en `docs/api.md`. Los de la propuesta del video (`TEXTO_MUY_LARGO`, `PALABRA_PROHIBIDA`, `PRECIO_MUY_LARGO`, `VIDEO_NO_EDITABLE`, `VIDEOS_DEL_DIA_AGOTADOS`, `IA_NO_DISPONIBLE`, etc.) están en la sección 12.10 del mismo manual, y los de la revisión del video (`SIN_REGENERACIONES`, `IA_NO_DISPONIBLE`, `VIDEO_NO_DISPONIBLE` y, desde el 2026-11-25, `CORRECCION_NO_DISPONIBLE` y `CORRECCIONES_MUY_LARGAS`), en la sección 13.10. Sirven para orientar a un cliente que pide ayuda.
 
 ---
 
@@ -1145,7 +1158,9 @@ Los errores que ven los negocios al completar su perfil, subir imágenes o guard
 
 Lo que sigue **todavía no existe en el código** (plan de desarrollo, sección 9).
 
-### 22.1 Publicación en Instagram (pendiente, fase 6)
+### 22.1 Publicación en Instagram (fuera del MVP, fase 6)
+
+*Desde el 2026-11-25 (ADR 0026), la publicación en Instagram queda **fuera del MVP**:* el negocio ya no ve Instagram en Ajustes, descarga su video y lo sube a mano. Si se retoma:
 
 - El negocio conectará su cuenta profesional de Instagram desde Ajustes y podrá **publicar ahora** o **programar** su video aprobado (RF-27 a RF-29).
 - Los tokens de Instagram se guardarán cifrados y el administrador nunca los verá (RN-39).

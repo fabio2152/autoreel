@@ -13,6 +13,7 @@ import com.autoreel.facturacion.dominio.TipoNotificacion;
 import com.autoreel.facturacion.infraestructura.NotificacionRepositorio;
 import com.autoreel.facturacion.infraestructura.SuscripcionRepositorio;
 import com.autoreel.negocio.dominio.Negocio;
+import com.autoreel.negocio.infraestructura.NegocioRepositorio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Limit;
@@ -21,8 +22,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Notificaciones del administrador (RF-09): las de pago las crea la tarea diaria (RN-44 y RN-45) y las de integración,
- * una falla de un proveedor de IA (RN-57). Ninguna se repite para el mismo negocio (o modelo) y período.
+ * Notificaciones del administrador (RF-09): las de pago las crea la tarea diaria (RN-44 y RN-45), las de integración,
+ * una falla de un proveedor de IA (RN-57), y la solicitud de contraseña, el negocio desde Ajustes. Ninguna se repite
+ * para el mismo negocio (o modelo) y período.
  */
 @Service
 public class ServicioNotificaciones {
@@ -37,12 +39,14 @@ public class ServicioNotificaciones {
 
     private final NotificacionRepositorio notificaciones;
     private final SuscripcionRepositorio suscripciones;
+    private final NegocioRepositorio negocios;
     private final Clock reloj;
 
     public ServicioNotificaciones(NotificacionRepositorio notificaciones, SuscripcionRepositorio suscripciones,
-            Clock reloj) {
+            NegocioRepositorio negocios, Clock reloj) {
         this.notificaciones = notificaciones;
         this.suscripciones = suscripciones;
+        this.negocios = negocios;
         this.reloj = reloj;
     }
 
@@ -97,6 +101,26 @@ public class ServicioNotificaciones {
         crear(TipoNotificacion.INTEGRACION_CON_ERROR, null, modeloId, LocalDate.now(reloj), mensaje);
     }
 
+    /**
+     * El negocio olvidó su contraseña y le pide al administrador una temporal. Una por negocio y por día de Lima: si
+     * ya pidió hoy, no se crea otra (el administrador ya tiene el aviso).
+     *
+     * @param contacto WhatsApp opcional para que el administrador le envíe la contraseña.
+     */
+    @Transactional
+    public void solicitudDeContrasena(Long negocioId, String correo, String contacto, String mensaje) {
+        Negocio negocio = negocios.findById(negocioId)
+                .orElseThrow(() -> ExcepcionDeNegocio.noEncontrado("No encontramos ese negocio."));
+        StringBuilder texto = new StringBuilder(negocio.getNombre())
+                .append(" olvidó su contraseña y pide una temporal. Correo: ").append(correo).append('.');
+        String whatsapp = enUnaLinea(contacto);
+        if (!whatsapp.isEmpty()) {
+            texto.append(" WhatsApp: ").append(whatsapp).append('.');
+        }
+        texto.append(" Mensaje: ").append(enUnaLinea(mensaje));
+        crear(TipoNotificacion.SOLICITUD_CONTRASENA, negocioId, null, LocalDate.now(reloj), texto.toString());
+    }
+
     @Transactional(readOnly = true)
     public Bandeja bandeja() {
         return new Bandeja(notificaciones.countByLeidaFalse(), notificaciones.recientes(Limit.of(50)));
@@ -118,6 +142,10 @@ public class ServicioNotificaciones {
     @Transactional(propagation = Propagation.MANDATORY)
     public void pagoRegistrado(Long negocioId, LocalDate periodo) {
         notificaciones.marcarLeidasDePago(negocioId, periodo);
+    }
+
+    private static String enUnaLinea(String texto) {
+        return texto == null ? "" : texto.strip().replaceAll("\\s+", " ");
     }
 
     private int crear(TipoNotificacion tipo, Long negocioId, Long modeloId, LocalDate periodo, String mensaje) {

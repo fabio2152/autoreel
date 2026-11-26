@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { obtenerCostos } from '../api/admin'
+import { obtenerCostos, obtenerCostosDiarios } from '../api/admin'
 import { Aviso } from '../componentes/Aviso'
 import { Cargando } from '../componentes/Cargando'
 import { formatearCosto, formatearMes, hoyEnLima } from '../componentes/formato'
+import { GraficoCostos } from './GraficoCostos'
 
 /** RF-07: costo estimado de IA por negocio y por mes (calendario de Lima). */
 export function PaginaCostos() {
@@ -12,6 +13,11 @@ export function PaginaCostos() {
   const costos = useQuery({
     queryKey: ['costos', mes],
     queryFn: () => obtenerCostos(mes),
+    placeholderData: (anterior) => anterior,
+  })
+  const diarios = useQuery({
+    queryKey: ['costos', 'diario', mes],
+    queryFn: () => obtenerCostosDiarios(mes),
     placeholderData: (anterior) => anterior,
   })
 
@@ -46,6 +52,9 @@ export function PaginaCostos() {
             <Cifra nombre="Guiones" valor={formatearCosto(costos.data.total.guion)} />
             <Cifra nombre="Videos con costo" valor={String(costos.data.total.videos)} />
           </div>
+
+          {diarios.error && <Aviso tipo="error">No pudimos cargar el gráfico: {diarios.error.message}</Aviso>}
+          {diarios.data && diarios.data.negocios.length > 0 && <GraficoCostos datos={diarios.data} />}
 
           {costos.data.negocios.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center text-sm text-stone-600">

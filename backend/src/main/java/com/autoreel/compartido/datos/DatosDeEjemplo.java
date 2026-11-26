@@ -13,7 +13,6 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,10 +149,8 @@ public class DatosDeEjemplo implements ApplicationRunner {
         perfiles.completarOnboarding(negocioId);
 
         for (ProductoDeEjemplo producto : PRODUCTOS) {
-            Map<TipoFoto, String> fotos = new EnumMap<>(TipoFoto.class);
-            for (TipoFoto tipo : TipoFoto.values()) {
-                fotos.put(tipo, subir(negocioId, PropositoArchivo.FOTO_PRODUCTO, foto(producto, tipo), "image/jpeg"));
-            }
+            Map<TipoFoto, String> fotos = Map.of(TipoFoto.FOTO_1,
+                    subir(negocioId, PropositoArchivo.FOTO_PRODUCTO, foto(producto), "image/jpeg"));
             catalogo.crear(negocioId, new SolicitudProducto(producto.nombre(), producto.descripcion(),
                     producto.temporadas(), fotos));
         }
@@ -180,7 +177,7 @@ public class DatosDeEjemplo implements ApplicationRunner {
         return codificar(imagen, "png");
     }
 
-    private static byte[] foto(ProductoDeEjemplo producto, TipoFoto tipo) {
+    private static byte[] foto(ProductoDeEjemplo producto) {
         BufferedImage imagen = new BufferedImage(1080, 1920, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = lienzo(imagen);
         g.setPaint(new GradientPaint(0, 0, producto.color().brighter(), 0, 1920, producto.color().darker()));
@@ -189,11 +186,7 @@ public class DatosDeEjemplo implements ApplicationRunner {
         g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 64));
         centrar(g, producto.nombre(), 860);
         g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 56));
-        centrar(g, switch (tipo) {
-            case FOTO_1 -> "Foto 1: producto entero";
-            case FOTO_2 -> "Foto 2: detalle";
-            case FOTO_3 -> "Foto 3: porción";
-        }, 960);
+        centrar(g, "Foto del producto", 960);
         g.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 40));
         centrar(g, "Imagen de ejemplo", 1800);
         g.dispose();
