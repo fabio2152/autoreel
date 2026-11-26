@@ -37,7 +37,8 @@ La sección 19 ya nombra FFmpeg para la composición. Faltaba decidir cómo se u
 6. **Versiones por entorno.**
    - **PC de desarrollo:** FFmpeg 9, instalado con winget. Si no queda en el `PATH`, `FFMPEG_PATH` apunta al ejecutable (`.env.example`).
    - **CI:** el job del backend corre en `ubuntu-24.04` (ya no en `ubuntu-latest`) e instala el FFmpeg de apt; el paso imprime su versión.
-   - **Producción:** FFmpeg irá dentro de la imagen Docker del backend (futuro, fase 8).
+   - **Producción:** FFmpeg irá dentro de la imagen Docker del backend (futuro, fase 8). *Hecho en la fase 8 (2026-11-25, ADR 0027):* la imagen final de `backend/Dockerfile` es `debian:trixie-slim` con OpenJDK 21 JRE y **FFmpeg 7.1** de los repositorios de Debian trixie, en el `PATH` (sin `FFMPEG_PATH`).
+   - *Cambio del 2026-11-25 (ADR 0023):* ya no hay CI en GitHub Actions; `./mvnw verify` (con `FfmpegComponedorTest`) se corre en la PC antes de integrar.
 
 ## Alternativas consideradas
 
@@ -57,7 +58,7 @@ La sección 19 ya nombra FFmpeg para la composición. Faltaba decidir cómo se u
   - Un FFmpeg que falla o se cuelga no tumba el backend. Si falla la primera composición dos veces, el video pasa a `ERROR` y se devuelve el consumo del día (RN-27); si falla una recomposición, el video vuelve a `LISTO` con su MP4 anterior.
 - **Negativas y riesgos:**
   - **Hay que instalar FFmpeg en cada entorno.** Sin él, el backend arranca con un aviso, pero ningún video se puede componer. `./mvnw verify` también lo necesita: `FfmpegComponedorTest` usa `FFMPEG_PATH` y `FFPROBE_PATH`, o los del `PATH`.
-  - **Las versiones no son iguales:** FFmpeg 9 en la PC y el de los repositorios de Ubuntu 24.04 en el CI. Por eso el gráfico usa solo filtros comunes y la versión se registra al arrancar. La versión de producción se fija con la imagen Docker (futuro, fase 8).
+  - **Las versiones no son iguales:** FFmpeg 9 en la PC y el de los repositorios de Ubuntu 24.04 en el CI. Por eso el gráfico usa solo filtros comunes y la versión se registra al arrancar. La versión de producción se fija con la imagen Docker (futuro, fase 8). *Cambio del 2026-11-25:* sin CI desde el ADR 0023, las versiones son FFmpeg 9 en la PC (donde corren las pruebas) y FFmpeg 7.1 en la imagen Docker de AWS (ADR 0027); el backend registra la versión al arrancar en ambos.
   - **Usa CPU del mismo servidor que la API.** Se limita con `hilos: 2`, con el tope de 2 minutos y con un pool de 3 hilos para las tareas programadas (guiones, clips y composición), para que una composición no frene lo demás. Con mucho volumen, la composición tendría que ir a otro servidor.
   - **Disco temporal.** Cada composición escribe sus clips, fotos, música y salida en una carpeta temporal mientras dura.
   - La medida de los textos depende de que `DisenoDeTextos` y `drawtext` usen el mismo TTF; una tipografía nueva en el paquete de nicho se mide sola, pero conviene revisarla con un video real.

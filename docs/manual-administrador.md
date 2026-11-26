@@ -68,6 +68,7 @@ En el MVP existe **un solo administrador**, y no hay pantalla para crear otros.
   - En el perfil `dev`, el backend solo muestra un aviso en el registro y arranca sin administrador.
   - Fuera de `dev`, el backend no arranca.
 - **En desarrollo local**, los valores están en el `.env` de la raíz (copiado de `.env.example`).
+- **En AWS** (fase 8, ADR 0027), `ADMIN_EMAIL` y `ADMIN_PASSWORD` están en el secreto `autoreel/app` de Secrets Manager. Para la demostración se copiaron a AWS los datos de la base local, así que **el administrador de producción es el mismo de tu PC** (mismo correo y misma contraseña): el `ADMIN_PASSWORD` de `autoreel/app` no se usa mientras ya exista un administrador (`docs/despliegue-aws.md`, sección 7.3, paso 11).
 - **Cambiar la contraseña del administrador.** Todavía no hay pantalla para hacerlo. La API sí lo permite con `POST /api/auth/cambiar-contrasena`, enviando la contraseña actual, la nueva y su confirmación (ver `docs/api.md`). La página **Ajustes** del panel solo tiene **Integraciones y claves** y **Planes** (secciones 15 y 16); la página **Ajustes** de la aplicación del negocio (`/ajustes`) es para los usuarios de los negocios.
 
 ### 1.3 Dirección del panel
@@ -75,7 +76,7 @@ En el MVP existe **un solo administrador**, y no hay pantalla para crear otros.
 | Entorno | Dirección |
 |---|---|
 | Desarrollo local | `http://localhost:5173/login` (Vite envía `/api` al backend en `http://localhost:8080`) |
-| Producción | La de CloudFront **(pendiente, fase 8)**; ver `docs/despliegue-aws.md` |
+| Producción | `https://autoreel.sapps.lat/login` (AWS, fase 8, ADR 0027): el backend sirve el panel y la API detrás de un balanceador con HTTPS; ver `docs/despliegue-aws.md` |
 
 La dirección del frontend se configura con la variable `APP_URL`. Con ella se arma también el enlace que se entrega a cada cliente: `APP_URL` + `/login`.
 
@@ -694,7 +695,7 @@ Cada tarjeta muestra:
 - **Nunca en la base de datos ni en el código.** Los modelos solo guardan el **nombre** del secreto (`autoreel/gemini`, `autoreel/google-cloud`).
 - **En desarrollo** se guarda en el archivo `credenciales/secretos-del-panel.json` de la raíz del repositorio (variable `SECRETOS_PANEL_ARCHIVO`), que git ignora. Quien tenga acceso a tu PC puede leerlo, igual que el `.env`.
 - **Nunca se vuelve a mostrar**: ni en el panel ni en el registro del backend, que solo anota "El administrador cambió la credencial *nombre*". Si la olvidas, crea otra en Google y pégala.
-- **En producción** se guardará en AWS Secrets Manager **(pendiente, fase 8)**.
+- **En producción** (AWS, fase 8) se guarda en **AWS Secrets Manager** (`autoreel/gemini` o `autoreel/google-cloud`). Allí **Quitar la de Ajustes borra el secreto sin recuperación**: no hay `.env` al que volver, y la tarjeta pasa a **Sin configurar**.
 - **La otra forma, con el `.env`**, sigue funcionando: `GEMINI_API_KEY=<tu clave>` (sin comillas) para AI Studio, o `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO=<ruta completa del JSON, con barras />` para Google Cloud (la variable anterior, `VEO_CREDENCIAL_ARCHIVO`, sigue sirviendo). El `.env` se lee **al arrancar**: si lo cambias, reinicia el backend. Solo se versiona `.env.example`, con esas variables vacías.
 - **Nunca** escribas una clave en el código, en un commit ni en un chat. Si se filtra, bórrala en la consola de Google y crea otra.
 
@@ -990,7 +991,7 @@ La composición ejecuta **FFmpeg** como programa externo. Sin FFmpeg no se puede
 - **`FFMPEG_PATH`** (en el `.env`): déjala en `ffmpeg` si FFmpeg está en el `PATH`; si no, pon la ruta completa al ejecutable, con barras `/` (en Windows, el `ffmpeg.exe` de la carpeta `bin` de la instalación de winget).
 - **Al arrancar**, el backend registra la versión: "FFmpeg disponible: ffmpeg version …". Si no lo encuentra, registra "No se encontró FFmpeg en '…'; los videos no se podrán componer". Arranca igual, pero cada video nuevo terminará en **Error** (con el video del día devuelto) hasta que lo corrijas y reinicies.
 - Cada composición tiene un tope de **2 minutos** y trabaja en una carpeta temporal que se borra al terminar (`autoreel.ffmpeg` en `application.yml`).
-- **En el CI**, el job del backend corre en `ubuntu-24.04` e instala FFmpeg con `apt`. **En producción** irá en la imagen Docker del backend **(pendiente, fase 8)**.
+- **En el CI**, el job del backend corre en `ubuntu-24.04` e instala FFmpeg con `apt`. **En producción** irá en la imagen Docker del backend **(pendiente, fase 8)**. *Cambio del 2026-11-25:* ya no hay CI (ADR 0023): las pruebas con FFmpeg corren en tu PC con `./mvnw verify`. En AWS, FFmpeg 7.1 va dentro de la imagen Docker del backend (ADR 0027); no hay que definir `FFMPEG_PATH`.
 
 **Música y tipografías.** La música sale de la tabla `pista_musical`, que el paquete de nicho llena al arrancar desde `nichos/pasteleria/musica.json` (el registro muestra "Pista de música registrada: …"). Hoy hay **tres pistas de relleno**, una por estilo (casero, elegante, divertido); la música real con licencia comercial está pendiente (P-02). Las tipografías son de Google Fonts con licencia OFL, una por estilo: Nunito, Playfair Display y Fredoka (P-05). Cada video guarda su pista para que una recomposición use la misma.
 
@@ -1167,11 +1168,13 @@ Lo que sigue **todavía no existe en el código** (plan de desarrollo, sección 
 - En el detalle del negocio aparecerán los estados **Programado** y **Publicado**.
 - Hoy el negocio **descarga** su video y lo sube a Instagram a mano.
 
-### 22.2 Despliegue en AWS (pendiente, fase 8)
+### 22.2 Despliegue en AWS (hecho en la fase 8, ADR 0027)
 
-- La dirección de producción será la de CloudFront.
-- Las claves que pegues en Ajustes se guardarán en **AWS Secrets Manager** en lugar del archivo `credenciales/secretos-del-panel.json`.
-- FFmpeg irá en la imagen Docker del backend.
+- La dirección de producción es **`https://autoreel.sapps.lat`**: el panel se abre en `https://autoreel.sapps.lat/login`, y es también el `APP_URL` del enlace que se entrega a cada negocio. *Cambio del 2026-11-25 (ADR 0027):* se iba a usar CloudFront; ahora el backend sirve el frontend detrás de un Application Load Balancer con HTTPS.
+- **Entras con el mismo administrador de tu PC** (mismo correo y contraseña): para la demostración se copiaron a AWS la base de datos y los archivos locales (sección 1.2).
+- Las claves que pegues en Ajustes se guardan en **AWS Secrets Manager** en lugar del archivo `credenciales/secretos-del-panel.json`.
+- FFmpeg 7.1 va en la imagen Docker del backend.
+- Publicar una versión nueva, volver atrás, revisar los registros (en Docker, en la instancia) y apagar todo después de la demostración: `docs/despliegue-aws.md`.
 
 ### 22.3 Otros pendientes
 

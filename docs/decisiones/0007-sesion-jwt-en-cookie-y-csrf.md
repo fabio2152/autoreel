@@ -97,6 +97,6 @@ sequenceDiagram
 - **Negativas:**
   - Cada petición autenticada hace una consulta a la base de datos (usuario más negocio). Con el volumen del MVP es aceptable; si creciera, podría agregarse una caché breve.
   - Las peticiones que modifican datos necesitan la cabecera CSRF: el frontend, las pruebas (`.with(csrf())`) y Swagger UI (`springdoc.swagger-ui.csrf.enabled=true`) deben enviarla.
-  - Funciona solo si el frontend y la API comparten origen, ya sea con el proxy de Vite o con CloudFront (futuro, fase 8). La cookie `Secure` exige HTTPS fuera del perfil `dev`.
+  - Funciona solo si el frontend y la API comparten origen, ya sea con el proxy de Vite o con CloudFront (futuro, fase 8). La cookie `Secure` exige HTTPS fuera del perfil `dev`. *Cambio del 2026-11-25 (ADR 0027):* en AWS no hay CloudFront; el Application Load Balancer termina el HTTPS y envía todo al backend, que sirve también el frontend compilado, así que ambos comparten el origen `https://autoreel.sapps.lat`.
   - Hay más código propio de seguridad que mantener: el filtro, la cookie y las respuestas de error.
 - **Futuro:** la conexión OAuth con Instagram (futuro, fase 6) es un flujo distinto y no cambia esta decisión.

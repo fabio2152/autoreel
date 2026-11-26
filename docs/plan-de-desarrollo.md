@@ -1,6 +1,6 @@
 # AutoReel — Plan de desarrollo
 
-> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Después de la pausa se hicieron los proveedores de Google, la fase 7, la revisión del flujo del negocio, "Reintentar" y, el 2026-11-12, la mejora de la calidad del video (sección 9, ADR 0021). *Actualización del 2026-11-25:* la **fase 8 (despliegue en AWS) está en curso** en la rama `fase-8-despliegue`, para la demostración del 2026-11-26 (ADR 0027, sección 9.3). Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
+> Estado: **fases 1 a 5 integradas a `main`** (pull requests #1 a #5, 2026-11-04): el corazón del MVP está completo y una pastelería ya puede crear, revisar y descargar su video. **El desarrollo está en pausa por decisión del usuario** (2026-11-04): la fase 6 (Instagram) y las siguientes quedan pendientes, documentadas en la sección 9. Después de la pausa se hicieron los proveedores de Google, la fase 7, la revisión del flujo del negocio, "Reintentar" y, el 2026-11-12, la mejora de la calidad del video (sección 9, ADR 0021). *Actualización del 2026-11-25:* la **fase 8 (despliegue en AWS) está en curso** en la rama `fase-8-despliegue`, para la demostración del 2026-11-26 (ADR 0027, sección 9.3). *Actualización del 2026-11-26:* la fase 8 está integrada a `main` (PR #30) y AutoReel corre en `https://autoreel.sapps.lat`. Este documento es la hoja de ruta del MVP por fases, tomada del plan aprobado y de la sección 19 de `docs/especificacion.md`. Se actualiza al cerrar cada fase.
 
 ## 1. Cómo se trabaja
 
@@ -12,7 +12,7 @@
   1. Casos de verificación de la fase (sección 17) revisados.
   2. `CHANGELOG.md` y la documentación de `docs/` actualizados.
   3. Pull request abierto e integrado después de verificar en local: `./mvnw verify` en el backend; `npm run lint` y `npm run build` en el frontend. *Desde el 2026-11-25 no hay CI en GitHub Actions (ADR 0023).*
-- **Proyecto individual** (Fabio Malpartida). Por eso `docs/` y `.claude/` son locales y están en `.gitignore`.
+- **Proyecto individual** (Fabio Malpartida). Por eso `docs/` y `.claude/` son locales y están en `.gitignore`. *Cambio del 2026-11-06:* desde el commit `85b9656` (PR #11), `docs/` se versiona en el repositorio; solo `CLAUDE.md` y `.claude/` quedan locales (ADR 0008).
 
 ## 2. Hoja de ruta del MVP
 
@@ -25,7 +25,7 @@
 | 5 Generación | `fase-5-generacion` | Adaptador de video (Veo en Google Cloud), tabla de tareas y `@Scheduled`, `FfmpegComponedor`, respaldo, revisión, consumo diario, biblioteca de música | V22–V27 |
 | 6 Publicación | `fase-6-publicacion` | OAuth de Instagram, `InstagramPublicador`, publicar ahora y programar | V28–V31 |
 | 7 Facturación | `fase-7-facturacion` | Pagos, tarea diaria de estados, notificaciones, gestión de planes, cambio de plan, integraciones (con claves pegadas en el panel), beneficios, costos y entrar como el negocio. **Completa (PR #8), adelantada a la 6** | V32, V34–V41 |
-| 8 Despliegue | `fase-8-despliegue` | AWS: S3, RDS, EC2 o Beanstalk con FFmpeg, CloudFront, Secrets Manager. *Desde el 2026-11-25 (ADR 0027):* una EC2 con Docker detrás de un Application Load Balancer, RDS, S3 y Secrets Manager; el backend sirve el frontend, sin CloudFront. **En curso** | Guion de demostración (sec. 20) |
+| 8 Despliegue | `fase-8-despliegue` | AWS: S3, RDS, EC2 o Beanstalk con FFmpeg, CloudFront, Secrets Manager. *Desde el 2026-11-25 (ADR 0027):* una EC2 con Docker detrás de un Application Load Balancer, RDS, S3 y Secrets Manager; el backend sirve el frontend, sin CloudFront. **Completa (PR #30)**, en `https://autoreel.sapps.lat` | Guion de demostración (sec. 20) |
 | 9 Opcional | `fase-9-opcional` | Rekognition (RN-15) | — |
 
 Las fases 1 a 5 son el corazón del MVP: con ellas, una pastelería ya puede crear y descargar su video (sección 19).
@@ -462,7 +462,7 @@ Del diseño revisado y del usuario (detalle en `docs/plan-fase-5.md`):
 - **Recomponer no destruye:** cada composición usa una clave nueva y la anterior se borra solo al confirmar.
 - **Fotos preparadas en Java** (orientación EXIF y recorte 9:16) antes de ir a Veo y al respaldo, para no depender de cómo cada versión de FFmpeg trata el EXIF.
 - **Música de relleno (P-02) y tipografías OFL (P-05) dentro del paquete de nicho**, como el resto del contenido del nicho.
-- **FFmpeg:** con winget en la PC y con apt en el CI; en producción, en el servidor (fase 8).
+- **FFmpeg:** con winget en la PC y con apt en el CI; en producción, en el servidor (fase 8). *Cambio del 2026-11-25:* el CI se quitó (ADR 0023) y en AWS FFmpeg 7.1 va dentro de la imagen Docker del backend (ADR 0027).
 - **Sin temporadas ni fechas especiales** (decisión de la fase 3).
 
 ### 7.5 Pendientes y requisitos parciales de la fase 5
