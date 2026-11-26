@@ -15,6 +15,7 @@ import com.autoreel.ia.dominio.ProveedorDeSecretos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -28,9 +29,10 @@ import tools.jackson.databind.ObjectMapper;
  * <li>{@code autoreel.secretos-en-archivo}: la ruta de un archivo con el secreto (por ejemplo, el JSON de la cuenta
  * de servicio de Google Cloud, que tiene saltos de línea y no cabe bien en el {@code .env}).</li>
  * </ol>
- * En producción se reemplaza por AWS Secrets Manager (fase 8). Nunca se registra un valor en el log.
+ * En AWS (perfil {@code aws}) la reemplaza {@link SecretosDeAws}. Nunca se registra un valor en el log.
  */
 @Component
+@Profile("!aws")
 public class SecretosDeConfiguracion implements ProveedorDeSecretos, AlmacenDeSecretos {
 
     private static final Logger log = LoggerFactory.getLogger(SecretosDeConfiguracion.class);

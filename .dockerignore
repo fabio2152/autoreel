@@ -1,0 +1,18 @@
+# Contexto de backend/Dockerfile (la raíz del repositorio): solo entra lo necesario para construir la imagen.
+# Nunca entran .env, credenciales/, docs/ ni deploy/.
+*
+!backend/
+!frontend/
+
+backend/target/
+backend/Dockerfile
+frontend/node_modules/
+frontend/dist/
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/credenciales/
+**/*.log
+**/.idea/
+**/.vscode/

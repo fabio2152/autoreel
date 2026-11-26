@@ -1,0 +1,3 @@
+# Secretos de arranque desde AWS Secrets Manager (perfil aws; sin SECRETOS_DE_ARRANQUE no hace nada).
+org.springframework.boot.EnvironmentPostProcessor=\
+com.autoreel.compartido.config.SecretosDeArranque

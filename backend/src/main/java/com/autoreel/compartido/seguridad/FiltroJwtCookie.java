@@ -42,6 +42,12 @@ public class FiltroJwtCookie extends OncePerRequestFilter {
         this.negocios = negocios;
     }
 
+    /** El frontend compilado no necesita la sesión: así no se consulta la base de datos por cada archivo. */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest peticion) {
+        return !peticion.getRequestURI().startsWith(peticion.getContextPath() + "/api/");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest peticion, HttpServletResponse respuesta, FilterChain cadena)
             throws ServletException, IOException {
