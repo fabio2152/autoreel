@@ -395,7 +395,7 @@ Las claves de los mapas van **entre comillas y corchetes**: sin comillas, YAML f
 - `GOOGLE_CLOUD_CREDENCIAL_ARCHIVO` → `autoreel/google-cloud`: la **ruta** al JSON de la cuenta de servicio, guardado fuera del repositorio (por ejemplo, en `credenciales/`). La variable anterior, `VEO_CREDENCIAL_ARCHIVO`, sigue funcionando como respaldo. Si la ruta no existe o no se puede leer, el secreto queda vacío y el log avisa **solo con la ruta**.
 - `.env.example` tiene las dos vacías. El perfil `test` deja los secretos vacíos y usa `target/secretos-del-panel-prueba.json` para el archivo del panel.
 
-**En producción** (fase 8), `ProveedorDeSecretos` y `AlmacenDeSecretos` se implementarán con AWS Secrets Manager, con el mismo nombre de secreto: el panel escribirá con `PutSecretValue`. En el servidor de AWS el disco no debe guardar claves (`docs/despliegue-aws.md`).
+**En producción** (fase 8), `ProveedorDeSecretos` y `AlmacenDeSecretos` se implementarán con AWS Secrets Manager, con el mismo nombre de secreto: el panel escribirá con `PutSecretValue`. En el servidor de AWS el disco no debe guardar claves (`docs/despliegue-aws.md`). *Hecho en la fase 8 (ADR 0027):* `SecretosDeAws` (perfil `aws`) implementa los dos puertos: lee con `GetSecretValue` y guarda con `PutSecretValue` o `CreateSecret`; quitar la clave desde el panel la borra sin recuperación (`docs/despliegue-aws.md`, sección 2.3).
 
 Entonces:
 
@@ -545,7 +545,7 @@ El valor de `adaptador()` (por ejemplo, `CLAUDE`) es el que va en `modelo_ia.ada
 - En `application-test.yml`, pon una URL que no responda y una lectura corta, como hoy con Gemini.
 - **La credencial** se pega en el panel (sección 3.3): basta con que el modelo use un nombre de secreto nuevo, por ejemplo `autoreel/claude`. Si también quieres leerla del `.env`, agrega la línea en `autoreel.secretos` y la variable vacía en `.env.example`.
 - Para que el formulario del panel explique qué pegar, agrega el nombre del secreto a `CREDENCIALES_CONOCIDAS` en `frontend/src/admin/SeccionIntegraciones.tsx`, con su título y su ayuda. Si la credencial es un JSON, pon `json: true` para que el formulario muestre un área de texto en lugar de un campo de contraseña.
-- En producción, el secreto irá a AWS Secrets Manager; documéntalo en `docs/despliegue-aws.md` (fase 8).
+- En producción, el secreto irá a AWS Secrets Manager; documéntalo en `docs/despliegue-aws.md` (fase 8). *Desde la fase 8 (ADR 0027):* el rol de la instancia solo puede leer y escribir `autoreel/gemini*` y `autoreel/google-cloud*`; un nombre de secreto nuevo (por ejemplo, `autoreel/claude`) exige ampliar la política IAM (`docs/despliegue-aws.md`, sección 5).
 
 ### Paso 5. Registrar sus modelos
 

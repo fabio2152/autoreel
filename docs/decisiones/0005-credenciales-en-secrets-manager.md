@@ -1,6 +1,6 @@
 # ADR 0005 — Credenciales en variables de entorno y en AWS Secrets Manager
 
-- **Estado:** Aceptada; modificada por el ADR 0018 (las claves de IA también se pegan en el panel, siempre fuera de la base de datos)
+- **Estado:** Aceptada; modificada por el ADR 0018 (las claves de IA también se pegan en el panel, siempre fuera de la base de datos); concretada en AWS por el ADR 0027 (Secrets Manager)
 - **Fecha:** 2026-11-03
 
 ## Contexto
@@ -20,6 +20,7 @@ Una credencial filtrada en el repositorio o en la base de datos compromete a tod
    - El `.env` está en `.gitignore`. Solo se versiona `.env.example`, con valores de ejemplo y agrupado por fase.
    - Lo leen `docker compose` (Postgres) y el backend con el perfil `dev`, que lo importa en `application-dev.yml` con `spring.config.import: optional:file:../.env[.properties]`.
 3. **En producción** (futuro, fase 8), las credenciales vienen de **AWS Secrets Manager**, o de Parameter Store, que la sección 11.4 admite como alternativa.
+   - *Hecho en la fase 8 (2026-11-25, ADR 0027):* se usa **Secrets Manager**, no Parameter Store. `SecretosDeArranque` carga el secreto JSON `autoreel/app` (`DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`) antes de arrancar Spring, y `SecretosDeAws` (perfil `aws`) lee y escribe `autoreel/gemini` y `autoreel/google-cloud`. Sin claves `AWS_*`: se usa el rol de la instancia (`docs/despliegue-aws.md`, sección 2).
 4. **`application.yml` referencia cada variable de forma explícita** (`${DB_URL}`, `${DB_USER}`, `${DB_PASSWORD}`, `${JWT_SECRET}`, `${APP_URL}`), sin valores por defecto para los secretos. Si falta un secreto, el backend no arranca.
    - `JWT_SECRET` se valida al iniciar en `ServicioJwt`: debe estar en base64 y tener al menos 32 bytes.
    - `PropiedadesSeguridad` es `@Validated`.
@@ -68,5 +69,5 @@ Una credencial filtrada en el repositorio o en la base de datos compromete a tod
   - Una configuración incompleta falla al arrancar y no en mitad de una petición.
 - **Negativas:**
   - Hay que mantener `.env.example` al día en cada fase.
-  - En la fase 8 habrá que configurar Secrets Manager, los permisos de IAM y la carga de los secretos al arrancar, y documentarlo en `docs/despliegue-aws.md`.
+  - En la fase 8 habrá que configurar Secrets Manager, los permisos de IAM y la carga de los secretos al arrancar, y documentarlo en `docs/despliegue-aws.md`. *Hecho en la fase 8 (ADR 0027).*
   - Agregar una credencial nueva obliga a desplegar la configuración: no se puede hacer desde el panel.

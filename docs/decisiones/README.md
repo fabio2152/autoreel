@@ -20,10 +20,10 @@ Las partes que todavía no existen en el código se marcan como "(futuro, fase N
 | [0002](0002-monolito-modular.md) | Monolito modular en el backend | Aceptada | 2026-11-03 |
 | [0003](0003-dos-modelos-ia-plantilla-fija.md) | Dos modelos de IA, con plantilla fija para el video | Aceptada | 2026-11-03 |
 | [0004](0004-tareas-en-base-de-datos.md) | Tareas en segundo plano en la base de datos, en lugar de colas | Aceptada | 2026-11-03 |
-| [0005](0005-credenciales-en-secrets-manager.md) | Credenciales en variables de entorno y en AWS Secrets Manager | Aceptada, modificada por 0018 | 2026-11-03 |
+| [0005](0005-credenciales-en-secrets-manager.md) | Credenciales en variables de entorno y en AWS Secrets Manager | Aceptada, modificada por 0018; en AWS, Secrets Manager (0027) | 2026-11-03 |
 | [0006](0006-spring-boot-4.md) | Spring Boot 4 en lugar de Spring Boot 3 | Aceptada | 2026-11-03 |
 | [0007](0007-sesion-jwt-en-cookie-y-csrf.md) | Sesión con JWT en cookie HttpOnly, CSRF para SPA y filtro propio | Aceptada | 2026-11-03 |
-| [0008](0008-documentacion-local.md) | Documentación local, fuera del control de versiones | Aceptada | 2026-11-03 |
+| [0008](0008-documentacion-local.md) | Documentación local, fuera del control de versiones | Aceptada; modificada el 2026-11-06: `docs/` se versiona y solo `CLAUDE.md` y `.claude/` quedan locales | 2026-11-03 |
 | [0009](0009-seaweedfs-como-s3-local.md) | SeaweedFS como S3 local | Aceptada | 2026-11-04 |
 | [0010](0010-subida-directa-con-verificacion.md) | Subida directa al almacenamiento, con verificación y copia a la clave definitiva | Aceptada | 2026-11-04 |
 | [0011](0011-contenido-del-nicho-en-json.md) | Contenido del paquete de nicho en archivos JSON | Aceptada | 2026-11-04 |
@@ -31,9 +31,9 @@ Las partes que todavía no existen en el código se marcan como "(futuro, fase N
 | [0013](0013-sin-temporadas-en-el-mvp.md) | Sin fechas especiales ni temporadas en el flujo del video del MVP | Aceptada | 2026-11-04 |
 | [0014](0014-procesador-de-guiones-con-reclamo.md) | Un solo procesador de guiones, con reclamo en la base de datos | Aceptada, modificada por 0021 | 2026-11-04 |
 | [0015](0015-veo-en-google-cloud.md) | Veo en Google Cloud (Vertex AI) como modelo de video | Aceptada, reemplazada en parte por 0017 | 2026-11-04 |
-| [0016](0016-composicion-con-ffmpeg.md) | Composición del video con FFmpeg como proceso externo | Aceptada; sin acercamiento de respaldo (0020); fundidos y cierre nuevo (0021) | 2026-11-04 |
+| [0016](0016-composicion-con-ffmpeg.md) | Composición del video con FFmpeg como proceso externo | Aceptada; sin acercamiento de respaldo (0020); fundidos y cierre nuevo (0021); FFmpeg 7.1 en la imagen Docker de AWS (0027) | 2026-11-04 |
 | [0017](0017-dos-caminos-de-google.md) | Dos caminos de Google para texto y video: AI Studio (activo) y Google Cloud (listo) | Aceptada | 2026-11-05 |
-| [0018](0018-claves-desde-el-panel.md) | Las claves de IA se pegan en Ajustes, pero viven fuera de la base de datos | Aceptada | 2026-11-06 |
+| [0018](0018-claves-desde-el-panel.md) | Las claves de IA se pegan en Ajustes, pero viven fuera de la base de datos | Aceptada; en AWS, `SecretosDeAws` (0027) | 2026-11-06 |
 | [0019](0019-entrar-como-el-negocio.md) | El administrador puede entrar como un negocio | Aceptada | 2026-11-06 |
 | [0020](0020-sin-respaldo-sin-ia-para-los-clips.md) | Sin respaldo sin IA para los clips | Aceptada, modificada por 0021 | 2026-11-06 |
 | [0021](0021-calidad-del-video.md) | Calidad del video: guion publicitario, cierre de la IA, cámara 3D y fundidos (sin guion de respaldo) | Aceptada; movimientos modificados por 0022 | 2026-11-12 |

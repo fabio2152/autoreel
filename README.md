@@ -4,7 +4,7 @@ Plataforma web para que negocios pequeños, sin conocimientos de marketing, cree
 
 El MVP atiende un solo nicho: **pastelerías y postres**. El administrador de la plataforma crea cada negocio, le asigna un plan y una fecha de pago, y le entrega su acceso.
 
-> **Estado:** fases 1 a 5 y 7 terminadas: el negocio crea, revisa y descarga su video, y el administrador gestiona negocios, pagos, planes, integraciones de IA, beneficios y costos. La publicación en Instagram (fase 6) está fuera del MVP y el despliegue en AWS (fase 8) está en curso. Ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Estado:** fases 1 a 5 y 7 terminadas: el negocio crea, revisa y descarga su video, y el administrador gestiona negocios, pagos, planes, integraciones de IA, beneficios y costos. El despliegue en AWS (fase 8) también está terminado: AutoReel corre en https://autoreel.sapps.lat. La publicación en Instagram (fase 6) está fuera del MVP. Ver [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tecnologías
 
@@ -67,7 +67,7 @@ Arquitectura: API REST en un **monolito modular** (`backend/`, paquete `com.auto
   1. En Inicio, el chat del video del día. Cada pregunta se responde con un botón o escribiendo, y trae un ejemplo. Al terminarlo, "Ver mi propuesta" abre el storyboard (`/videos/{id}`), donde se editan los textos, se cambian las fotos y se ajusta el precio.
   2. "Crear mi video" usa el video del día y muestra "Creando tu video" con el avance de cada plano. Se puede salir: cuando termina, la aplicación avisa "Tu video está listo".
   3. En la revisión se ve el video, se regenera un plano (hasta 3 veces en el plan Lite), se edita un texto o el precio (no gasta regeneraciones) y se aprueba.
-  4. "Descargar" baja el MP4 de 15 segundos. Todos los videos quedan en "Mis videos" (`/videos`). La publicación en Instagram llega en la fase 6.
+  4. "Descargar" baja el MP4 de 15 segundos. Todos los videos quedan en "Mis videos" (`/videos`). La publicación en Instagram quedó fuera del MVP (ADR 0026): el negocio descarga el video y lo sube él mismo.
 - **Negocio nuevo:** créalo desde el panel (`/admin` → "Crear negocio"). El sistema muestra una contraseña temporal una sola vez; al entrar con ella, el negocio crea su propia contraseña y pasa por el onboarding. Para la demostración en vivo de la sección 20, usa un correo distinto del negocio de ejemplo.
 
 ### Probar desde el celular
@@ -95,4 +95,4 @@ El script construye la imagen (`backend/Dockerfile`), la copia por SSH y la leva
 
 ## Documentación
 
-La especificación, la arquitectura, el modelo de datos, los ADR, los manuales y las reglas de trabajo del proyecto (`CLAUDE.md`) se mantienen solo en local: la carpeta `docs/`, `.claude/` y `CLAUDE.md` no se versionan.
+La especificación, la arquitectura, el modelo de datos, los ADR, la guía de la API, el despliegue en AWS y los manuales están en la carpeta [`docs/`](docs/), versionada en el repositorio desde el 2026-11-06. Solo las reglas de trabajo con Claude Code (`CLAUDE.md` y `.claude/`) se mantienen en local y no se versionan.

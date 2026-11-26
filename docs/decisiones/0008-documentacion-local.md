@@ -1,7 +1,9 @@
 # ADR 0008 — Documentación local, fuera del control de versiones
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; modificada el 2026-11-06: `docs/` se versiona en el repositorio y solo `CLAUDE.md` y `.claude/` quedan locales
 - **Fecha:** 2026-11-03
+
+> *Cambio del 2026-11-06:* con el commit `85b9656` ("docs: documentacion del proyecto en el repositorio", PR #11), `/docs/` salió del `.gitignore` y **la carpeta `docs/` se versiona** en el repositorio de GitHub, hoy público. Solo `CLAUDE.md` y `.claude/` siguen en `.gitignore`, como documentación local. Lo que sigue describe la decisión original: el punto 1 vale ahora solo para `.claude/` (y `CLAUDE.md`), el respaldo manual del punto 4 ya no hace falta para `docs/`, y los riesgos "sin respaldo en git" y "sin historial" dejaron de aplicar a `docs/`.
 
 ## Contexto
 

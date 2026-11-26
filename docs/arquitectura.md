@@ -27,7 +27,7 @@
 > - perfil `aws` con `SecretosDeAws` (secretos de IA en Secrets Manager) y `SecretosDeArranque` (secreto `autoreel/app`);
 > - una EC2 detrás de un Application Load Balancer, RDS, S3 y Secrets Manager, sin CloudFront (sección 11.3).
 >
-> La **fase 6 (Instagram) está en pausa** (desde el 2026-11-25, fuera del MVP, ADR 0026), la fase 8 está en curso y la 9 pendiente (`docs/plan-de-desarrollo.md`, sección 9). Este documento describe lo que existe hoy en el código y marca como **(futuro, fase N)** lo que todavía no está implementado. Se actualiza al cerrar cada fase (especificación, sección 23).
+> La **fase 6 (Instagram) está en pausa** (desde el 2026-11-25, fuera del MVP, ADR 0026), la fase 8 está terminada (PR #30, en `https://autoreel.sapps.lat`) y la 9 pendiente (`docs/plan-de-desarrollo.md`, sección 9). Este documento describe lo que existe hoy en el código y marca como **(futuro, fase N)** lo que todavía no está implementado. Se actualiza al cerrar cada fase (especificación, sección 23).
 >
 > Documentos relacionados: `docs/especificacion.md` (secciones 7, 8, 11, 12 y 19), `docs/contexto-vision.md`, `docs/plan-de-desarrollo.md` (secciones 9 y 10), `docs/api.md`, `docs/modelo-de-datos.md`, `docs/plan-fase-2.md`, `docs/plan-fase-3.md`, `docs/plan-fase-4.md`, `docs/plan-fase-5.md`, `docs/guias/nuevo-nicho.md`, `docs/guias/nuevo-proveedor-ia.md` y los ADR de `docs/decisiones/` (en especial 0017 a 0021 y 0027) y `docs/despliegue-aws.md`.
 
@@ -2207,7 +2207,7 @@ flowchart LR
 
 ### 11.3 Despliegue en AWS (fase 8, ADR 0027)
 
-*Cambio del 2026-11-25 (ADR 0027):* la sección 11.4 de la especificación preveía CloudFront con el frontend en S3. Para la demostración del 2026-11-26, Fabio decidió usar solo los servicios de AWS necesarios: un balanceador con HTTPS delante de una EC2 donde el backend sirve también el frontend. La creación de los recursos con la AWS CLI está en curso (rama `fase-8-despliegue`).
+*Cambio del 2026-11-25 (ADR 0027):* la sección 11.4 de la especificación preveía CloudFront con el frontend en S3. Para la demostración del 2026-11-26, Fabio decidió usar solo los servicios de AWS necesarios: un balanceador con HTTPS delante de una EC2 donde el backend sirve también el frontend. Los recursos se crearon el 2026-11-25 con la AWS CLI (rama `fase-8-despliegue`, PR #30), y AutoReel corre en `https://autoreel.sapps.lat`.
 
 ```mermaid
 flowchart LR

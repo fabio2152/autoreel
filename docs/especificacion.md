@@ -705,7 +705,16 @@ Genera el guion en formato JSON. El costo por guion es de unos pocos centavos. M
 - **CloudWatch:** los registros.
 - **Rekognition (S):** detección de rostros en las fotos.
 
-*Cambio del 2026-11-25 (ADR 0027):* para la demostración se usa solo lo necesario, en `us-east-1`. Un **Application Load Balancer** con certificado de ACM (`autoreel.sapps.lat`) reemplaza a CloudFront y envía todo a **una EC2 con Docker**, donde el **backend sirve también el frontend compilado**: no hay S3 para el frontend. Las credenciales van en **Secrets Manager** (no Parameter Store). No se usan CloudWatch Logs, ECR ni NAT. Detalle en `docs/despliegue-aws.md`.
+*Cambio del 2026-11-25 (ADR 0027):* para la demostración se usa solo lo necesario, en `us-east-1`. Un **Application Load Balancer** con certificado de ACM (`autoreel.sapps.lat`) reemplaza a CloudFront y envía todo a **una EC2 con Docker**, donde el **backend sirve también el frontend compilado**: no hay S3 para el frontend. Las credenciales van en **Secrets Manager** (no Parameter Store). No se usan CloudWatch Logs, ECR ni NAT. En resumen, lo que se usa es:
+
+- **EC2 con Docker:** un solo contenedor con el backend, FFmpeg 7.1 y el frontend compilado, que sirve el mismo backend.
+- **Application Load Balancer + ACM:** HTTPS para `https://autoreel.sapps.lat`; el 80 redirige al 443.
+- **RDS:** PostgreSQL 17, privada.
+- **S3:** un bucket privado para los archivos, con CORS y la regla que expira `subidas/` a 1 día.
+- **Secrets Manager:** `autoreel/app` (lo carga `SecretosDeArranque` al arrancar) y las claves de IA (`SecretosDeAws`).
+- **Registros:** en Docker, en la instancia (sin CloudWatch Logs).
+
+Detalle en `docs/despliegue-aws.md`.
 
 ### 11.5 Integraciones administrables
 

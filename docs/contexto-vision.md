@@ -86,7 +86,7 @@ Un resumen de cómo se llegó al diseño actual, para no volver a discutir lo ya
 
 **Planes y modelos de IA en la base de datos.** Agregar un plan o un modelo nuevo de un proveedor ya integrado no requiere programar, lo que permite probar modelos, crear planes superiores y otorgar beneficios temporales desde el panel.
 
-**Despliegue en AWS.** S3 para los archivos (y para entregar a Instagram el video desde una dirección pública), RDS para PostgreSQL, EC2 para el backend con FFmpeg, y CloudFront para el frontend.
+**Despliegue en AWS.** S3 para los archivos (y para entregar a Instagram el video desde una dirección pública), RDS para PostgreSQL, EC2 para el backend con FFmpeg, y CloudFront para el frontend. *Cambio del 2026-11-25 (ADR 0027):* para la demostración, AutoReel corre en `https://autoreel.sapps.lat` (`us-east-1`) con solo lo necesario: una EC2 con Docker donde el backend, con FFmpeg, sirve también el frontend, detrás de un Application Load Balancer con certificado de ACM; RDS privada, un bucket S3 privado y Secrets Manager. Sin CloudFront. Instagram quedó fuera del MVP (ADR 0026). Detalle en `docs/despliegue-aws.md`.
 
 **Desarrollo sin TDD, con pruebas solo para la lógica crítica.** El foco del MVP está en la integración y la experiencia; las reglas más delicadas sí se cubren con pruebas.
 
@@ -259,4 +259,4 @@ Frente a editores generales (CapCut, Canva) y a herramientas generales de video 
 - **`docs/decisiones/`**: los registros de decisiones de arquitectura.
 - **`docs/manual-administrador.md`** y **`docs/manual-negocio.md`**: los manuales de uso.
 
-La carpeta `docs/` es local y no se versiona en git (ADR 0008).
+La carpeta `docs/` es local y no se versiona en git (ADR 0008). *Cambio del 2026-11-06:* desde el commit `85b9656` (PR #11), `docs/` se versiona en el repositorio; solo `CLAUDE.md` y `.claude/` quedan locales.
